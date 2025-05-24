@@ -14,51 +14,59 @@ set(CMAKE_CXX_STANDARD 23)
 #    set(CMAKE_CXX_FLAGS "-static-libgcc -static-libstdc++ -Werror -Wunused")
 #endif()
 
+set(CMAKE_TOOLCHAIN_FILE "C:/development/.vcpkg-clion/vcpkg/scripts/buildsystems/vcpkg.cmake")
+
+find_package(OpenGL REQUIRED)
+#find_package(PkgConfig REQUIRED)
+#pkg_search_module(GLFW REQUIRED glfw3)
+find_package(glfw3 CONFIG REQUIRED)
+find_package(Freetype REQUIRED)
+find_package(GLEW REQUIRED)
+
+# Path to your shaders
+set(SHADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
+file(GLOB SHADER_FILES "${SHADER_DIR}/*.glsl")
+
+set(GENERATED_SHADER_HEADERS)
+foreach(SHADER ${SHADER_FILES})
+    get_filename_component(FILE_NAME ${SHADER} NAME)
+    string(REPLACE "." "_" VAR_NAME ${FILE_NAME})
+    set(HEADER "${CMAKE_CURRENT_BINARY_DIR}/shaders/${FILE_NAME}.h")
+    list(APPEND GENERATED_SHADER_HEADERS ${HEADER})
+
+    add_custom_command(
+        OUTPUT ${HEADER}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/shaders
+        COMMAND ${CMAKE_COMMAND} -DINPUT=${SHADER} -DOUTPUT=${HEADER} -DVAR_NAME=${VAR_NAME}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/embed_shader.cmake
+        DEPENDS ${SHADER}
+        COMMENT "Embedding shader ${FILE_NAME}"
+    )
+endforeach()
+
+# Add a custom target to generate all shaders
+add_custom_target(compile_shaders DEPENDS ${GENERATED_SHADER_HEADERS})
+
 add_executable(log_viewer
     src/main.cpp
+    ${GENERATED_SHADER_HEADERS}
+)
+add_dependencies(log_viewer compile_shaders)
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+#    ${GLFW_INCLUDE_DIRS}
+    ${FREETYPE_INCLUDE_DIRS}
+    ${GLEW_INCLUDE_DIRS}
+    ${CMAKE_CURRENT_BINARY_DIR}/shaders
 )
 
-target_include_directories(${PROJECT_NAME} PUBLIC
-#    include/skia
-    include/SDL2
-)
-#
-#add_library(skia STATIC IMPORTED)
-#set_target_properties(skia PROPERTIES
-#    IMPORTED_LOCATION "${CMAKE_SOURCE_DIR}/lib/skia.lib"
-#    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/include/skia/"
+#target_link_directories(${PROJECT_NAME} PRIVATE
+#    lib
 #)
 
-
-if (WIN32)
-    # Copy DLLs from bin folder to cmake build directory after build
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/bin $<TARGET_FILE_DIR:${PROJECT_NAME}>
-    )
-
-    # Copy the release executable from cmake build directory to python package directory after build
-    if (CMAKE_BUILD_TYPE MATCHES Release AND DEFINED PYTHON_PACKAGE_DIR)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            $<TARGET_FILE:${PROJECT_NAME}> ${PYTHON_PACKAGE_DIR}
-        )
-    endif()
-
-endif()
-
-target_link_directories(${PROJECT_NAME} PUBLIC lib)
-
-if (WIN32)
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-    #    C:/development/skia/skia/out/StaticRelease/skia.lib
-        SDL2.dll.a
-        SDL2_ttf.dll.a
-    )
-else()
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        SDL2
-        SDL2_ttf
-    )
-endif()
-
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    OpenGL::GL
+    glfw
+    freetype
+    GLEW::GLEW
+)

@@ -1,290 +1,166 @@
-#define SDL_MAIN_HANDLED
-#include <chrono>
-#include <fstream>
+#include <GL/glew.h>
+#include <GLFW/glfw3.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
 #include <iostream>
-#include <SDL.h>
-#include <SDL_ttf.h>
-#include <string.h>
 #include <vector>
+#include <map>
 
-using namespace std::chrono;
+#include "fragment.glsl.h"
+#include "vertex.glsl.h"
 
-static constexpr ssize_t X_SCROLL_MULT = 50;
-static constexpr ssize_t LINE_SCROLL_MULT = 5;
+struct Glyph {
+    int width, height;
+    int bearingX, bearingY;
+    int advanceX;
+    float u1, v1, u2, v2;
+};
 
-static int WINDOW_W = 1200;
-static int WINDOW_H = 600;
+struct Vertex {
+    float x, y;
+    float u, v;
+    float fg[4];
+    float bg[4];
+};
 
-SDL_Window* window {};
-SDL_Renderer* renderer {};
-// SDL_Texture* texture {};
-static inline TTF_Font *font {};
-std::vector<SDL_Texture*> lines {};
-bool done {};
-ssize_t x_offset {};
-ssize_t line_offset {};
-bool ctrl_held {};
-bool shift_held {};
-
-bool init() {
-	if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-		return false;
-	}
-
-	window = SDL_CreateWindow("Log Viewer", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_W, WINDOW_H, SDL_WINDOW_SHOWN);
-
-	if (window == nullptr) {
-		return false;
-	}
-
-	SDL_SetWindowResizable(window, SDL_TRUE);
-	SDL_StartTextInput();
-
-	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
-	if (renderer == nullptr) {
-		return false;
-	}
-
-	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-
-	// texture = SDL_CreateTexture(renderer,
-	// 	SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_STREAMING,
-	// 	WINDOW_W, WINDOW_H);
-
-	auto ret = TTF_Init();
-	if (ret != 0) {
-		std::cerr << "TTF_Init failed: " << TTF_GetError() << std::endl;
-		return false;
-	}
-#ifdef WIN32
-	font = TTF_OpenFont("C:/Windows/Fonts/consola.ttf", 16);
-#else
-	font = TTF_OpenFont("/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf", 16);
-#endif
-	if (!font) {
-		std::cerr << "Failed to load font: " << TTF_GetError() << std::endl;
-		return false;
-	}
-	return true;
+GLuint compile_shader(GLenum type, const char* src) {
+    GLuint shader = glCreateShader(type);
+    glShaderSource(shader, 1, &src, nullptr);
+    glCompileShader(shader);
+    GLint success;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        char log[512];
+        glGetShaderInfoLog(shader, 512, nullptr, log);
+        std::cerr << "Shader compile error: " << log << "\n";
+    }
+    return shader;
 }
 
-void quit() {
-	// SDL_DestroyTexture(texture);
-	SDL_DestroyRenderer(renderer);
-	SDL_DestroyWindow(window);
-	SDL_Quit();
+GLuint create_program(const char* vs, const char* fs) {
+    GLuint v = compile_shader(GL_VERTEX_SHADER, vs);
+    GLuint f = compile_shader(GL_FRAGMENT_SHADER, fs);
+    GLuint program = glCreateProgram();
+    glAttachShader(program, v);
+    glAttachShader(program, f);
+    glLinkProgram(program);
+    glDeleteShader(v);
+    glDeleteShader(f);
+    return program;
 }
 
+int main() {
+    if (!glfwInit()) return -1;
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    GLFWwindow* window = glfwCreateWindow(800, 600, "Text Hello", nullptr, nullptr);
+    glfwMakeContextCurrent(window);
+    glewInit();
 
-void handle_events()
-{
-	SDL_Event event;
+    FT_Library ft;
+    FT_Init_FreeType(&ft);
+    FT_Face face;
+    FT_New_Face(ft, "DejaVuSansMono.ttf", 0, &face);
+    FT_Set_Pixel_Sizes(face, 0, 48);
 
-	while (SDL_PollEvent(&event)) {
+    GLuint tex;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 512, 512, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-		switch (event.type) {
-			case SDL_QUIT: {
-				done = true;
-				break;
-			}
+    std::map<char, Glyph> glyphs;
+    int penX = 0, penY = 0, rowH = 0;
 
-			case SDL_WINDOWEVENT: {
-				switch (event.window.event) {
-					case SDL_WINDOWEVENT_RESIZED:
-						WINDOW_H = event.window.data2;
-						WINDOW_W = event.window.data1;
-						break;
-				}
-				break;
-			}
+    for (char c = 32; c < 127; ++c) {
+        if (FT_Load_Char(face, c, FT_LOAD_RENDER)) continue;
+        FT_GlyphSlot g = face->glyph;
 
-			case SDL_MOUSEWHEEL: {
-				if (ctrl_held && shift_held) {
-				} else if (shift_held) {
-					x_offset = std::max(0LL, x_offset - event.wheel.y * X_SCROLL_MULT);
-				} else if (ctrl_held) {
-				} else {
-					line_offset = std::max(0LL, line_offset - event.wheel.y * LINE_SCROLL_MULT);
-				}
-				break;
-			}
+        if (penX + g->bitmap.width >= 512) {
+            penX = 0;
+            penY += rowH;
+            rowH = 0;
+        }
 
-			case SDL_MOUSEMOTION: {
-				// world_mouse.x = ToWorldX(event.motion.x);
-				// world_mouse.y = ToWorldY(event.motion.y);
-				break;
-			}
+        glTexSubImage2D(GL_TEXTURE_2D, 0, penX, penY,
+            g->bitmap.width, g->bitmap.rows,
+            GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
 
-			case SDL_MOUSEBUTTONDOWN: {
-				switch (event.button.button) {
-					case SDL_BUTTON_LEFT:
-						// mouse_left_held = true;
-						break;
-				}
-				break;
-			}
+        glyphs[c] = {
+            g->bitmap.width, g->bitmap.rows,
+            g->bitmap_left, g->bitmap_top,
+            g->advance.x >> 6,
+            (float)penX / 512, (float)penY / 512,
+            (float)(penX + g->bitmap.width) / 512,
+            (float)(penY + g->bitmap.rows) / 512
+        };
 
-			case SDL_MOUSEBUTTONUP: {
-				switch (event.button.button) {
-					case SDL_BUTTON_LEFT:
-						// mouse_left_held = false;
-						break;
-					case SDL_BUTTON_RIGHT:
-						break;
-				}
-				break;
-			}
-
-			case SDL_KEYDOWN: {
-				switch (event.key.keysym.sym) {
-					case SDLK_LCTRL:
-					case SDLK_RCTRL:
-						ctrl_held = true;
-						break;
-					case SDLK_LSHIFT:
-					case SDLK_RSHIFT:
-						shift_held = true;
-						break;
-				}
-				break;
-			}
-
-			case SDL_KEYUP: {
-//				bool handled = true;
-				switch (event.key.keysym.sym) {
-					case SDLK_LCTRL:
-					case SDLK_RCTRL:
-						ctrl_held = false;
-						break;
-					case SDLK_LSHIFT:
-					case SDLK_RSHIFT:
-						shift_held = false;
-						break;
-
-					default: {
-						break;
-					}
-				}
-
-				break;
-			}
-
-			case SDL_TEXTINPUT: {
-				// command += event.text.text;
-				break;
-			}
-
-			default: {
-				break;
-			}
-		}
-	}
-}
-
-SDL_Texture* render_text(const char* text, SDL_Color color, TTF_Font* font) {
-	SDL_Surface* surface = TTF_RenderUTF8_Blended(font, text, color);
-	if (!surface) {
-		// std::cerr << "Failed to create surface: " << TTF_GetError() << std::endl;
-		return nullptr;
-	}
-
-	SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-	SDL_FreeSurface(surface);
-	return texture;
-}
-
-void render() {
-	SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-	SDL_RenderClear(renderer);
-
-	int y = 0;
-	for (size_t i = line_offset; i < lines.size(); ++i) {
-		int tex_w, tex_h;
-		SDL_QueryTexture(lines[i], nullptr, nullptr, &tex_w, &tex_h);
-		SDL_Rect dst = {(int)-x_offset, y, tex_w, tex_h};
-		SDL_RenderCopy(renderer, lines[i], nullptr, &dst);
-		y += tex_h;
-		if (y > WINDOW_H) break;
-	}
-
-	SDL_RenderPresent(renderer);
-}
-
-bool load(const char* filename) {
-	auto mybuffer = std::make_unique<char[]>(1024 * 1024);
-	std::ifstream file;
-	file.rdbuf()->pubsetbuf(mybuffer.get(), 1024 * 1024);
-	file.open(filename, std::ios::in | std::ios::binary);
-	if (!file.is_open()) {
-		std::cerr << "Failed to open file: " << filename << ": " << strerror(errno) << std::endl;
-		return false;
-	}
-
-	std::string line {};
-	char c {};
-	while (file.get(c)) {
-		if (c == '\n') {
-			c = 0;
-			SDL_Texture* tex = nullptr;
-			// tex = render_text(line.c_str(), {255, 255, 255, 255}, font);
-			// if (tex) {
-				lines.push_back(tex);
-				if (lines.size() % 10000 == 0) {
-					std::cerr << "Loaded " << lines.size() << " lines" << std::endl;
-				}
-			// }
-			line.clear();
-		}
-		else if (c == '\r') {
-			continue;
-		} else {
-			line += c;
-		}
-	}
-	return true;
-}
-
-int main(int argc, char *argv[]) {
-	init();
-
-	if (argc < 2) {
-		std::cerr << "Usage: " << argv[0] << " <log file>" << std::endl;
-		return 1;
-	}
-
-	// load log file
-    auto start = high_resolution_clock::now();
-	if (!load(argv[1])) {
-		std::cerr << "Failed to load log file" << std::endl;
-		return 1;
-	}
-	auto duration = duration_cast<milliseconds>(high_resolution_clock::now() - start);
-	std::cerr << "Loaded " << lines.size() << " lines in " << duration.count() << "ms" << std::endl;
-
-	auto last_stat = high_resolution_clock::now();
-
-	size_t frames {};
-	microseconds frame_time {};
-    while (!done) {
-    	auto start = high_resolution_clock::now();
-    	render();
-    	frame_time += duration_cast<microseconds>(high_resolution_clock::now() - start);
-    	frames++;
-
-    	auto diff = start - last_stat;
-    	if (duration_cast<milliseconds>(diff).count() >= 1000) {
-    		microseconds per_frame = duration_cast<microseconds>(frame_time) / frames;
-			std::cerr << "FPS: " << frames << ", " << per_frame.count() << "us/frame" << std::endl;
-			frames = 0;
-    		frame_time = {};
-			last_stat += diff;
-		}
-
-    	handle_events();
-        SDL_Delay(10);
+        penX += g->bitmap.width + 1;
+        rowH = std::max(rowH, (int)g->bitmap.rows);
     }
 
-	quit();
+    std::vector<Vertex> verts;
+    float x = -0.95f, y = 0.0f;
+    const char* msg = "Hello, GPU Text!";
+
+    for (const char* p = msg; *p; ++p) {
+        Glyph& g = glyphs[*p];
+        float xpos = x + g.bearingX / 400.0f;
+        float ypos = y - g.bearingY / 300.0f;
+        float w = g.width / 400.0f;
+        float h = g.height / 300.0f;
+
+        float fg[4] = {1, 1, 1, 1}, bg[4] = {0, 0, 0, 1};
+        verts.push_back({xpos, ypos, g.u1, g.v1, fg[0], fg[1], fg[2], fg[3], bg[0], bg[1], bg[2], bg[3]});
+        verts.push_back({xpos + w, ypos, g.u2, g.v1, fg[0], fg[1], fg[2], fg[3], bg[0], bg[1], bg[2], bg[3]});
+        verts.push_back({xpos + w, ypos + h, g.u2, g.v2, fg[0], fg[1], fg[2], fg[3], bg[0], bg[1], bg[2], bg[3]});
+        verts.push_back({xpos, ypos + h, g.u1, g.v2, fg[0], fg[1], fg[2], fg[3], bg[0], bg[1], bg[2], bg[3]});
+        x += g.advanceX / 400.0f;
+    }
+
+    std::vector<GLuint> indices;
+    for (int i = 0; i < verts.size(); i += 4) {
+        indices.push_back(i); indices.push_back(i+1); indices.push_back(i+2);
+        indices.push_back(i); indices.push_back(i+2); indices.push_back(i+3);
+    }
+
+    GLuint vao, vbo, ebo;
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glGenBuffers(1, &ebo);
+
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, verts.size() * sizeof(Vertex), verts.data(), GL_STATIC_DRAW);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, x));
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, u));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, fg));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, bg));
+    glEnableVertexAttribArray(3);
+
+
+    GLuint program = create_program(vertex_glsl, fragment_glsl);
+    glUseProgram(program);
+    glUniform1i(glGetUniformLocation(program, "atlas"), 0);
+
+    while (!glfwWindowShouldClose(window)) {
+        glClear(GL_COLOR_BUFFER_BIT);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    glfwTerminate();
     return 0;
 }
