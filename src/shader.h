@@ -2,9 +2,10 @@
 #include <iostream>
 #include <GL/glew.h>
 
-template<const char *VertexShader, const char *FragmentShader>
 class Shader {
-	unsigned int id_;
+	const char* vs_src_;
+	const char* fs_src_;
+	unsigned int id_ {};
 
 	static GLuint compile_shader(GLenum type, const char* src) {
 		GLint success;
@@ -25,7 +26,14 @@ class Shader {
 	static GLuint create_program(const char* vs, const char* fs) {
 		GLint success;
 		GLuint v = compile_shader(GL_VERTEX_SHADER, vs);
+		if (v == 0) {
+			return 0; // Return 0 if vertex shader compilation failed
+		}
 		GLuint f = compile_shader(GL_FRAGMENT_SHADER, fs);
+		if (f == 0) {
+			glDeleteShader(v);
+			return 0; // Return 0 if fragment shader compilation failed
+		}
 		GLuint program = glCreateProgram();
 		glAttachShader(program, v);
 		glAttachShader(program, f);
@@ -44,14 +52,16 @@ class Shader {
 	}
 
 public:
-	Shader() = default;
+	Shader(const char* vs_src, const char* fs_src)
+		: vs_src_(vs_src), fs_src_(fs_src) {
+	}
 
-	int id() const {
+	unsigned int id() const {
 		return id_;
 	}
 
 	int compile() {
-		id_ = create_program(VertexShader, FragmentShader);
+		id_ = create_program(vs_src_, fs_src_);
 		if (id_ == 0) {
 			return -1;
 		}

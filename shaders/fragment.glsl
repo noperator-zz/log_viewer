@@ -1,5 +1,5 @@
 #version 330 core
-flat in int char_idx;
+flat in uint char_idx;
 flat in float bearingY;
 in vec2 v_uv;
 out vec4 color;

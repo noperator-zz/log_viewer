@@ -22,6 +22,7 @@ find_package(OpenGL REQUIRED)
 find_package(glfw3 CONFIG REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(glm REQUIRED)
 
 # Path to your shaders
 set(SHADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
@@ -53,6 +54,8 @@ add_executable(${PROJECT_NAME}
     src/font.cpp
     src/file.cpp
     src/shader.h
+    src/text_shader.cpp
+    src/file_view.cpp
     src/parser.cpp
 )
 add_dependencies(${PROJECT_NAME} compile_shaders)
@@ -75,4 +78,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glfw
     freetype
     GLEW::GLEW
+    glm::glm
 )

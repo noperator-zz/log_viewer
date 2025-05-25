@@ -2,50 +2,50 @@
 #include <vector>
 #include <cstdint>
 #include <cstddef>
+//
+// static std::vector<size_t> find_newlines_naive(const uint8_t* data, size_t size, size_t offset) {
+// 	std::vector<size_t> newline_positions;
+// 	newline_positions.reserve(1024 * 1024);
+//
+// 	for (size_t i = 0; i < size; ++i) {
+// 		if (data[i] == '\n') {
+// 			newline_positions.push_back(offset + i + 1);
+// 		}
+// 	}
+// 	return newline_positions;
+// }
+//
+// static std::vector<size_t> find_newlines_sse2(const uint8_t* data, size_t size, size_t offset) {
+// 	std::vector<size_t> newline_positions;
+// 	newline_positions.reserve(1024 * 1024);
+//
+// 	const __m128i newline = _mm_set1_epi8('\n');
+// 	size_t i = 0;
+//
+// 	// Process in 16-byte chunks
+// 	for (; i + 16 <= size; i += 16) {
+// 		__m128i chunk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + i));
+// 		__m128i cmp = _mm_cmpeq_epi8(chunk, newline);
+// 		int mask = _mm_movemask_epi8(cmp);
+//
+// 		while (mask != 0) {
+// 			int bit = __builtin_ctz(mask); // Find index of lowest set bit
+// 			newline_positions.push_back(offset + i + bit + 1);
+// 			mask &= (mask - 1); // Clear lowest set bit
+// 		}
+// 	}
+//
+// 	// Tail loop
+// 	for (; i < size; ++i) {
+// 		if (data[i] == '\n') {
+// 			newline_positions.push_back(offset + i + 1);
+// 		}
+// 	}
+//
+// 	return newline_positions;
+// }
 
-std::vector<size_t> find_newlines_naive(const uint8_t* data, size_t size, size_t offset) {
-	std::vector<size_t> newline_positions;
-	newline_positions.reserve(1024 * 1024);
-
-	for (size_t i = 0; i < size; ++i) {
-		if (data[i] == '\n') {
-			newline_positions.push_back(offset + i + 1);
-		}
-	}
-	return newline_positions;
-}
-
-std::vector<size_t> find_newlines_sse2(const uint8_t* data, size_t size, size_t offset) {
-	std::vector<size_t> newline_positions;
-	newline_positions.reserve(1024 * 1024);
-
-	const __m128i newline = _mm_set1_epi8('\n');
-	size_t i = 0;
-
-	// Process in 16-byte chunks
-	for (; i + 16 <= size; i += 16) {
-		__m128i chunk = _mm_loadu_si128(reinterpret_cast<const __m128i*>(data + i));
-		__m128i cmp = _mm_cmpeq_epi8(chunk, newline);
-		int mask = _mm_movemask_epi8(cmp);
-
-		while (mask != 0) {
-			int bit = __builtin_ctz(mask); // Find index of lowest set bit
-			newline_positions.push_back(offset + i + bit + 1);
-			mask &= (mask - 1); // Clear lowest set bit
-		}
-	}
-
-	// Tail loop
-	for (; i < size; ++i) {
-		if (data[i] == '\n') {
-			newline_positions.push_back(offset + i + 1);
-		}
-	}
-
-	return newline_positions;
-}
-
-std::vector<size_t> find_newlines_avx2(const uint8_t* data, size_t size, size_t offset) {
+static std::vector<size_t> find_newlines_avx2(const uint8_t* data, size_t size, size_t offset) {
 	std::vector<size_t> newline_positions;
 	newline_positions.reserve(1024 * 1024);
 
