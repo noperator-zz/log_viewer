@@ -51,6 +51,7 @@ add_custom_target(compile_shaders DEPENDS ${GENERATED_SHADER_HEADERS})
 add_executable(${PROJECT_NAME}
     ${GENERATED_SHADER_HEADERS}
     src/main.cpp
+    src/app.cpp
     src/font.cpp
     src/file.cpp
     src/shader.h

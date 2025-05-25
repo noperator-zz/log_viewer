@@ -1,6 +1,6 @@
-//#version 330 compatibility
-layout(location = 0) in uint8_t glyph_idx;
-layout(location = 1) in uint8_t style_mask;
+#version 330 core
+layout(location = 0) in uint glyph_idx_;
+layout(location = 1) in uint style_mask;
 layout(location = 2) in vec3 fg;
 layout(location = 3) in vec3 bg;
 
@@ -26,7 +26,8 @@ void main() {
         vec2(0, 1), vec2(1, 1)
     );
 
-    uint style_idx = style_mask & 3U;
+    uint glyph_idx = glyph_idx_ & 0xFFU;
+    uint style_idx = 0U;//style_mask & 3U;
 
     char_idx = uint(gl_InstanceID);  // Which glyph in the line
     vec2 offset = quad_offsets[corner] * vec2(glyph_width, glyph_height);

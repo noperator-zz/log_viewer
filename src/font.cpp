@@ -19,7 +19,7 @@ Font::Font(int size,
 		: size(size), paths{path_reg, path_bold, path_italic, path_bold_italic} {
 }
 
-int Font::render(FT_Face face, size_t style_idx) const {
+int Font::render(FT_Face face, size_t style_idx) {
 	FT_Error err;
 	int x = 0;
 	for (int c = 0; c < num_glyphs; ++c) {
@@ -37,16 +37,16 @@ int Font::render(FT_Face face, size_t style_idx) const {
 		// 	g->advance.x >> 6);
 
 		glBindTexture(GL_TEXTURE_2D, tex_atlas_);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, x, style_idx * size,
+		glTexSubImage2D(GL_TEXTURE_2D, 0, x, style_idx * size.y,
 			g->bitmap.width, g->bitmap.rows,
             GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
 
-		float bearing_top = size - g->bitmap_top;
+		float bearing_top = size.y - g->bitmap_top;
 		glBindTexture(GL_TEXTURE_2D, tex_bearing_);
 		glTexSubImage2D(GL_TEXTURE_2D, 0, c, style_idx,1, 1,
 			GL_RED, GL_FLOAT, &bearing_top);
 
-		x += size;
+		x += size.x;
 	}
 
 	return 0;
@@ -55,18 +55,7 @@ int Font::render(FT_Face face, size_t style_idx) const {
 int Font::load() {
 	FT_Error err;
 
-	glGenTextures(1, &tex_atlas_);
-	glBindTexture(GL_TEXTURE_2D, tex_atlas_);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, num_glyphs * size, num_faces * size, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-	glGenTextures(1, &tex_bearing_);
-	glBindTexture(GL_TEXTURE_2D, tex_bearing_);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, num_glyphs * 1, num_faces, 0, GL_RED, GL_FLOAT, nullptr);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
+	bool tex_created = false;
 	size_t style_idx = 0;
 	for (auto & path : paths) {
 		if (!path) {
@@ -77,9 +66,28 @@ int Font::load() {
 		if (FT_New_Face(ft, path, 0, &face) != 0) {
 			return -1;
 		}
-		if (FT_Set_Pixel_Sizes(face, 0, size) != 0) {
+
+		if (FT_Set_Pixel_Sizes(face, 0, size.y) != 0) {
 			FT_Done_Face(face);
 			return -2;
+		}
+
+		if (!tex_created) {
+			tex_created = true;
+			// TODO
+			size.x = 16;//face->max_advance_width >> 6;
+
+			glGenTextures(1, &tex_atlas_);
+			glBindTexture(GL_TEXTURE_2D, tex_atlas_);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, num_glyphs * size.x, num_faces * size.y, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+			glGenTextures(1, &tex_bearing_);
+			glBindTexture(GL_TEXTURE_2D, tex_bearing_);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, num_glyphs * 1, num_faces, 0, GL_RED, GL_FLOAT, nullptr);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		}
 
 		err = render(face, style_idx);

@@ -70,21 +70,21 @@ int File::mmap() {
 		return -1;
 	}
 
-	data_ = (const uint8_t*)MapViewOfFile(
+	mapped_data_ = (const uint8_t*)MapViewOfFile(
 		hMap_,                     // mapping handle
 		FILE_MAP_READ,            // desired access
 		0, 0,                     // offset
 		0                         // size (0 = full file)
 	);
 
-	if (!data_) {
+	if (!mapped_data_) {
 		CloseHandle(hMap_);
 		return -2;
 	}
 
 #else
-	data_ = (const uint8_t*)::mmap(NULL, size_, PROT_READ, MAP_SHARED, fd_, 0);
-	if (data_ == MAP_FAILED) {
+	mapped_data_ = (const uint8_t*)::mmap(NULL, size_, PROT_READ, MAP_SHARED, fd_, 0);
+	if (mapped_data_ == MAP_FAILED) {
 		return -1;
 	}
 #endif
@@ -103,6 +103,10 @@ void File::close() {
 		hFile_ = INVALID_HANDLE_VALUE;
 	}
 #else
+	if (mapped_data_ && mapped_data_ != MAP_FAILED) {
+		::munmap((void*)mapped_data_, size_);
+		mapped_data_ = nullptr;
+	}
 	::close(fd_);
 	fd_ = -1;
 #endif

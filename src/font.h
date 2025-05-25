@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <ft2build.h>
 #include <GL/glew.h>
+#include <glm/vec2.hpp>
 
 #include FT_FREETYPE_H
 
@@ -11,13 +12,13 @@ public:
 	static constexpr size_t num_glyphs = 256;
 	static constexpr size_t num_faces = 4;
 
-	const size_t size;
+	glm::uvec2 size {};
 private:
 	const char *paths[4];
 	GLuint tex_atlas_ {};
 	GLuint tex_bearing_ {};
 
-	int render(FT_Face face, size_t style_idx) const;
+	int render(FT_Face face, size_t style_idx);
 
 	static FT_Library ft;
 public:

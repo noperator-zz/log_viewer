@@ -23,18 +23,23 @@ public:
 
 private:
 	Shader shader_;
-	Font &font_;
+	const Font &font_;
 	GLint scroll_offset_loc_ {};
 	GLint line_index_loc_ {};
+	GLint line_height_loc_ {};
 
 public:
-	TextShader(Font &font);
+	TextShader(const Font &font);
 
-	static void create_buffers(GLuint &vao, GLuint &vbo_text, GLuint &vbo_style);
+	static void create_buffers(GLuint &vao, GLuint &vbo_text, GLuint &vbo_style, size_t total_size);
 
 	int setup();
 	void use(GLuint vao) const;
-	void set_viewport(int x, int y, int w, int h) const;
-	void set_scroll_offset(float x, float y) const;
-	void set_line_index(int line_index) const;
+	void set_viewport(glm::uvec4 rect) const;
+	void set_scroll_offset(glm::uvec2 scroll_offest) const;
+	void set_line_index(glm::uint line_index) const;
+	void set_line_height(glm::uint line_height) const;
+	const Font &font() const {
+		return font_;
+	}
 };

@@ -7,7 +7,7 @@ uniform sampler2D atlas;
 void main() {
     float a = texture(atlas, v_uv).r;
     color = mix(vec4(0,0,0,1), vec4(1,1,1,1), a);
-//    color = vec4(v_uv.r, 1, v_uv.g, 1);
+//    color = vec4(0, v_uv.r, 0, 1);
 //    color = vec4(float(char_idx) / 3., 0.5, 0, 1);
 //    color = vec4(float(quad) / 6., 0, 0, 1);
 }
