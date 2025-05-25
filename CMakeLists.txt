@@ -47,11 +47,15 @@ endforeach()
 # Add a custom target to generate all shaders
 add_custom_target(compile_shaders DEPENDS ${GENERATED_SHADER_HEADERS})
 
-add_executable(log_viewer
-    src/main.cpp
+add_executable(${PROJECT_NAME}
     ${GENERATED_SHADER_HEADERS}
+    src/main.cpp
+    src/font.cpp
+    src/file.cpp
+    src/shader.h
+    src/parser.cpp
 )
-add_dependencies(log_viewer compile_shaders)
+add_dependencies(${PROJECT_NAME} compile_shaders)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
 #    ${GLFW_INCLUDE_DIRS}
@@ -59,6 +63,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${GLEW_INCLUDE_DIRS}
     ${CMAKE_CURRENT_BINARY_DIR}/shaders
 )
+
+target_compile_options(${PROJECT_NAME} PRIVATE -march=native)
 
 #target_link_directories(${PROJECT_NAME} PRIVATE
 #    lib
