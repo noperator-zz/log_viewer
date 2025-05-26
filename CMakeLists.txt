@@ -56,8 +56,10 @@ add_executable(${PROJECT_NAME}
     src/file.cpp
     src/shader.h
     src/text_shader.cpp
+    src/gp_shader.cpp
     src/file_view.cpp
     src/parser.cpp
+    src/widget.cpp
 )
 add_dependencies(${PROJECT_NAME} compile_shaders)
 

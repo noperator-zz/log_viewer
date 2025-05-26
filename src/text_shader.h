@@ -17,8 +17,8 @@ public:
 			};
 			uint8_t style;
 		};
-		glm::vec4 fg;
-		glm::vec4 bg;
+		glm::u8vec4 fg;
+		glm::u8vec4 bg;
 	};
 
 private:

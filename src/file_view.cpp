@@ -8,7 +8,40 @@
 
 using namespace glm;
 
-FileView::FileView(const char *path, const TextShader &text_shader) : file_(path), text_shader_(text_shader), line_height_(text_shader.font().size.y) {
+
+
+void Scrollbar::on_hover() {
+	color_ = {0, 150, 0, 255};
+}
+
+void Scrollbar::on_unhover() {
+	color_ = {100, 0, 0, 255};
+}
+
+void Scrollbar::on_press() {
+	color_ = {0, 0, 200, 255};
+}
+
+void Scrollbar::on_release() {
+	color_ = {0, 150, 0, 255};
+}
+
+void Scrollbar::on_cursor_pos(glm::uvec2 pos) {
+	printf("Scrollbar cursor pos: %u, %u\n", pos.x, pos.y);
+}
+
+void Scrollbar::draw() {
+	gp_shader_.rect(pos(), pos() + size(), {100, hovered() * 255, pressed() * 255, 255});
+}
+
+
+
+
+
+
+FileView::FileView(uvec2 pos, uvec2 size, const char *path, const TextShader &text_shader, GPShader &gp_shader)
+	: IWidget(pos, size), file_(path), text_shader_(text_shader), gp_shader_(gp_shader), line_height_(text_shader.font().size.y)
+	, scrollbar_({pos.x + size.x - 16, pos.y}, {16, 20}, gp_shader) {
 }
 
 int FileView::open() {
@@ -25,6 +58,8 @@ int FileView::open() {
 	}
 
 	TextShader::create_buffers(vao_, vbo_text_, vbo_style_, MAX_VRAM_USAGE);
+
+	add_child(&scrollbar_);
 
 	parse();
 	return 0;
@@ -96,8 +131,8 @@ int FileView::update_buffer() {
 	for (size_t i = 0; i < num_chars; i++) {
 		styles.push_back({
 			{},
-			vec4{0.9, 0.9, 0.9, 1},
-			vec4{0.3, 0.3, 0.3, 0.5}
+			vec4{200, 200, 200, 255},
+			vec4{100, 100, 100, 100}
 		});
 	}
 	glBufferSubData(GL_ARRAY_BUFFER, 0, styles.size() * sizeof(TextShader::CharStyle), styles.data());
@@ -109,7 +144,6 @@ int FileView::update_buffer() {
 
 void FileView::set_viewport(uvec4 rect) {
 	rect_ = rect;
-	text_shader_.set_viewport(rect_);
 }
 
 void FileView::scroll(ivec2 scroll) {
@@ -134,45 +168,19 @@ void FileView::draw_scrollbar() {
 	// Draw scrollbar
 	float scrollbar_width = 16.0f;
 	float total_lines = static_cast<float>(line_starts_.size());
-	float visible_lines = static_cast<float>(rect_.z) / line_height_;
+	float visible_lines = static_cast<float>(rect_.w) / line_height_;
 	float scroll_pos = static_cast<float>(scroll_.y) / line_height_;
 
 	float bar_height = std::max(visible_lines / total_lines * rect_.w, 20.0f);
 	float bar_y = (scroll_pos / total_lines) * rect_.w;
-
-	// glDisable(GL_DEPTH_TEST);
-	// glBindVertexArray(0);
-	// glUseProgram(0);
-	//
-	// glMatrixMode(GL_PROJECTION);
-	// glPushMatrix();
-	// glLoadIdentity();
-	// glOrtho(0, rect_.x + rect_.z, rect_.y + rect_.w, 0, -1, 1);
-	//
-	// glMatrixMode(GL_MODELVIEW);
-	// glPushMatrix();
-	// glLoadIdentity();
-
-	glColor4f(1, 1, 1, 1);
-	glRectf(0.4, 0.4, 0.6, 0.6);
-	glRectf(0, 0, 100, 100);
-	// glRectf(rect_.x + rect_.z - scrollbar_width, rect_.y, rect_.x + rect_.z, rect_.y + rect_.w);
-	// glBegin(GL_QUADS);
-	// glRectf()
-	// glVertex2f(rect_.x + rect_.z - scrollbar_width, rect_.y + bar_y);
-	// glVertex2f(rect_.x + rect_.z, rect_.y + bar_y);
-	// glVertex2f(rect_.x + rect_.z, rect_.y + bar_y + bar_height);
-	// glVertex2f(rect_.x + rect_.z - scrollbar_width, rect_.y + bar_y + bar_height);
-	// glEnd();
-
-	// glPopMatrix();
-	// glMatrixMode(GL_PROJECTION);
-	// glPopMatrix();
-	// glMatrixMode(GL_MODELVIEW);
-	// glEnable(GL_DEPTH_TEST);
+	// scrollbar_.resize(
+		// {rect_.x + rect_.z - scrollbar_width, rect_.y + bar_y},
+		// {scrollbar_width, bar_height}
+	// );
+	scrollbar_.draw();
 }
 
-int FileView::draw() {
+void FileView::draw() {
 	text_shader_.use();
 	glBindVertexArray(vao_);
 	text_shader_.set_scroll_offset(scroll_);
@@ -191,11 +199,10 @@ int FileView::draw() {
 	draw_lines(screen_lines.x, screen_lines.y, buf_offset);
 
 	// disable shader
-	glBindVertexArray(0);
-	glUseProgram(0);
+	// glBindVertexArray(0);
+	// glUseProgram(0);
 
 	draw_scrollbar();
 
 	// draw.stop();
-	return 0;
 }

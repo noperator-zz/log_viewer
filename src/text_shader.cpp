@@ -13,6 +13,7 @@ int TextShader::setup() {
 	if (ret != 0) {
 		return ret;
 	}
+	shader_.use();
 	scroll_offset_loc_ = glGetUniformLocation(shader_.id(), "scroll_offset");
 	line_index_loc_ = glGetUniformLocation(shader_.id(), "line_idx");
 	line_height_loc_ = glGetUniformLocation(shader_.id(), "line_height");
@@ -53,11 +54,11 @@ void TextShader::create_buffers(GLuint &vao, GLuint &vbo_text, GLuint &vbo_style
 	glEnableVertexAttribArray(1);
 	glVertexAttribDivisor(1, 1);
 
-	glVertexAttribPointer(2, 4, GL_FLOAT, GL_FALSE, sizeof(CharStyle), (void*)offsetof(CharStyle, fg));
+	glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, fg));
 	glEnableVertexAttribArray(2);
 	glVertexAttribDivisor(2, 1);
 
-	glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(CharStyle), (void*)offsetof(CharStyle, bg));
+	glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, bg));
 	glEnableVertexAttribArray(3);
 	glVertexAttribDivisor(3, 1);
 }
@@ -77,21 +78,26 @@ void TextShader::set_viewport(uvec4 rect) const {
 		0.0f, 0.0f, -1.0f, 0.0f,
 		-1.0f + (float)rect.x / rect.z, 1.0f - (float)rect.y / rect.w, 1.0f, 1.0f
 	};
+	shader_.use();
 	set_uniform(Matrix4fv, shader_, "u_proj", 1, GL_FALSE, ortho);
 }
 
 void TextShader::set_scroll_offset(uvec2 scroll) const {
+	shader_.use();
 	glUniform2ui(scroll_offset_loc_, scroll.x, scroll.y);
 }
 
 void TextShader::set_line_index(uint line_index) const {
+	shader_.use();
 	glUniform1ui(line_index_loc_, line_index);
 }
 
 void TextShader::set_line_height(uint line_height) const {
+	shader_.use();
 	glUniform1ui(line_height_loc_, line_height);
 }
 
 void TextShader::set_is_foreground(bool is_foreground) const {
+	shader_.use();
 	glUniform1i(is_foreground_loc_, is_foreground ? 1 : 0);
 }

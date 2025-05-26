@@ -3,14 +3,18 @@
 #include <memory>
 #include <vector>
 #include "file_view.h"
+#include "text_shader.h"
+#include "gp_shader.h"
+#include "widget.h"
 
 struct GLFWwindow;
 
-class App {
+class App : public IWidget {
 	static std::unique_ptr<App> app_;
 
 	std::unique_ptr<Font> font_ {};
 	std::unique_ptr<TextShader> text_shader_ {};
+	std::unique_ptr<GPShader> gp_shader_ {};
 	GLFWwindow *window_ {};
 	glm::uvec2 mouse_ {};
 	glm::uvec2 fb_size_ {};
@@ -21,7 +25,7 @@ class App {
 
 	int start();
 	int add_file(const char *path);
-	void draw();
+	void draw() override;
 	int run();
 
 	static void static_key_cb(GLFWwindow* window, int key, int scancode, int action, int mods);
@@ -42,9 +46,12 @@ class App {
 	static void static_window_refresh_cb(GLFWwindow* window);
 	void window_refresh_cb(GLFWwindow* window);
 
+	void on_cursor_pos(glm::uvec2 pos) override;
+	void on_resize() override;
+
 	FileView& active_file_view();
 
 public:
-	App() = default;
+	App();
 	static void create(int argc, char *argv[]);
 };

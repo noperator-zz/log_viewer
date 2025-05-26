@@ -65,7 +65,6 @@ public:
 		if (id_ == 0) {
 			return -1;
 		}
-		use();
 		return 0;
 	}
 

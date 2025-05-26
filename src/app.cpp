@@ -19,6 +19,9 @@ using namespace std::chrono;
 
 std::unique_ptr<App> App::app_ {};
 
+App::App() : IWidget({0, 0}, {0, 0}) {
+}
+
 void App::create(int argc, char *argv[]) {
     if (app_) {
         std::cerr << "App already created\n";
@@ -68,6 +71,7 @@ int App::start() {
     int fb_width, fb_height;
     glfwGetFramebufferSize(window_, &fb_width, &fb_height);
     fb_size_ = {fb_width, fb_height};
+    resize({0, 0}, fb_size_);
 
     // glfwSwapInterval(0);
 
@@ -113,7 +117,13 @@ int App::start() {
 
     text_shader_ = std::make_unique<TextShader>(*font_.get());
     if (text_shader_->setup() != 0) {
-        std::cerr << "Failed to compile shader\n";
+        std::cerr << "Failed to compile Text shader\n";
+        return -1;
+    }
+
+    gp_shader_ = std::make_unique<GPShader>();
+    if (gp_shader_->setup() != 0) {
+        std::cerr << "Failed to compile GP shader\n";
         return -1;
     }
 
@@ -121,7 +131,7 @@ int App::start() {
 }
 
 int App::add_file(const char *path) {
-    auto view = std::make_unique<FileView>(path, *text_shader_.get());
+    auto view = std::make_unique<FileView>(pos(), size(), path, *text_shader_.get(), *gp_shader_.get());
     {
         Timeit file_open_timeit("File Open");
         if (view->open() != 0) {
@@ -132,7 +142,12 @@ int App::add_file(const char *path) {
     // view->set_viewport({100, 100, screenWidth / 2, screenHeight / 2});
     view->set_viewport({0, 0, fb_size_});
 
+    // TODO move
+    text_shader_->set_viewport({0, 0, fb_size_});
+    gp_shader_->set_viewport({0, 0, fb_size_});
+
     file_views_.emplace_back(std::move(view));
+    add_child(file_views_.back().get());
     return 0;
 }
 
@@ -157,14 +172,16 @@ void App::static_cursor_pos_cb(GLFWwindow* window, double xpos, double ypos) {
     app_->cursor_pos_cb(window, xpos, ypos);
 }
 void App::cursor_pos_cb(GLFWwindow* window, double xpos, double ypos) {
-    mouse_ = {xpos, ypos};
+    // mouse_ = {xpos, ypos};
+    handle_cursor_pos({xpos, ypos});
 }
+
 
 void App::static_mouse_button_cb(GLFWwindow* window, int button, int action, int mods) {
     app_->mouse_button_cb(window, button, action, mods);
 }
 void App::mouse_button_cb(GLFWwindow* window, int button, int action, int mods) {
-    // if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+    handle_mouse_button(button, action, mods);
 }
 
 void App::static_scroll_cb(GLFWwindow* window, double xoffset, double yoffset) {
@@ -191,8 +208,7 @@ void App::static_frame_buffer_size_cb(GLFWwindow* window, int width, int height)
     app_->frame_buffer_size_cb(window, width, height);
 }
 void App::frame_buffer_size_cb(GLFWwindow* window, int width, int height) {
-    fb_size_ = {width, height};
-    active_file_view().set_viewport({0, 0, fb_size_});
+    resize({0, 0}, {width, height});
 }
 
 void App::static_window_size_cb(GLFWwindow* window, int width, int height) {
@@ -209,12 +225,26 @@ void App::window_refresh_cb(GLFWwindow* window) {
     glFinish();
 }
 
+
+void App::on_cursor_pos(glm::uvec2 pos) {
+    mouse_ = pos;
+}
+
+void App::on_resize() {
+    fb_size_ = size();
+    // active_file_view().set_viewport({0, 0, fb_size_});
+}
+
 void App::draw() {
     glClear(GL_COLOR_BUFFER_BIT);
+
+    gp_shader_->clear();
 
     for (auto &file_view : file_views_) {
         file_view->draw();
     }
+
+    gp_shader_->draw();
 
     glfwSwapBuffers(window_);
 }
