@@ -35,7 +35,7 @@ public:
 	static void create_buffers(GLuint &vao, GLuint &vbo_text, GLuint &vbo_style, size_t total_size);
 
 	int setup();
-	void use(GLuint vao) const;
+	void use() const;
 	void set_viewport(glm::uvec4 rect) const;
 	void set_scroll_offset(glm::uvec2 scroll_offest) const;
 	void set_line_index(glm::uint line_index) const;

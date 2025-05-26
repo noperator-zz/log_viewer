@@ -1,11 +1,11 @@
 #include "text_shader.h"
 
-#include "fragment.glsl.h"
-#include "vertex.glsl.h"
+#include "text_vert.glsl.h"
+#include "text_frag.glsl.h"
 
 using namespace glm;
 
-TextShader::TextShader(const Font &font) : shader_(vertex_glsl, fragment_glsl), font_(font) {
+TextShader::TextShader(const Font &font) : shader_(text_vert_glsl, text_frag_glsl), font_(font) {
 }
 
 int TextShader::setup() {
@@ -23,7 +23,7 @@ int TextShader::setup() {
 	set_uniform(1ui, shader_, "glyph_width", font_.size.x);
 	set_uniform(1ui, shader_, "glyph_height", font_.size.y);
 	set_uniform(1ui, shader_, "atlas_cols", font_.num_glyphs);
-	set_scroll_offset(uvec2{0, 0});
+	set_scroll_offset({0, 0});
 	set_line_index(0);
 	set_line_height(font_.size.y);
 	set_is_foreground(false);
@@ -62,7 +62,7 @@ void TextShader::create_buffers(GLuint &vao, GLuint &vbo_text, GLuint &vbo_style
 	glVertexAttribDivisor(3, 1);
 }
 
-void TextShader::use(GLuint vao) const {
+void TextShader::use() const {
 	shader_.use();
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, font_.tex_atlas());

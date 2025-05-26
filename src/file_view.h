@@ -21,19 +21,21 @@ class FileView {
 	GLuint vbo_style_ {};
 
 	// First and last lines in the buffer
-	glm::uvec2 buf_lines {};
-	glm::uvec2 scroll {};
-	glm::uint line_height {};
+	glm::uvec2 buf_lines_ {};
+	glm::uvec2 scroll_ {};
+	glm::uint line_height_ {};
 
 	struct Line {
 		size_t start: 63;
 		bool alternate: 1;
 	};
 
-	std::vector<Line> line_starts {};
+	std::vector<Line> line_starts_ {};
 
 	int parse();
 	void draw_lines(size_t first, size_t last, size_t buf_offset);
+
+	void draw_scrollbar();
 
 public:
 
@@ -41,6 +43,7 @@ public:
 	int open();
 	int update_buffer();
 	void set_viewport(glm::uvec4 rect);
+	void scroll(glm::ivec2 scroll);
 
 	int draw();
 };
