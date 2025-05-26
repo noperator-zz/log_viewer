@@ -54,22 +54,25 @@ int FileView::update_buffer() {
 		return 0;
 	}
 
-	size_t middle_line = (screen_lines.x + screen_lines.y) / 2;
+	// Timeit update_timeit("Update Buffer");
 
-	buf_lines.x = middle_line <= OVERSCAN_LINES ? 0 : middle_line - OVERSCAN_LINES;
-	buf_lines.y = middle_line + OVERSCAN_LINES >= line_starts.size() ? line_starts.size() - 1 : middle_line + OVERSCAN_LINES;
+	size_t middle_line = (screen_lines.x + screen_lines.y) / 2;
+	size_t min_num_lines = (screen_lines.y - screen_lines.x) / 2 + OVERSCAN_LINES;
+
+	buf_lines.x = middle_line <= min_num_lines ? 0 : middle_line - min_num_lines;
+	buf_lines.y = middle_line + min_num_lines >= line_starts.size() ? line_starts.size() - 1 : middle_line + min_num_lines;
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_text_);
 	const uint8_t *ptr;
-	size_t text_size = 0;
+	size_t num_chars = 0;
 	if (!line_starts[buf_lines.x].alternate && !line_starts[buf_lines.y].alternate) {
 		ptr = file_.mapped_data();
-		text_size = line_starts[buf_lines.y].start - line_starts[buf_lines.x].start;
-		glBufferSubData(GL_ARRAY_BUFFER, 0, text_size, ptr + line_starts[buf_lines.x].start);
+		num_chars = line_starts[buf_lines.y].start - line_starts[buf_lines.x].start;
+		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + line_starts[buf_lines.x].start);
 	} else if (line_starts[buf_lines.x].alternate && line_starts[buf_lines.y].alternate) {
 		ptr = file_.tailed_data();
-		text_size = line_starts[buf_lines.y].start - line_starts[buf_lines.x].start;
-		glBufferSubData(GL_ARRAY_BUFFER, 0, text_size, ptr + line_starts[buf_lines.x].start);
+		num_chars = line_starts[buf_lines.y].start - line_starts[buf_lines.x].start;
+		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + line_starts[buf_lines.x].start);
 	} else {
 		assert(!line_starts[buf_lines.x].alternate && line_starts[buf_lines.y].alternate);
 		ptr = file_.mapped_data();
@@ -77,20 +80,30 @@ int FileView::update_buffer() {
 		while (!line_starts[line].alternate) {
 			line++;
 		}
-		text_size = line_starts[line].start - line_starts[buf_lines.x].start;
-		glBufferSubData(GL_ARRAY_BUFFER, 0, text_size, ptr + line_starts[buf_lines.x].start);
+		num_chars = line_starts[line].start - line_starts[buf_lines.x].start;
+		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + line_starts[buf_lines.x].start);
 
 		ptr = file_.tailed_data();
-		size_t text_size2 = line_starts[buf_lines.y].start - line_starts[line].start;
-		glBufferSubData(GL_ARRAY_BUFFER, text_size, text_size2, ptr + line_starts[line].start);
-		text_size += text_size2;
+		size_t num_chars2 = line_starts[buf_lines.y].start - line_starts[line].start;
+		glBufferSubData(GL_ARRAY_BUFFER, num_chars, num_chars2, ptr + line_starts[line].start);
+		num_chars += num_chars2;
 	}
 
-	printf("Buffer size: %zu\n", text_size * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
 
-	// glBindBuffer(GL_ARRAY_BUFFER, vbo_style_);
-	// // TODO style buffer
-	// glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo_style_);
+	std::vector<TextShader::CharStyle> styles;
+	styles.reserve(num_chars);
+	for (size_t i = 0; i < num_chars; i++) {
+		styles.push_back({
+			{},
+			vec4{0.9, 0.9, 0.9, 1},
+			vec4{0.3, 0.3, 0.3, 0.5}
+		});
+	}
+	glBufferSubData(GL_ARRAY_BUFFER, 0, styles.size() * sizeof(TextShader::CharStyle), styles.data());
+
+	// update_timeit.stop();
+	// printf("Buffer size: %zu\n", num_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
 	return 0;
 }
 
@@ -99,20 +112,35 @@ void FileView::set_viewport(uvec4 rect) {
 	text_shader_.set_viewport(rect_);
 }
 
+void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
+	for (size_t line_offset = first; line_offset < last; line_offset++) {
+		auto line = line_starts[line_offset].start - buf_offset;
+		auto next_line = line_starts[line_offset+1].start - buf_offset;
+		text_shader_.set_line_index(line_offset);
+		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, next_line - line, line);
+	}
+}
+
 int FileView::draw() {
+	scroll.x += 1;
+
 	text_shader_.use(vao_);
 	// glBindVertexArray(vao_);
 	text_shader_.set_scroll_offset(scroll);
 	update_buffer();
 
 	// Timeit draw("Draw");
-	auto num_lines = (scroll.y + rect_.z) / line_height;
-	for (size_t line_idx = 0; line_idx < num_lines; line_idx++) {
-		auto line = line_starts[line_idx].start;
-		auto next_line = line_starts[line_idx+1].start;
-		text_shader_.set_line_index(line_idx);
-		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, next_line - line, line);
-	}
+	auto buf_offset = line_starts[buf_lines.x].start;
+	uvec2 screen_lines = uvec2{scroll.y, scroll.y + rect_.z} / line_height;
+	screen_lines.x = std::max(screen_lines.x, buf_lines.x);
+	screen_lines.y = std::min(screen_lines.y, buf_lines.y);
+
+	text_shader_.set_is_foreground(false);
+	draw_lines(screen_lines.x, screen_lines.y, buf_offset);
+
+	text_shader_.set_is_foreground(true);
+	draw_lines(screen_lines.x, screen_lines.y, buf_offset);
+
 	// draw.stop();
 	return 0;
 }

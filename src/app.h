@@ -10,7 +10,7 @@ class App {
 	std::unique_ptr<Font> font_ {};
 	std::unique_ptr<TextShader> text_shader_ {};
 	GLFWwindow *window {};
-	int screenWidth = 2560, screenHeight = 800;
+	int screenWidth = 2500, screenHeight = 800;
 
 	std::vector<std::unique_ptr<FileView>> file_views_;
 

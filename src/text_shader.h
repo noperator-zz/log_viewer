@@ -17,8 +17,8 @@ public:
 			};
 			uint8_t style;
 		};
-		glm::vec3 fg;
-		glm::vec3 bg;
+		glm::vec4 fg;
+		glm::vec4 bg;
 	};
 
 private:
@@ -27,6 +27,7 @@ private:
 	GLint scroll_offset_loc_ {};
 	GLint line_index_loc_ {};
 	GLint line_height_loc_ {};
+	GLint is_foreground_loc_ {};
 
 public:
 	TextShader(const Font &font);
@@ -39,6 +40,7 @@ public:
 	void set_scroll_offset(glm::uvec2 scroll_offest) const;
 	void set_line_index(glm::uint line_index) const;
 	void set_line_height(glm::uint line_height) const;
+	void set_is_foreground(bool is_foreground) const;
 	const Font &font() const {
 		return font_;
 	}

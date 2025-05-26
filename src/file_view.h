@@ -11,7 +11,7 @@ class FileView {
 	// static constexpr size_t USAGE_PER_CHAR = sizeof(TextShader::CharStyle) + sizeof(uint8_t);
 	// static constexpr size_t MAX_CHARS = MAX_VRAM_USAGE / USAGE_PER_CHAR;
 
-	static constexpr size_t OVERSCAN_LINES = 100;
+	static constexpr size_t OVERSCAN_LINES = 1;
 
 	File file_;
 	const TextShader &text_shader_;
@@ -33,6 +33,7 @@ class FileView {
 	std::vector<Line> line_starts {};
 
 	int parse();
+	void draw_lines(size_t first, size_t last, size_t buf_offset);
 
 public:
 
@@ -40,5 +41,6 @@ public:
 	int open();
 	int update_buffer();
 	void set_viewport(glm::uvec4 rect);
+
 	int draw();
 };

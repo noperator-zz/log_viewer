@@ -36,6 +36,8 @@ int App::start() {
         return -1;
     }
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     if (Font::init()) {
         std::cerr << "Failed to initialize FreeType\n";
