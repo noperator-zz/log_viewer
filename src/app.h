@@ -9,7 +9,7 @@
 
 struct GLFWwindow;
 
-class App : public IWidget {
+class App : public Widget {
 	static std::unique_ptr<App> app_;
 
 	std::unique_ptr<Font> font_ {};

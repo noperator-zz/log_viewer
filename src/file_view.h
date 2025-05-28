@@ -10,8 +10,8 @@
 #include "text_shader.h"
 #include "widget.h"
 
-class Scrollbar : public IWidget {
-	class Thumb : public IWidget {
+class Scrollbar : public Widget {
+	class Thumb : public Widget {
 		friend class Scrollbar;
 		glm::u8vec4 color_ {100, 0, 0, 255};
 		GPShader &gp_shader_;
@@ -26,8 +26,8 @@ class Scrollbar : public IWidget {
 
 		void draw() override;
 	public:
-		Thumb(IWidget &parent, glm::ivec2 pos, glm::ivec2 size, GPShader &gp_shader, std::function<void(double)> scroll_cb)
-			: IWidget(&parent, pos, size), gp_shader_(gp_shader), scroll_cb_(std::move(scroll_cb)) {}
+		Thumb(Widget &parent, glm::ivec2 pos, glm::ivec2 size, GPShader &gp_shader, std::function<void(double)> scroll_cb)
+			: Widget(&parent, pos, size), gp_shader_(gp_shader), scroll_cb_(std::move(scroll_cb)) {}
 	};
 
 	Thumb thumb_;
@@ -36,8 +36,8 @@ class Scrollbar : public IWidget {
 	double visible_percent_ {};
 
 public:
-	Scrollbar(IWidget &parent, glm::ivec2 pos, glm::ivec2 size, GPShader &gp_shader, std::function<void(double)> scroll_cb)
-		: IWidget(&parent, pos, size), thumb_(*this, pos, {30, 50}, gp_shader, scroll_cb), gp_shader_(gp_shader) {
+	Scrollbar(Widget &parent, glm::ivec2 pos, glm::ivec2 size, GPShader &gp_shader, std::function<void(double)> scroll_cb)
+		: Widget(&parent, pos, size), thumb_(*this, pos, {30, 50}, gp_shader, scroll_cb), gp_shader_(gp_shader) {
 		add_child(&thumb_);
 	}
 
@@ -48,7 +48,7 @@ public:
 	void set(size_t position, size_t visible_extents, size_t total_extents);
 };
 
-class FileView : public IWidget {
+class FileView : public Widget {
 	static constexpr size_t MAX_VRAM_USAGE = 256 * 1024 * 1024;
 	// static constexpr size_t USAGE_PER_CHAR = sizeof(TextShader::CharStyle) + sizeof(uint8_t);
 	// static constexpr size_t MAX_CHARS = MAX_VRAM_USAGE / USAGE_PER_CHAR;
@@ -81,7 +81,7 @@ class FileView : public IWidget {
 	void scroll_cb(double percent);
 public:
 
-	FileView(IWidget &parent, glm::ivec2 pos, glm::ivec2 size, const char *path, const TextShader &text_shader, GPShader &gp_shader);
+	FileView(Widget &parent, glm::ivec2 pos, glm::ivec2 size, const char *path, const TextShader &text_shader, GPShader &gp_shader);
 
 	int open();
 	int update_buffer();

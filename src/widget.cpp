@@ -4,7 +4,7 @@
 
 using namespace glm;
 
-IWidget *WidgetManager::root_ {};
+Widget *WidgetManager::root_ {};
 ivec2 WidgetManager::mouse_ {};
 
 bool WidgetManager::handle_mouse_button(int button, int action, int mods) {
@@ -22,14 +22,14 @@ bool WidgetManager::handle_cursor_pos(ivec2 pos) {
 	return false;
 }
 
-void WidgetManager::set_root(IWidget *root) {
+void WidgetManager::set_root(Widget *root) {
 	root_ = root;
 }
 
-IWidget::IWidget(IWidget *parent, ivec2 pos, ivec2 size) : parent_(parent), pos_(pos), size_(size) {
+Widget::Widget(Widget *parent, ivec2 pos, ivec2 size) : parent_(parent), pos_(pos), size_(size) {
 }
 
-bool IWidget::handle_mouse_button(int button, int action, int mods) {
+bool Widget::handle_mouse_button(int button, int action, int mods) {
 	if (!state_.hovered && !state_.pressed) {
 		return false; // Ignore mouse events if not hovered or pressed
 	}
@@ -60,7 +60,7 @@ bool IWidget::handle_mouse_button(int button, int action, int mods) {
 	return true; // Indicate that the event was handled
 }
 
-bool IWidget::handle_cursor_pos(ivec2 mouse) {
+bool Widget::handle_cursor_pos(ivec2 mouse) {
 	for (auto child : children_) {
 		child->handle_cursor_pos(mouse);
 	}
@@ -88,40 +88,40 @@ bool IWidget::handle_cursor_pos(ivec2 mouse) {
 	return state_.hovered; // Return true if hovered, false otherwise
 }
 
-IWidget *IWidget::parent() const {
+Widget *Widget::parent() const {
 	return parent_;
 }
 
-ivec2 IWidget::pos() const {
+ivec2 Widget::pos() const {
 	return pos_;
 }
 
-ivec2 IWidget::size() const {
+ivec2 Widget::size() const {
 	return size_;
 }
 
-bool IWidget::hovered() const {
+bool Widget::hovered() const {
 	return state_.hovered;
 }
 
-bool IWidget::pressed() const {
+bool Widget::pressed() const {
 	return state_.pressed;
 }
 
-void IWidget::add_child(IWidget *child) {
+void Widget::add_child(Widget *child) {
 	children_.push_back(child);
 }
-void IWidget::remove_child(IWidget *child) {
+void Widget::remove_child(Widget *child) {
 	std::erase(children_, child);
 }
 
-void IWidget::resize(ivec2 pos, ivec2 size) {
+void Widget::resize(ivec2 pos, ivec2 size) {
 	pos_ = pos;
 	size_ = size;
 	_on_resize();
 }
 
-void IWidget::_on_resize() {
+void Widget::_on_resize() {
 	if (parent_) {
 		pos_.x = std::max(pos_.x, parent_->pos().x);
 		pos_.y = std::max(pos_.y, parent_->pos().y);

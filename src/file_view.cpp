@@ -71,8 +71,8 @@ void Scrollbar::draw() {
 
 
 
-FileView::FileView(IWidget &parent, ivec2 pos, ivec2 size, const char *path, const TextShader &text_shader, GPShader &gp_shader)
-	: IWidget(&parent, pos, size), file_(path), text_shader_(text_shader), gp_shader_(gp_shader), line_height_(text_shader.font().size.y)
+FileView::FileView(Widget &parent, ivec2 pos, ivec2 size, const char *path, const TextShader &text_shader, GPShader &gp_shader)
+	: Widget(&parent, pos, size), file_(path), text_shader_(text_shader), gp_shader_(gp_shader), line_height_(text_shader.font().size.y)
 	, scrollbar_(*this, {pos.x + size.x - 30, pos.y}, {30, size.y}, gp_shader, [this](double p){scroll_cb(p);}) {
 
 }

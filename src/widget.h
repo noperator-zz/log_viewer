@@ -2,7 +2,7 @@
 #include <vector>
 #include <glm/vec2.hpp>
 
-class IWidget {
+class Widget {
 	friend class WidgetManager;
 
 	struct State {
@@ -14,8 +14,8 @@ class IWidget {
 		// bool clicked: 1;
 	};
 
-	std::vector<IWidget*> children_;
-	IWidget *parent_;
+	std::vector<Widget*> children_;
+	Widget *parent_;
 	glm::ivec2 pos_;
 	glm::ivec2 size_;
 	glm::ivec2 pressed_mouse_pos_ {};
@@ -29,8 +29,8 @@ class IWidget {
 protected:
 	State state_ {};
 
-	void add_child(IWidget *child);
-	void remove_child(IWidget *child);
+	void add_child(Widget *child);
+	void remove_child(Widget *child);
 
 	virtual void on_resize() {}
 
@@ -44,10 +44,10 @@ protected:
 	virtual void on_drag(glm::ivec2 offset) {}
 
 public:
-	IWidget(IWidget *parent, glm::ivec2 pos, glm::ivec2 size);
-	virtual ~IWidget() = default;
+	Widget(Widget *parent, glm::ivec2 pos, glm::ivec2 size);
+	virtual ~Widget() = default;
 
-	IWidget *parent() const;
+	Widget *parent() const;
 	glm::ivec2 pos() const;
 	glm::ivec2 size() const;
 	bool hovered() const;
@@ -58,13 +58,13 @@ public:
 };
 
 class WidgetManager {
-	friend class IWidget;
-	static IWidget *root_;
+	friend class Widget;
+	static Widget *root_;
 	static glm::ivec2 mouse_;
 
 public:
 	static bool handle_mouse_button(int button, int action, int mods);
 	static bool handle_cursor_pos(glm::ivec2 pos);
 
-	static void set_root(IWidget *root);
+	static void set_root(Widget *root);
 };

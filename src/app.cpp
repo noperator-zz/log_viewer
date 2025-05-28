@@ -19,7 +19,7 @@ using namespace std::chrono;
 
 std::unique_ptr<App> App::app_ {};
 
-App::App() : IWidget(nullptr, {0, 0}, {0, 0}) {
+App::App() : Widget(nullptr, {0, 0}, {0, 0}) {
 }
 
 void App::create(int argc, char *argv[]) {
