@@ -72,7 +72,6 @@ int App::start() {
     int fb_width, fb_height;
     glfwGetFramebufferSize(window_, &fb_width, &fb_height);
     fb_size_ = {fb_width, fb_height};
-    resize({0, 0}, fb_size_);
 
     // glfwSwapInterval(0);
 
@@ -128,6 +127,8 @@ int App::start() {
         return -1;
     }
 
+    resize({0, 0}, fb_size_);
+
     return 0;
 }
 
@@ -141,11 +142,12 @@ int App::add_file(const char *path) {
         }
     }
     // view->set_viewport({100, 100, screenWidth / 2, screenHeight / 2});
-    view->set_viewport({0, 0, fb_size_});
+    // view->set_viewport({0, 0, fb_size_});
+    view->resize({0, 0}, fb_size_);
 
     // TODO move
-    text_shader_->set_viewport({0, 0, fb_size_});
-    gp_shader_->set_viewport({0, 0, fb_size_});
+    text_shader_->set_viewport({0, 0}, fb_size_);
+    gp_shader_->set_viewport({0, 0}, fb_size_);
 
     file_views_.emplace_back(std::move(view));
     add_child(file_views_.back().get());
@@ -209,6 +211,7 @@ void App::static_frame_buffer_size_cb(GLFWwindow* window, int width, int height)
     app_->frame_buffer_size_cb(window, width, height);
 }
 void App::frame_buffer_size_cb(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
     resize({0, 0}, {width, height});
 }
 
@@ -233,7 +236,12 @@ void App::on_cursor_pos(glm::ivec2 pos) {
 
 void App::on_resize() {
     fb_size_ = size();
-    // active_file_view().set_viewport({0, 0, fb_size_});
+    gp_shader_->set_viewport({0, 0}, fb_size_);
+    if (file_views_.empty()) {
+        return; // No file views to resize
+    }
+
+    active_file_view().resize({0, 0}, fb_size_);
 }
 
 void App::draw() {

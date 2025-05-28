@@ -36,7 +36,7 @@ public:
 
 	int setup();
 	void use() const;
-	void set_viewport(glm::uvec4 rect) const;
+	void set_viewport(glm::ivec2 pos, glm::ivec2 size) const;
 	void set_scroll_offset(glm::ivec2 scroll_offest) const;
 	void set_line_index(int line_index) const;
 	void set_line_height(int line_height) const;

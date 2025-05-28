@@ -59,7 +59,7 @@ class FileView : public Widget {
 	const TextShader &text_shader_;
 	GPShader &gp_shader_;
 	Scrollbar scrollbar_;
-	glm::uvec4 rect_ {};
+	// glm::uvec4 rect_ {};
 	GLuint vao_ {};
 	GLuint vbo_text_ {};
 	GLuint vbo_style_ {};
@@ -76,6 +76,9 @@ class FileView : public Widget {
 
 	std::vector<Line> line_starts_ {};
 
+	void on_resize() override;
+	void update_scrollbar();
+
 	int parse();
 	void draw_lines(size_t first, size_t last, size_t buf_offset);
 	void scroll_cb(double percent);
@@ -85,7 +88,7 @@ public:
 
 	int open();
 	int update_buffer();
-	void set_viewport(glm::uvec4 rect);
+	// void set_viewport(glm::uvec4 rect);
 	void scroll(glm::ivec2 scroll);
 
 	void draw() override;

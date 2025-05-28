@@ -41,5 +41,5 @@ public:
 	// }
 	// void use() const;
 	void draw();
-	void set_viewport(glm::uvec4 rect) const;
+	void set_viewport(glm::ivec2 pos, glm::ivec2 size) const;
 };

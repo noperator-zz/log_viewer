@@ -1,3 +1,5 @@
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include "text_shader.h"
 
 #include "text_vert.glsl.h"
@@ -71,15 +73,14 @@ void TextShader::use() const {
 	glBindTexture(GL_TEXTURE_2D, font_.tex_bearing());
 }
 
-void TextShader::set_viewport(uvec4 rect) const {
-	float ortho[16] = {
-		2.0f / rect.z, 0.0f, 0.0f, 0.0f,
-		0.0f, -2.0f / rect.w, 0.0f, 0.0f,
-		0.0f, 0.0f, -1.0f, 0.0f,
-		-1.0f + (float)rect.x / rect.z, 1.0f - (float)rect.y / rect.w, 1.0f, 1.0f
-	};
+void TextShader::set_viewport(ivec2 pos, ivec2 size) const {
+	auto mat = ortho<float>(
+		pos.x, pos.x + size.x,
+		pos.y + size.y, pos.y,
+		-1.0f, 1.0f
+	);
 	shader_.use();
-	set_uniform(Matrix4fv, shader_, "u_proj", 1, GL_FALSE, ortho);
+	set_uniform(Matrix4fv, shader_, "u_proj", 1, GL_FALSE, value_ptr(mat));
 }
 
 void TextShader::set_scroll_offset(ivec2 scroll) const {

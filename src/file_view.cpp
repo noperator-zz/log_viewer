@@ -59,10 +59,10 @@ void Scrollbar::resize_thumb() {
 }
 
 void Scrollbar::draw() {
-	gp_shader_.rect(pos(), size(), {100, 100, 100, 255});
 	if (visible_percent_ >= 1.0f) {
 		return; // No need to draw the thumb if it covers the whole scrollbar
 	}
+	gp_shader_.rect(pos(), size(), {100, 100, 100, 255});
 	thumb_.draw();
 }
 
@@ -115,7 +115,7 @@ int FileView::parse() {
 
 int FileView::update_buffer() {
 	// first and last line visible on screen
-	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + rect_.z} / line_height_;
+	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + size().y} / line_height_;
 
 	if (screen_lines.x >= buf_lines_.x && screen_lines.y <= buf_lines_.y) {
 		// If the visible lines are within the current buffer, no need to update
@@ -175,15 +175,25 @@ int FileView::update_buffer() {
 	return 0;
 }
 
-void FileView::set_viewport(uvec4 rect) {
-	rect_ = rect;
+// void FileView::set_viewport(uvec4 rect) {
+// 	// rect_ = rect;
+// }
+
+void FileView::on_resize() {
+    text_shader_.set_viewport({0, 0}, size());
+	scrollbar_.resize({pos().x + size().x - 30, pos().y}, {30, size().y});
+	update_scrollbar();
+}
+
+void FileView::update_scrollbar() {
+	scrollbar_.set(scroll_.y, size().y, (line_starts_.size() - 1) * line_height_);
 }
 
 void FileView::scroll_cb(double percent) {
 	scroll_.y = (int)(percent * (line_starts_.size() - 1) * line_height_);
 	scroll_.y = std::max(scroll_.y, 0);
 	scroll_.y = std::min(scroll_.y, (int)(line_starts_.size() - 1) * line_height_);
-	scrollbar_.set(scroll_.y, rect_.w, (line_starts_.size() - 1) * line_height_);
+	update_scrollbar();
 }
 
 void FileView::scroll(ivec2 scroll) {
@@ -194,7 +204,7 @@ void FileView::scroll(ivec2 scroll) {
 	scroll_.x += std::max(scroll.x, -static_cast<int>(scroll_.x));
 	scroll_.y += std::max(scroll.y, -static_cast<int>(scroll_.y));
 
-	scrollbar_.set(scroll_.y, rect_.w, (line_starts_.size() - 1) * line_height_);
+	update_scrollbar();
 }
 
 void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
@@ -221,7 +231,7 @@ void FileView::draw() {
 
 	// Timeit draw("Draw");
 	auto buf_offset = line_starts_[buf_lines_.x].start;
-	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + rect_.z} / line_height_;
+	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + size().y} / line_height_;
 	screen_lines.x = std::max(screen_lines.x, buf_lines_.x);
 	screen_lines.y = std::min(screen_lines.y, buf_lines_.y);
 
