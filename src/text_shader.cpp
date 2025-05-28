@@ -82,19 +82,19 @@ void TextShader::set_viewport(uvec4 rect) const {
 	set_uniform(Matrix4fv, shader_, "u_proj", 1, GL_FALSE, ortho);
 }
 
-void TextShader::set_scroll_offset(uvec2 scroll) const {
+void TextShader::set_scroll_offset(ivec2 scroll) const {
 	shader_.use();
-	glUniform2ui(scroll_offset_loc_, scroll.x, scroll.y);
+	glUniform2i(scroll_offset_loc_, scroll.x, scroll.y);
 }
 
-void TextShader::set_line_index(uint line_index) const {
+void TextShader::set_line_index(int line_index) const {
 	shader_.use();
-	glUniform1ui(line_index_loc_, line_index);
+	glUniform1i(line_index_loc_, line_index);
 }
 
-void TextShader::set_line_height(uint line_height) const {
+void TextShader::set_line_height(int line_height) const {
 	shader_.use();
-	glUniform1ui(line_height_loc_, line_height);
+	glUniform1i(line_height_loc_, line_height);
 }
 
 void TextShader::set_is_foreground(bool is_foreground) const {

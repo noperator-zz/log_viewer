@@ -2,8 +2,31 @@
 
 #include <GLFW/glfw3.h>
 
+using namespace glm;
 
-IWidget::IWidget(glm::uvec2 pos, glm::uvec2 size) : pos_(pos), size_(size) {
+IWidget *WidgetManager::root_ {};
+ivec2 WidgetManager::mouse_ {};
+
+bool WidgetManager::handle_mouse_button(int button, int action, int mods) {
+	if (root_) {
+		return root_->handle_mouse_button(button, action, mods);
+	}
+	return false;
+}
+
+bool WidgetManager::handle_cursor_pos(ivec2 pos) {
+	mouse_ = pos;
+	if (root_) {
+		return root_->handle_cursor_pos(pos);
+	}
+	return false;
+}
+
+void WidgetManager::set_root(IWidget *root) {
+	root_ = root;
+}
+
+IWidget::IWidget(IWidget *parent, ivec2 pos, ivec2 size) : parent_(parent), pos_(pos), size_(size) {
 }
 
 bool IWidget::handle_mouse_button(int button, int action, int mods) {
@@ -22,6 +45,8 @@ bool IWidget::handle_mouse_button(int button, int action, int mods) {
 			if (!state_.pressed) {
 				// Only trigger on_press if not already pressed
 				state_.pressed = true;
+				pressed_mouse_pos_ = WidgetManager::mouse_;
+				pressed_pos_ = pos_;
 				on_press();
 			}
 		} else if (action == GLFW_RELEASE) {
@@ -35,18 +60,25 @@ bool IWidget::handle_mouse_button(int button, int action, int mods) {
 	return true; // Indicate that the event was handled
 }
 
-bool IWidget::handle_cursor_pos(glm::uvec2 pos) {
+bool IWidget::handle_cursor_pos(ivec2 mouse) {
 	for (auto child : children_) {
-		child->handle_cursor_pos(pos);
+		child->handle_cursor_pos(mouse);
 	}
 
-	if (pos.x >= pos_.x && pos.x < pos_.x + size_.x &&
-	    pos.y >= pos_.y && pos.y < pos_.y + size_.y) {
+	on_cursor_pos(mouse);
+	if (state_.pressed) {
+		auto mouse_offset = mouse - pressed_mouse_pos_;
+		auto self_offset = pos_ - pressed_pos_;
+		auto offset = mouse_offset - self_offset;
+		on_drag(offset);
+	}
+
+	if (mouse.x >= pos_.x && mouse.x < pos_.x + size_.x &&
+	    mouse.y >= pos_.y && mouse.y < pos_.y + size_.y) {
 		if (!state_.hovered) {
 			state_.hovered = true;
 			on_hover();
 		}
-		on_cursor_pos(pos);
 	} else {
 		if (state_.hovered) {
 			state_.hovered = false;
@@ -56,11 +88,15 @@ bool IWidget::handle_cursor_pos(glm::uvec2 pos) {
 	return state_.hovered; // Return true if hovered, false otherwise
 }
 
-glm::uvec2 IWidget::pos() const {
+IWidget *IWidget::parent() const {
+	return parent_;
+}
+
+ivec2 IWidget::pos() const {
 	return pos_;
 }
 
-glm::uvec2 IWidget::size() const {
+ivec2 IWidget::size() const {
 	return size_;
 }
 
@@ -79,8 +115,22 @@ void IWidget::remove_child(IWidget *child) {
 	std::erase(children_, child);
 }
 
-void IWidget::resize(glm::uvec2 pos, glm::uvec2 size) {
+void IWidget::resize(ivec2 pos, ivec2 size) {
 	pos_ = pos;
 	size_ = size;
+	_on_resize();
+}
+
+void IWidget::_on_resize() {
+	if (parent_) {
+		pos_.x = std::max(pos_.x, parent_->pos().x);
+		pos_.y = std::max(pos_.y, parent_->pos().y);
+
+		pos_.x = std::min(pos_.x, parent_->pos().x + parent_->size().x - size_.x);
+		pos_.y = std::min(pos_.y, parent_->pos().y + parent_->size().y - size_.y);
+	}
 	on_resize();
+	for (auto child : children_) {
+		child->_on_resize();
+	}
 }

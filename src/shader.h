@@ -74,27 +74,5 @@ public:
 
 #define set_uniform(type, shader, name, ...) glUniform##type(glGetUniformLocation(shader.id(), name), __VA_ARGS__);
 
-	// template<typename T>
-	// void set_uniform(const char *name, T value) const {
-	// 	return set_uniform(name, &value, 1);
-	// }
-	//
-	// template<typename T>
-	// void set_uniform(const char *name, const T *values, int count) const {
-	// 	GLint location = glGetUniformLocation(id, name);
-	// 	if (location == -1) {
-	// 		std::cerr << "Uniform " << name << " not found in shader program\n";
-	// 		return;
-	// 	}
-	// 	if constexpr (std::is_same_v<T, float>) {
-	// 		glUniform1fv(location, count, values);
-	// 	} else if constexpr (std::is_same_v<T, int>) {
-	// 		glUniform1iv(location, count, values);
-	// 	} else if constexpr (std::is_same_v<T, unsigned int>) {
-	// 		glUniform1uiv(location, count, values);
-	// 	} else {
-	// 		std::cerr << "Unsupported uniform type\n";
-	// 	}
-	// }
 };
 

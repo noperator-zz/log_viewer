@@ -37,9 +37,9 @@ public:
 	int setup();
 	void use() const;
 	void set_viewport(glm::uvec4 rect) const;
-	void set_scroll_offset(glm::uvec2 scroll_offest) const;
-	void set_line_index(glm::uint line_index) const;
-	void set_line_height(glm::uint line_height) const;
+	void set_scroll_offset(glm::ivec2 scroll_offest) const;
+	void set_line_index(int line_index) const;
+	void set_line_height(int line_height) const;
 	void set_is_foreground(bool is_foreground) const;
 	const Font &font() const {
 		return font_;

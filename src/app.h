@@ -16,8 +16,8 @@ class App : public IWidget {
 	std::unique_ptr<TextShader> text_shader_ {};
 	std::unique_ptr<GPShader> gp_shader_ {};
 	GLFWwindow *window_ {};
-	glm::uvec2 mouse_ {};
-	glm::uvec2 fb_size_ {};
+	glm::ivec2 mouse_ {};
+	glm::ivec2 fb_size_ {};
 
 	bool shift_held_ {};
 
@@ -46,7 +46,7 @@ class App : public IWidget {
 	static void static_window_refresh_cb(GLFWwindow* window);
 	void window_refresh_cb(GLFWwindow* window);
 
-	void on_cursor_pos(glm::uvec2 pos) override;
+	void on_cursor_pos(glm::ivec2 pos) override;
 	void on_resize() override;
 
 	FileView& active_file_view();

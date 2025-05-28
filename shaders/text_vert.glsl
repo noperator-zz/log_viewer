@@ -8,10 +8,10 @@ uniform bool is_foreground;
 uniform uint glyph_width;
 uniform uint glyph_height;
 uniform uint atlas_cols;
-uniform uint line_height;
-uniform uint line_idx;
+uniform int line_height;
+uniform int line_idx;
 uniform mat4 u_proj;
-uniform uvec2 scroll_offset;
+uniform ivec2 scroll_offset;
 uniform sampler2D bearing_table;
 
 flat out uint char_idx;

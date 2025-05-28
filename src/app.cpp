@@ -19,7 +19,7 @@ using namespace std::chrono;
 
 std::unique_ptr<App> App::app_ {};
 
-App::App() : IWidget({0, 0}, {0, 0}) {
+App::App() : IWidget(nullptr, {0, 0}, {0, 0}) {
 }
 
 void App::create(int argc, char *argv[]) {
@@ -28,6 +28,7 @@ void App::create(int argc, char *argv[]) {
         return;
     }
     app_ = std::make_unique<App>();
+    WidgetManager::set_root(app_.get());
     app_->start();
 
     if (argc > 1) {
@@ -131,7 +132,7 @@ int App::start() {
 }
 
 int App::add_file(const char *path) {
-    auto view = std::make_unique<FileView>(pos(), size(), path, *text_shader_.get(), *gp_shader_.get());
+    auto view = std::make_unique<FileView>(*this, pos(), size(), path, *text_shader_.get(), *gp_shader_.get());
     {
         Timeit file_open_timeit("File Open");
         if (view->open() != 0) {
@@ -173,7 +174,7 @@ void App::static_cursor_pos_cb(GLFWwindow* window, double xpos, double ypos) {
 }
 void App::cursor_pos_cb(GLFWwindow* window, double xpos, double ypos) {
     // mouse_ = {xpos, ypos};
-    handle_cursor_pos({xpos, ypos});
+    WidgetManager::handle_cursor_pos({xpos, ypos});
 }
 
 
@@ -181,7 +182,7 @@ void App::static_mouse_button_cb(GLFWwindow* window, int button, int action, int
     app_->mouse_button_cb(window, button, action, mods);
 }
 void App::mouse_button_cb(GLFWwindow* window, int button, int action, int mods) {
-    handle_mouse_button(button, action, mods);
+    WidgetManager::handle_mouse_button(button, action, mods);
 }
 
 void App::static_scroll_cb(GLFWwindow* window, double xoffset, double yoffset) {
@@ -226,7 +227,7 @@ void App::window_refresh_cb(GLFWwindow* window) {
 }
 
 
-void App::on_cursor_pos(glm::uvec2 pos) {
+void App::on_cursor_pos(glm::ivec2 pos) {
     mouse_ = pos;
 }
 

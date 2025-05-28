@@ -10,28 +10,60 @@ using namespace glm;
 
 
 
-void Scrollbar::on_hover() {
+void Scrollbar::Thumb::on_hover() {
 	color_ = {0, 150, 0, 255};
 }
 
-void Scrollbar::on_unhover() {
+void Scrollbar::Thumb::on_unhover() {
 	color_ = {100, 0, 0, 255};
 }
 
-void Scrollbar::on_press() {
+void Scrollbar::Thumb::on_press() {
 	color_ = {0, 0, 200, 255};
 }
 
-void Scrollbar::on_release() {
+void Scrollbar::Thumb::on_release() {
 	color_ = {0, 150, 0, 255};
 }
 
-void Scrollbar::on_cursor_pos(glm::uvec2 pos) {
-	printf("Scrollbar cursor pos: %u, %u\n", pos.x, pos.y);
+void Scrollbar::Thumb::on_drag(ivec2 offset) {
+	std::cout << "Thumb dragged by " << offset.x << ", " << offset.y << "\n";
+	resize({pos().x, pos().y + offset.y}, size());
+
+	auto scroll_range = parent()->size().y - size().y;
+	auto scroll_percent = (double)(pos().y - parent()->pos().y) / (double)scroll_range;
+	scroll_cb_(scroll_percent);
+}
+
+void Scrollbar::Thumb::draw() {
+	gp_shader_.rect(pos(), size(),{100, hovered() * 255, pressed() * 255, 255});
+}
+
+void Scrollbar::on_resize() {
+	resize_thumb();
+}
+
+void Scrollbar::set(size_t position, size_t visible_extents, size_t total_extents) {
+	position_percent_ = (double)position / (double)total_extents;
+	visible_percent_ = (double)visible_extents / (double)total_extents;
+
+	resize_thumb();
+}
+
+void Scrollbar::resize_thumb() {
+	auto thumb_height = std::max<int>(50, (double)size().y * visible_percent_);
+	double scroll_range = size().y - thumb_height;
+	int thumb_top = scroll_range * position_percent_;
+
+	thumb_.resize({pos().x, pos().y + thumb_top}, {size().x, thumb_height});
 }
 
 void Scrollbar::draw() {
-	gp_shader_.rect(pos(), pos() + size(), {100, hovered() * 255, pressed() * 255, 255});
+	gp_shader_.rect(pos(), size(), {100, 100, 100, 255});
+	if (visible_percent_ >= 1.0f) {
+		return; // No need to draw the thumb if it covers the whole scrollbar
+	}
+	thumb_.draw();
 }
 
 
@@ -39,9 +71,10 @@ void Scrollbar::draw() {
 
 
 
-FileView::FileView(uvec2 pos, uvec2 size, const char *path, const TextShader &text_shader, GPShader &gp_shader)
-	: IWidget(pos, size), file_(path), text_shader_(text_shader), gp_shader_(gp_shader), line_height_(text_shader.font().size.y)
-	, scrollbar_({pos.x + size.x - 16, pos.y}, {16, 20}, gp_shader) {
+FileView::FileView(IWidget &parent, ivec2 pos, ivec2 size, const char *path, const TextShader &text_shader, GPShader &gp_shader)
+	: IWidget(&parent, pos, size), file_(path), text_shader_(text_shader), gp_shader_(gp_shader), line_height_(text_shader.font().size.y)
+	, scrollbar_(*this, {pos.x + size.x - 30, pos.y}, {30, size.y}, gp_shader, [this](double p){scroll_cb(p);}) {
+
 }
 
 int FileView::open() {
@@ -82,14 +115,14 @@ int FileView::parse() {
 
 int FileView::update_buffer() {
 	// first and last line visible on screen
-	uvec2 screen_lines = uvec2{scroll_.y, scroll_.y + rect_.z} / line_height_;
+	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + rect_.z} / line_height_;
 
 	if (screen_lines.x >= buf_lines_.x && screen_lines.y <= buf_lines_.y) {
 		// If the visible lines are within the current buffer, no need to update
 		return 0;
 	}
 
-	// Timeit update_timeit("Update Buffer");
+	Timeit update_timeit("Update Buffer");
 
 	size_t middle_line = (screen_lines.x + screen_lines.y) / 2;
 	size_t min_num_lines = (screen_lines.y - screen_lines.x) / 2 + OVERSCAN_LINES;
@@ -137,13 +170,20 @@ int FileView::update_buffer() {
 	}
 	glBufferSubData(GL_ARRAY_BUFFER, 0, styles.size() * sizeof(TextShader::CharStyle), styles.data());
 
-	// update_timeit.stop();
-	// printf("Buffer size: %zu\n", num_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
+	update_timeit.stop();
+	printf("Buffer size: %zu\n", num_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
 	return 0;
 }
 
 void FileView::set_viewport(uvec4 rect) {
 	rect_ = rect;
+}
+
+void FileView::scroll_cb(double percent) {
+	scroll_.y = (int)(percent * (line_starts_.size() - 1) * line_height_);
+	scroll_.y = std::max(scroll_.y, 0);
+	scroll_.y = std::min(scroll_.y, (int)(line_starts_.size() - 1) * line_height_);
+	scrollbar_.set(scroll_.y, rect_.w, (line_starts_.size() - 1) * line_height_);
 }
 
 void FileView::scroll(ivec2 scroll) {
@@ -153,6 +193,8 @@ void FileView::scroll(ivec2 scroll) {
 
 	scroll_.x += std::max(scroll.x, -static_cast<int>(scroll_.x));
 	scroll_.y += std::max(scroll.y, -static_cast<int>(scroll_.y));
+
+	scrollbar_.set(scroll_.y, rect_.w, (line_starts_.size() - 1) * line_height_);
 }
 
 void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
@@ -164,31 +206,22 @@ void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
 	}
 }
 
-void FileView::draw_scrollbar() {
-	// Draw scrollbar
-	float scrollbar_width = 16.0f;
-	float total_lines = static_cast<float>(line_starts_.size());
-	float visible_lines = static_cast<float>(rect_.w) / line_height_;
-	float scroll_pos = static_cast<float>(scroll_.y) / line_height_;
-
-	float bar_height = std::max(visible_lines / total_lines * rect_.w, 20.0f);
-	float bar_y = (scroll_pos / total_lines) * rect_.w;
-	// scrollbar_.resize(
-		// {rect_.x + rect_.z - scrollbar_width, rect_.y + bar_y},
-		// {scrollbar_width, bar_height}
-	// );
-	scrollbar_.draw();
-}
-
 void FileView::draw() {
 	text_shader_.use();
 	glBindVertexArray(vao_);
+
+	// auto scroll_height = size().y - scrollbar_.size().y;
+	// auto scroll_pos = scrollbar_.pos().y - pos().y;
+	// float scroll_percent = (float)scroll_pos / (float)scroll_height;
+	//
+	// scroll_.y = (int)(scroll_percent * (line_starts_.size() - 1) * line_height_);
+
 	text_shader_.set_scroll_offset(scroll_);
 	update_buffer();
 
 	// Timeit draw("Draw");
 	auto buf_offset = line_starts_[buf_lines_.x].start;
-	uvec2 screen_lines = uvec2{scroll_.y, scroll_.y + rect_.z} / line_height_;
+	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + rect_.z} / line_height_;
 	screen_lines.x = std::max(screen_lines.x, buf_lines_.x);
 	screen_lines.y = std::min(screen_lines.y, buf_lines_.y);
 
@@ -202,7 +235,7 @@ void FileView::draw() {
 	// glBindVertexArray(0);
 	// glUseProgram(0);
 
-	draw_scrollbar();
+	scrollbar_.draw();
 
 	// draw.stop();
 }

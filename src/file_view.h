@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+#include <utility>
 #include <vector>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
@@ -9,20 +11,41 @@
 #include "widget.h"
 
 class Scrollbar : public IWidget {
-	glm::u8vec4 color_ {100, 0, 0, 255};
-	GPShader &gp_shader_;
+	class Thumb : public IWidget {
+		friend class Scrollbar;
+		glm::u8vec4 color_ {100, 0, 0, 255};
+		GPShader &gp_shader_;
+		std::function<void(double)> scroll_cb_;
 
-	void on_hover() override;
-	void on_unhover() override;
-	void on_press() override;
-	void on_release() override;
-	void on_cursor_pos(glm::uvec2 pos) override;
+		void on_hover() override;
+		void on_unhover() override;
+		void on_press() override;
+		void on_release() override;
+		// void on_cursor_pos(glm::ivec2 pos) override;
+		void on_drag(glm::ivec2 offset) override;
+
+		void draw() override;
+	public:
+		Thumb(IWidget &parent, glm::ivec2 pos, glm::ivec2 size, GPShader &gp_shader, std::function<void(double)> scroll_cb)
+			: IWidget(&parent, pos, size), gp_shader_(gp_shader), scroll_cb_(std::move(scroll_cb)) {}
+	};
+
+	Thumb thumb_;
+	GPShader &gp_shader_;
+	double position_percent_ {};
+	double visible_percent_ {};
 
 public:
-	Scrollbar(glm::uvec2 pos, glm::uvec2 size, GPShader &gp_shader)
-		: IWidget(pos, size), gp_shader_(gp_shader) {}
+	Scrollbar(IWidget &parent, glm::ivec2 pos, glm::ivec2 size, GPShader &gp_shader, std::function<void(double)> scroll_cb)
+		: IWidget(&parent, pos, size), thumb_(*this, pos, {30, 50}, gp_shader, scroll_cb), gp_shader_(gp_shader) {
+		add_child(&thumb_);
+	}
 
+	void on_resize() override;
 	void draw() override;
+
+	void resize_thumb();
+	void set(size_t position, size_t visible_extents, size_t total_extents);
 };
 
 class FileView : public IWidget {
@@ -42,9 +65,9 @@ class FileView : public IWidget {
 	GLuint vbo_style_ {};
 
 	// First and last lines in the buffer
-	glm::uvec2 buf_lines_ {};
-	glm::uvec2 scroll_ {};
-	glm::uint line_height_ {};
+	glm::ivec2 buf_lines_ {};
+	glm::ivec2 scroll_ {};
+	int line_height_ {};
 
 	struct Line {
 		size_t start: 63;
@@ -55,12 +78,10 @@ class FileView : public IWidget {
 
 	int parse();
 	void draw_lines(size_t first, size_t last, size_t buf_offset);
-
-	void draw_scrollbar();
-
+	void scroll_cb(double percent);
 public:
 
-	FileView(glm::uvec2 pos, glm::uvec2 size, const char *path, const TextShader &text_shader, GPShader &gp_shader);
+	FileView(IWidget &parent, glm::ivec2 pos, glm::ivec2 size, const char *path, const TextShader &text_shader, GPShader &gp_shader);
 
 	int open();
 	int update_buffer();

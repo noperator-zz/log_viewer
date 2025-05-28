@@ -8,7 +8,7 @@
 class GPShader {
 public:
 	struct __attribute__((packed)) GPVertex {
-		glm::uvec2 pos;
+		glm::ivec2 pos;
 		glm::u8vec4 color;
 	};
 
@@ -27,14 +27,14 @@ public:
 	void clear() {
 		vertices_.clear();
 	}
-	void rect(glm::uvec2 tl, glm::uvec2 br, glm::u8vec4 color) {
+	void rect(glm::ivec2 pos, glm::ivec2 size, glm::u8vec4 color) {
 		// Add a rectangle to the vertex buffer
-		vertices_.push_back({tl, color});
-		vertices_.push_back({{br.x, tl.y}, color});
-		vertices_.push_back({br, color});
-		vertices_.push_back({tl, color});
-		vertices_.push_back({br, color});
-		vertices_.push_back({{tl.x, br.y}, color});
+		vertices_.push_back({pos, color});
+		vertices_.push_back({{pos.x + size.x, pos.y}, color});
+		vertices_.push_back({pos + size, color});
+		vertices_.push_back({pos, color});
+		vertices_.push_back({pos + size, color});
+		vertices_.push_back({{pos.x, pos.y + size.y}, color});
 	}
 	// std::vector<GPVertex>& vertices() {
 		// return vertices_;

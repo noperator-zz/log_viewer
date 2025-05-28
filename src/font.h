@@ -12,7 +12,7 @@ public:
 	static constexpr size_t num_glyphs = 256;
 	static constexpr size_t num_faces = 4;
 
-	glm::uvec2 size {};
+	glm::ivec2 size {};
 private:
 	const char *paths[4];
 	GLuint tex_atlas_ {};

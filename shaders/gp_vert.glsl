@@ -1,5 +1,5 @@
 #version 330 core
-layout(location = 0) in uvec2 pos;
+layout(location = 0) in ivec2 pos;
 layout(location = 1) in vec4 color;
 uniform mat4 u_proj;
 
