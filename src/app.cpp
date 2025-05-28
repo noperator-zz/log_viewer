@@ -146,8 +146,8 @@ int App::add_file(const char *path) {
     view->resize({0, 0}, fb_size_);
 
     // TODO move
-    text_shader_->set_viewport({0, 0}, fb_size_);
-    gp_shader_->set_viewport({0, 0}, fb_size_);
+    text_shader_->set_viewport({}, fb_size_);
+    gp_shader_->set_viewport({}, fb_size_);
 
     file_views_.emplace_back(std::move(view));
     add_child(file_views_.back().get());
@@ -236,12 +236,12 @@ void App::on_cursor_pos(glm::ivec2 pos) {
 
 void App::on_resize() {
     fb_size_ = size();
-    gp_shader_->set_viewport({0, 0}, fb_size_);
+    gp_shader_->set_viewport({}, fb_size_);
     if (file_views_.empty()) {
         return; // No file views to resize
     }
 
-    active_file_view().resize({0, 0}, fb_size_);
+    active_file_view().resize({100, 0}, fb_size_ - glm::ivec2{100, 0});
 }
 
 void App::draw() {

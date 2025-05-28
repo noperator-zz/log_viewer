@@ -16,6 +16,7 @@ int TextShader::setup() {
 		return ret;
 	}
 	shader_.use();
+	frame_offset_loc_ = glGetUniformLocation(shader_.id(), "frame_offset");
 	scroll_offset_loc_ = glGetUniformLocation(shader_.id(), "scroll_offset");
 	line_index_loc_ = glGetUniformLocation(shader_.id(), "line_idx");
 	line_height_loc_ = glGetUniformLocation(shader_.id(), "line_height");
@@ -83,9 +84,14 @@ void TextShader::set_viewport(ivec2 pos, ivec2 size) const {
 	set_uniform(Matrix4fv, shader_, "u_proj", 1, GL_FALSE, value_ptr(mat));
 }
 
-void TextShader::set_scroll_offset(ivec2 scroll) const {
+void TextShader::set_frame_offset(ivec2 offset) const {
 	shader_.use();
-	glUniform2i(scroll_offset_loc_, scroll.x, scroll.y);
+	glUniform2i(frame_offset_loc_, offset.x, offset.y);
+}
+
+void TextShader::set_scroll_offset(ivec2 offset) const {
+	shader_.use();
+	glUniform2i(scroll_offset_loc_, offset.x, offset.y);
 }
 
 void TextShader::set_line_index(int line_index) const {

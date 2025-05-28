@@ -12,6 +12,7 @@ uniform int line_height;
 uniform int line_idx;
 uniform mat4 u_proj;
 uniform ivec2 scroll_offset;
+uniform ivec2 frame_offset;
 uniform sampler2D bearing_table;
 
 flat out uint char_idx;
@@ -30,7 +31,7 @@ void main() {
 
     char_idx = uint(gl_InstanceID);  // Which glyph in the line
     vec2 offset = quad_offsets[corner] * vec2(glyph_width, glyph_height);
-    vec2 pos = vec2(char_idx * glyph_width, line_idx * line_height) + offset - scroll_offset;
+    vec2 pos = vec2(char_idx * glyph_width, line_idx * line_height) + frame_offset + offset - scroll_offset;
     v_bg = bg;
     if (!is_foreground) {
         gl_Position = u_proj * vec4(pos, 0.0, 1.0);

@@ -180,7 +180,7 @@ int FileView::update_buffer() {
 // }
 
 void FileView::on_resize() {
-    text_shader_.set_viewport({0, 0}, size());
+    text_shader_.set_viewport({}, size());
 	scrollbar_.resize({pos().x + size().x - 30, pos().y}, {30, size().y});
 	update_scrollbar();
 }
@@ -217,6 +217,9 @@ void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
 }
 
 void FileView::draw() {
+	glEnable(GL_SCISSOR_TEST);
+	glScissor(pos().x, pos().y, size().x, size().y);
+
 	text_shader_.use();
 	glBindVertexArray(vao_);
 
@@ -226,6 +229,7 @@ void FileView::draw() {
 	//
 	// scroll_.y = (int)(scroll_percent * (line_starts_.size() - 1) * line_height_);
 
+	text_shader_.set_frame_offset(pos());
 	text_shader_.set_scroll_offset(scroll_);
 	update_buffer();
 
@@ -248,4 +252,5 @@ void FileView::draw() {
 	scrollbar_.draw();
 
 	// draw.stop();
+	glDisable(GL_SCISSOR_TEST);
 }

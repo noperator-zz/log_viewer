@@ -123,11 +123,11 @@ void Widget::resize(ivec2 pos, ivec2 size) {
 
 void Widget::_on_resize() {
 	if (parent_) {
-		pos_.x = std::max(pos_.x, parent_->pos().x);
-		pos_.y = std::max(pos_.y, parent_->pos().y);
-
-		pos_.x = std::min(pos_.x, parent_->pos().x + parent_->size().x - size_.x);
-		pos_.y = std::min(pos_.y, parent_->pos().y + parent_->size().y - size_.y);
+		// pos_.x = std::max(pos_.x, parent_->pos().x);
+		// pos_.y = std::max(pos_.y, parent_->pos().y);
+		//
+		// pos_.x = std::min(pos_.x, parent_->pos().x + parent_->size().x - size_.x);
+		// pos_.y = std::min(pos_.y, parent_->pos().y + parent_->size().y - size_.y);
 	}
 	on_resize();
 	for (auto child : children_) {
