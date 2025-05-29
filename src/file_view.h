@@ -19,7 +19,8 @@ class FileView : public Widget {
 	static constexpr size_t OVERSCAN_LINES = 1;
 
 	File file_;
-	Scrollbar scrollbar_;
+	Scrollbar scroll_h_;
+	Scrollbar scroll_v_;
 	// glm::uvec4 rect_ {};
 	GLuint vao_ {};
 	GLuint vbo_text_ {};
@@ -36,13 +37,15 @@ class FileView : public Widget {
 	};
 
 	std::vector<Line> line_starts_ {};
+	size_t longest_line_  {};
 
 	void on_resize() override;
 	void update_scrollbar();
 
 	int parse();
 	void draw_lines(size_t first, size_t last, size_t buf_offset);
-	void scroll_cb(double percent);
+	void scroll_h_cb(double percent);
+	void scroll_v_cb(double percent);
 public:
 
 	FileView(const char *path);

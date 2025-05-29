@@ -162,7 +162,7 @@ void App::on_resize() {
         return; // No file views to resize
     }
 
-    active_file_view().resize({100, 0}, fb_size_ - glm::ivec2{100, 0});
+    active_file_view().resize({0, 0}, fb_size_ - glm::ivec2{0, 0});
 }
 
 void App::draw() {

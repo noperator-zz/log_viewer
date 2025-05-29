@@ -2,26 +2,37 @@
 
 using namespace glm;
 
-Scrollbar::Thumb::Thumb(std::function<void(double)> scroll_cb)
+Scrollbar::Thumb::Thumb(std::function<void(ivec2)> scroll_cb)
 	: scroll_cb_(std::move(scroll_cb)) {}
 
 
 void Scrollbar::Thumb::on_drag(ivec2 offset) {
-	std::cout << "Thumb dragged by " << offset.x << ", " << offset.y << "\n";
-	resize({pos().x, pos().y + offset.y}, size());
-
-	auto scroll_range = parent()->size().y - size().y;
-	auto scroll_percent = (double)(pos().y - parent()->pos().y) / (double)scroll_range;
-	scroll_cb_(scroll_percent);
+	scroll_cb_(offset);
 }
 
 void Scrollbar::Thumb::draw() {
 	GPShader::rect(pos(), size(),{100, hovered() * 255, pressed() * 255, 255});
 }
 
-Scrollbar::Scrollbar(std::function<void(double)> scroll_cb)
-	: thumb_(scroll_cb) {
+Scrollbar::Scrollbar(bool horizontal, std::function<void(double)> scroll_cb)
+	: scroll_cb_(std::move(scroll_cb)), thumb_([this](ivec2 o){thumb_cb(o);}), horizontal_(horizontal) {
 	add_child(&thumb_);
+}
+
+void Scrollbar::thumb_cb(ivec2 offset) {
+	if (horizontal_) {
+		thumb_.resize({thumb_.pos().x + offset.x, thumb_.pos().y}, thumb_.size());
+
+		auto scroll_range = size().x - thumb_.size().x;
+		auto scroll_percent = (double)(thumb_.pos().x - pos().x) / (double)scroll_range;
+		scroll_cb_(scroll_percent);
+	} else {
+		thumb_.resize({thumb_.pos().x, thumb_.pos().y + offset.y}, thumb_.size());
+
+		auto scroll_range = size().y - thumb_.size().y;
+		auto scroll_percent = (double)(thumb_.pos().y - pos().y) / (double)scroll_range;
+		scroll_cb_(scroll_percent);
+	}
 }
 
 void Scrollbar::on_resize() {
@@ -36,11 +47,17 @@ void Scrollbar::set(size_t position, size_t visible_extents, size_t total_extent
 }
 
 void Scrollbar::resize_thumb() {
-	auto thumb_height = std::max<int>(50, (double)size().y * visible_percent_);
-	double scroll_range = size().y - thumb_height;
-	int thumb_top = scroll_range * position_percent_;
-
-	thumb_.resize({pos().x, pos().y + thumb_top}, {size().x, thumb_height});
+	if (horizontal_) {
+		auto thumb_size = std::max<int>(50, (double)size().x * visible_percent_);
+		double scroll_range = size().x - thumb_size;
+		int thumb_top = scroll_range * position_percent_;
+		thumb_.resize({pos().x + thumb_top, pos().y}, {thumb_size, size().y});
+	} else {
+		auto thumb_size = std::max<int>(50, (double)size().y * visible_percent_);
+		double scroll_range = size().y - thumb_size;
+		int thumb_top = scroll_range * position_percent_;
+		thumb_.resize({pos().x, pos().y + thumb_top}, {size().x, thumb_size});
+	}
 }
 
 void Scrollbar::draw() {

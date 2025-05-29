@@ -9,8 +9,10 @@
 using namespace glm;
 
 FileView::FileView(const char *path)
-	: file_(path), scrollbar_([this](double p){scroll_cb(p);}) {
+	: file_(path), scroll_h_(true, [this](double p){scroll_h_cb(p);}), scroll_v_(false, [this](double p){scroll_v_cb(p);}) {
 
+	add_child(&scroll_h_);
+	add_child(&scroll_v_);
 }
 
 int FileView::open() {
@@ -28,7 +30,6 @@ int FileView::open() {
 
 	TextShader::create_buffers(vao_, vbo_text_, vbo_style_, MAX_VRAM_USAGE);
 
-	add_child(&scrollbar_);
 
 	parse();
 	return 0;
@@ -41,8 +42,13 @@ int FileView::parse() {
 	Timeit parse_timeit("Parse");
 	auto starts = find_newlines(file_.mapped_data(), total_size, num_threads);
 	line_starts_.reserve(starts.size());
+	longest_line_ = 0;
+	size_t prev_start = 0;
 	for (size_t i = 0; i < starts.size(); i++) {
 		line_starts_.emplace_back(starts[i], false);
+		size_t line_length = starts[i] - prev_start;
+		longest_line_ = std::max(longest_line_, line_length);
+		prev_start = starts[i];
 	}
 	parse_timeit.stop();
 	std::cout << "Found " << line_starts_.size() << " newlines\n";
@@ -116,15 +122,24 @@ int FileView::update_buffer() {
 // }
 
 void FileView::on_resize() {
-	scrollbar_.resize({pos().x + size().x - 30, pos().y}, {30, size().y});
+	scroll_h_.resize({pos().x, pos().y + size().y - 30}, {size().x, 30});
+	scroll_v_.resize({pos().x + size().x - 30, pos().y}, {30, size().y});
 	update_scrollbar();
 }
 
 void FileView::update_scrollbar() {
-	scrollbar_.set(scroll_.y, size().y, (line_starts_.size() - 1) * line_height_);
+	scroll_h_.set(scroll_.x, size().x, longest_line_ * TextShader::font().size.x);
+	scroll_v_.set(scroll_.y, size().y, (line_starts_.size() - 1) * line_height_);
 }
 
-void FileView::scroll_cb(double percent) {
+void FileView::scroll_h_cb(double percent) {
+	scroll_.x = (int)(percent * longest_line_ * TextShader::font().size.x);
+	scroll_.x = std::max(scroll_.x, 0);
+	scroll_.x = std::min(scroll_.x, (int)longest_line_ * TextShader::font().size.x);
+	update_scrollbar();
+}
+
+void FileView::scroll_v_cb(double percent) {
 	scroll_.y = (int)(percent * (line_starts_.size() - 1) * line_height_);
 	scroll_.y = std::max(scroll_.y, 0);
 	scroll_.y = std::min(scroll_.y, (int)(line_starts_.size() - 1) * line_height_);
@@ -136,8 +151,8 @@ void FileView::scroll(ivec2 scroll) {
 	scroll.y *= line_height_;
 	scroll *= -3;
 
-	scroll_.x += std::max(scroll.x, -static_cast<int>(scroll_.x));
-	scroll_.y += std::max(scroll.y, -static_cast<int>(scroll_.y));
+	scroll_.x += std::max(scroll.x, -scroll_.x);
+	scroll_.y += std::max(scroll.y, -scroll_.y);
 
 	update_scrollbar();
 }
@@ -187,7 +202,8 @@ void FileView::draw() {
 	// glBindVertexArray(0);
 	// glUseProgram(0);
 
-	scrollbar_.draw();
+	scroll_h_.draw();
+	scroll_v_.draw();
 
 	// draw.stop();
 	// glDisable(GL_SCISSOR_TEST);
