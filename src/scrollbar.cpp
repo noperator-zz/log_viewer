@@ -2,8 +2,8 @@
 
 using namespace glm;
 
-Scrollbar::Thumb::Thumb(Widget &parent, ivec2 pos, ivec2 size, GPShader &gp_shader, std::function<void(double)> scroll_cb)
-	: Widget(&parent, pos, size), gp_shader_(gp_shader), scroll_cb_(std::move(scroll_cb)) {}
+Scrollbar::Thumb::Thumb(Widget &parent, ivec2 pos, ivec2 size, std::function<void(double)> scroll_cb)
+	: Widget(&parent, pos, size), scroll_cb_(std::move(scroll_cb)) {}
 
 
 void Scrollbar::Thumb::on_drag(ivec2 offset) {
@@ -16,7 +16,7 @@ void Scrollbar::Thumb::on_drag(ivec2 offset) {
 }
 
 void Scrollbar::Thumb::draw() {
-	gp_shader_.rect(pos(), size(),{100, hovered() * 255, pressed() * 255, 255});
+	GPShader::rect(pos(), size(),{100, hovered() * 255, pressed() * 255, 255});
 }
 
 void Scrollbar::on_resize() {
@@ -42,6 +42,6 @@ void Scrollbar::draw() {
 	if (visible_percent_ >= 1.0f) {
 		return; // No need to draw the thumb if it covers the whole scrollbar
 	}
-	gp_shader_.rect(pos(), size(), {100, 100, 100, 255});
+	GPShader::rect(pos(), size(), {100, 100, 100, 255});
 	thumb_.draw();
 }

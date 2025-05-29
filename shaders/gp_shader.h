@@ -1,45 +1,32 @@
 #pragma once
 
+#include <memory>
 #include <vector>
 #include <glm/glm.hpp>
 
 #include "../src/shader.h"
 
 class GPShader {
-public:
 	struct __attribute__((packed)) GPVertex {
 		glm::ivec2 pos;
 		glm::u8vec4 color;
 	};
 
-private:
+	static inline std::unique_ptr<GPShader> inst_;
+
 	Shader shader_;
 	GLuint vao_ {};
 	GLuint vbo_ {};
 	std::vector<GPVertex> vertices_ {};
 
+	GPShader();
+	int setup();
 	void create_buffers();
 
 public:
-	GPShader();
-
-	int setup();
-	void clear() {
-		vertices_.clear();
-	}
-	void rect(glm::ivec2 pos, glm::ivec2 size, glm::u8vec4 color) {
-		// Add a rectangle to the vertex buffer
-		vertices_.push_back({pos, color});
-		vertices_.push_back({{pos.x + size.x, pos.y}, color});
-		vertices_.push_back({pos + size, color});
-		vertices_.push_back({pos, color});
-		vertices_.push_back({pos + size, color});
-		vertices_.push_back({{pos.x, pos.y + size.y}, color});
-	}
-	// std::vector<GPVertex>& vertices() {
-		// return vertices_;
-	// }
-	// void use() const;
-	void draw();
-	void set_viewport(glm::ivec2 pos, glm::ivec2 size) const;
+	static int init();
+	static void clear();
+	static void rect(glm::ivec2 pos, glm::ivec2 size, glm::u8vec4 color);
+	static void draw();
+	static void set_viewport(glm::ivec2 pos, glm::ivec2 size);
 };

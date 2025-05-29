@@ -38,24 +38,47 @@ void GPShader::create_buffers() {
 	// glVertexAttribDivisor(1, 1);
 }
 
+int GPShader::init() {
+	inst_ = std::unique_ptr<GPShader>(new GPShader());
+	int ret = inst_->setup();
+	if (ret != 0) {
+		inst_.reset();
+	}
+	return ret;
+}
+
+void GPShader::clear() {
+	inst_->vertices_.clear();
+}
+
+void GPShader::rect(ivec2 pos, ivec2 size, u8vec4 color) {
+	// Add a rectangle to the vertex buffer
+	inst_->vertices_.push_back({pos, color});
+	inst_->vertices_.push_back({{pos.x + size.x, pos.y}, color});
+	inst_->vertices_.push_back({pos + size, color});
+	inst_->vertices_.push_back({pos, color});
+	inst_->vertices_.push_back({pos + size, color});
+	inst_->vertices_.push_back({{pos.x, pos.y + size.y}, color});
+}
+
 void GPShader::draw() {
-	if (vertices_.empty()) {
+	if (inst_->vertices_.empty()) {
 		return;
 	}
 
-	shader_.use();
-	glBindVertexArray(vao_);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-	glBufferData(GL_ARRAY_BUFFER, vertices_.size() * sizeof(GPVertex), vertices_.data(), GL_DYNAMIC_DRAW);
-	glDrawArrays(GL_TRIANGLES, 0, vertices_.size());
+	inst_->shader_.use();
+	glBindVertexArray(inst_->vao_);
+	glBindBuffer(GL_ARRAY_BUFFER, inst_->vbo_);
+	glBufferData(GL_ARRAY_BUFFER, inst_->vertices_.size() * sizeof(GPVertex), inst_->vertices_.data(), GL_DYNAMIC_DRAW);
+	glDrawArrays(GL_TRIANGLES, 0, inst_->vertices_.size());
 }
 
-void GPShader::set_viewport(ivec2 pos, ivec2 size) const {
+void GPShader::set_viewport(ivec2 pos, ivec2 size) {
 	auto mat = ortho<float>(
 		pos.x, pos.x + size.x,
 		pos.y + size.y, pos.y,
 		-1.0f, 1.0f
 	);
-	shader_.use();
-	set_uniform(Matrix4fv, shader_, "u_proj", 1, GL_FALSE, value_ptr(mat));
+	inst_->shader_.use();
+	set_uniform(Matrix4fv, inst_->shader_, "u_proj", 1, GL_FALSE, value_ptr(mat));
 }

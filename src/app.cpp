@@ -121,8 +121,7 @@ int App::start() {
         return -1;
     }
 
-    gp_shader_ = std::make_unique<GPShader>();
-    if (gp_shader_->setup() != 0) {
+    if (GPShader::init() != 0) {
         std::cerr << "Failed to compile GP shader\n";
         return -1;
     }
@@ -133,7 +132,7 @@ int App::start() {
 }
 
 int App::add_file(const char *path) {
-    auto view = std::make_unique<FileView>(*this, pos(), size(), path, *text_shader_.get(), *gp_shader_.get());
+    auto view = std::make_unique<FileView>(*this, pos(), size(), path, *text_shader_.get());
     {
         Timeit file_open_timeit("File Open");
         if (view->open() != 0) {
@@ -147,7 +146,7 @@ int App::add_file(const char *path) {
 
     // TODO move
     text_shader_->set_viewport({}, fb_size_);
-    gp_shader_->set_viewport({}, fb_size_);
+    GPShader::set_viewport({}, fb_size_);
 
     file_views_.emplace_back(std::move(view));
     add_child(file_views_.back().get());
@@ -236,7 +235,7 @@ void App::on_cursor_pos(glm::ivec2 pos) {
 
 void App::on_resize() {
     fb_size_ = size();
-    gp_shader_->set_viewport({}, fb_size_);
+    GPShader::set_viewport({}, fb_size_);
     if (file_views_.empty()) {
         return; // No file views to resize
     }
@@ -247,13 +246,13 @@ void App::on_resize() {
 void App::draw() {
     glClear(GL_COLOR_BUFFER_BIT);
 
-    gp_shader_->clear();
+    GPShader::clear();
 
     for (auto &file_view : file_views_) {
         file_view->draw();
     }
 
-    gp_shader_->draw();
+    GPShader::draw();
 
     glfwSwapBuffers(window_);
 }
