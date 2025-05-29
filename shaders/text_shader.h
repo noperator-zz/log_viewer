@@ -2,8 +2,8 @@
 
 #include <glm/glm.hpp>
 
-#include "font.h"
-#include "shader.h"
+#include "../src/font.h"
+#include "../src/shader.h"
 
 class TextShader {
 public:

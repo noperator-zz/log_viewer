@@ -3,7 +3,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 
-#include "shader.h"
+#include "../src/shader.h"
 
 class GPShader {
 public:

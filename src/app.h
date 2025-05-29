@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 #include "file_view.h"
-#include "text_shader.h"
+#include "../shaders/text_shader.h"
 #include "gp_shader.h"
 #include "widget.h"
 

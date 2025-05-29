@@ -12,7 +12,7 @@
 #include "parser.h"
 #include "util.h"
 #include "file_view.h"
-#include "text_shader.h"
+#include "../shaders/text_shader.h"
 #include "util.h"
 
 using namespace std::chrono;

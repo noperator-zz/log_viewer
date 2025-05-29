@@ -50,16 +50,17 @@ add_custom_target(compile_shaders DEPENDS ${GENERATED_SHADER_HEADERS})
 
 add_executable(${PROJECT_NAME}
     ${GENERATED_SHADER_HEADERS}
+    shaders/text_shader.cpp
+    shaders/gp_shader.cpp
     src/main.cpp
     src/app.cpp
     src/font.cpp
     src/file.cpp
     src/shader.h
-    src/text_shader.cpp
-    src/gp_shader.cpp
     src/file_view.cpp
     src/parser.cpp
     src/widget.cpp
+    src/scrollbar.cpp
 )
 add_dependencies(${PROJECT_NAME} compile_shaders)
 
@@ -68,6 +69,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${FREETYPE_INCLUDE_DIRS}
     ${GLEW_INCLUDE_DIRS}
     ${CMAKE_CURRENT_BINARY_DIR}/shaders
+    shaders
+    src
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE -march=native)
