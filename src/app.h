@@ -13,7 +13,6 @@ class App : public Widget {
 	static std::unique_ptr<App> app_;
 
 	std::unique_ptr<Font> font_ {};
-	std::unique_ptr<TextShader> text_shader_ {};
 	GLFWwindow *window_ {};
 	glm::ivec2 mouse_ {};
 	glm::ivec2 fb_size_ {};

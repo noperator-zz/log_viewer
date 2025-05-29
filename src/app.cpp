@@ -115,8 +115,7 @@ int App::start() {
         }
     }
 
-    text_shader_ = std::make_unique<TextShader>(*font_.get());
-    if (text_shader_->setup() != 0) {
+    if (TextShader::init(*font_.get()) != 0) {
         std::cerr << "Failed to compile Text shader\n";
         return -1;
     }
@@ -126,13 +125,11 @@ int App::start() {
         return -1;
     }
 
-    resize({0, 0}, fb_size_);
-
     return 0;
 }
 
 int App::add_file(const char *path) {
-    auto view = std::make_unique<FileView>(*this, pos(), size(), path, *text_shader_.get());
+    auto view = std::make_unique<FileView>(*this, pos(), size(), path);
     {
         Timeit file_open_timeit("File Open");
         if (view->open() != 0) {
@@ -145,7 +142,7 @@ int App::add_file(const char *path) {
     view->resize({0, 0}, fb_size_);
 
     // TODO move
-    text_shader_->set_viewport({}, fb_size_);
+    TextShader::set_viewport({}, fb_size_);
     GPShader::set_viewport({}, fb_size_);
 
     file_views_.emplace_back(std::move(view));
@@ -262,6 +259,7 @@ int App::run() {
     // glDrawArrays(GL_TRIANGLES, 0, glyph_count * 6);
     // glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
+    resize({0, 0}, fb_size_);
 
     auto last_stat = high_resolution_clock::now();
     size_t fps = 0;

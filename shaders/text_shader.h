@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <glm/glm.hpp>
 
 #include "../src/font.h"
@@ -22,6 +23,7 @@ public:
 	};
 
 private:
+	static inline std::unique_ptr<TextShader> inst_;
 	Shader shader_;
 	const Font &font_;
 	GLint frame_offset_loc_ {};
@@ -30,20 +32,20 @@ private:
 	GLint line_height_loc_ {};
 	GLint is_foreground_loc_ {};
 
-public:
 	TextShader(const Font &font);
 
+	int setup();
+
+public:
+	static int init(const Font &font);
 	static void create_buffers(GLuint &vao, GLuint &vbo_text, GLuint &vbo_style, size_t total_size);
 
-	int setup();
-	void use() const;
-	void set_viewport(glm::ivec2 pos, glm::ivec2 size) const;
-	void set_frame_offset(glm::ivec2 offset) const;
-	void set_scroll_offset(glm::ivec2 offset) const;
-	void set_line_index(int line_index) const;
-	void set_line_height(int line_height) const;
-	void set_is_foreground(bool is_foreground) const;
-	const Font &font() const {
-		return font_;
-	}
+	static void use();
+	static void set_viewport(glm::ivec2 pos, glm::ivec2 size);
+	static void set_frame_offset(glm::ivec2 offset);
+	static void set_scroll_offset(glm::ivec2 offset);
+	static void set_line_index(int line_index);
+	static void set_line_height(int line_height);
+	static void set_is_foreground(bool is_foreground);
+	static const Font &font();
 };

@@ -19,7 +19,6 @@ class FileView : public Widget {
 	static constexpr size_t OVERSCAN_LINES = 1;
 
 	File file_;
-	const TextShader &text_shader_;
 	Scrollbar scrollbar_;
 	// glm::uvec4 rect_ {};
 	GLuint vao_ {};
@@ -46,7 +45,7 @@ class FileView : public Widget {
 	void scroll_cb(double percent);
 public:
 
-	FileView(Widget &parent, glm::ivec2 pos, glm::ivec2 size, const char *path, const TextShader &text_shader);
+	FileView(Widget &parent, glm::ivec2 pos, glm::ivec2 size, const char *path);
 
 	int open();
 	int update_buffer();

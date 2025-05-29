@@ -12,8 +12,8 @@ using namespace glm;
 
 
 
-FileView::FileView(Widget &parent, ivec2 pos, ivec2 size, const char *path, const TextShader &text_shader)
-	: Widget(&parent, pos, size), file_(path), text_shader_(text_shader), line_height_(text_shader.font().size.y)
+FileView::FileView(Widget &parent, ivec2 pos, ivec2 size, const char *path)
+	: Widget(&parent, pos, size), file_(path)
 	, scrollbar_(*this, {pos.x + size.x - 30, pos.y}, {30, size.y}, [this](double p){scroll_cb(p);}) {
 
 }
@@ -121,7 +121,6 @@ int FileView::update_buffer() {
 // }
 
 void FileView::on_resize() {
-    text_shader_.set_viewport({}, size());
 	scrollbar_.resize({pos().x + size().x - 30, pos().y}, {30, size().y});
 	update_scrollbar();
 }
@@ -138,7 +137,7 @@ void FileView::scroll_cb(double percent) {
 }
 
 void FileView::scroll(ivec2 scroll) {
-	scroll.x *= text_shader_.font().size.x;
+	scroll.x *= TextShader::font().size.x;
 	scroll.y *= line_height_;
 	scroll *= -3;
 
@@ -152,7 +151,7 @@ void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
 	for (size_t line_offset = first; line_offset < last; line_offset++) {
 		auto line = line_starts_[line_offset].start - buf_offset;
 		auto next_line = line_starts_[line_offset+1].start - buf_offset;
-		text_shader_.set_line_index(line_offset);
+		TextShader::set_line_index(line_offset);
 		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, next_line - line, line);
 	}
 }
@@ -161,7 +160,9 @@ void FileView::draw() {
 	glEnable(GL_SCISSOR_TEST);
 	glScissor(pos().x, pos().y, size().x, size().y);
 
-	text_shader_.use();
+	line_height_ = TextShader::font().size.y;
+
+	TextShader::use();
 	glBindVertexArray(vao_);
 
 	// auto scroll_height = size().y - scrollbar_.size().y;
@@ -170,8 +171,9 @@ void FileView::draw() {
 	//
 	// scroll_.y = (int)(scroll_percent * (line_starts_.size() - 1) * line_height_);
 
-	text_shader_.set_frame_offset(pos());
-	text_shader_.set_scroll_offset(scroll_);
+    TextShader::set_viewport(pos(), size());
+	TextShader::set_frame_offset(pos());
+	TextShader::set_scroll_offset(scroll_);
 	update_buffer();
 
 	// Timeit draw("Draw");
@@ -180,10 +182,10 @@ void FileView::draw() {
 	screen_lines.x = std::max(screen_lines.x, buf_lines_.x);
 	screen_lines.y = std::min(screen_lines.y, buf_lines_.y);
 
-	text_shader_.set_is_foreground(false);
+	TextShader::set_is_foreground(false);
 	draw_lines(screen_lines.x, screen_lines.y, buf_offset);
 
-	text_shader_.set_is_foreground(true);
+	TextShader::set_is_foreground(true);
 	draw_lines(screen_lines.x, screen_lines.y, buf_offset);
 
 	// disable shader

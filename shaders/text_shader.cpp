@@ -10,6 +10,18 @@ using namespace glm;
 TextShader::TextShader(const Font &font) : shader_(text_vert_glsl, text_frag_glsl), font_(font) {
 }
 
+int TextShader::init(const Font &font) {
+	if (inst_) {
+		return -1; // Already initialized
+	}
+	inst_ = std::unique_ptr<TextShader>(new TextShader(font));
+	int ret = inst_->setup();
+	if (ret != 0) {
+		inst_.reset();
+	}
+	return ret;
+}
+
 int TextShader::setup() {
 	int ret = shader_.compile();
 	if (ret != 0) {
@@ -66,45 +78,49 @@ void TextShader::create_buffers(GLuint &vao, GLuint &vbo_text, GLuint &vbo_style
 	glVertexAttribDivisor(3, 1);
 }
 
-void TextShader::use() const {
-	shader_.use();
+void TextShader::use() {
+	inst_->shader_.use();
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, font_.tex_atlas());
+	glBindTexture(GL_TEXTURE_2D, inst_->font_.tex_atlas());
 	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, font_.tex_bearing());
+	glBindTexture(GL_TEXTURE_2D, inst_->font_.tex_bearing());
 }
 
-void TextShader::set_viewport(ivec2 pos, ivec2 size) const {
+void TextShader::set_viewport(ivec2 pos, ivec2 size) {
 	auto mat = ortho<float>(
 		pos.x, pos.x + size.x,
 		pos.y + size.y, pos.y,
 		-1.0f, 1.0f
 	);
-	shader_.use();
-	set_uniform(Matrix4fv, shader_, "u_proj", 1, GL_FALSE, value_ptr(mat));
+	inst_->shader_.use();
+	set_uniform(Matrix4fv, inst_->shader_, "u_proj", 1, GL_FALSE, value_ptr(mat));
 }
 
-void TextShader::set_frame_offset(ivec2 offset) const {
-	shader_.use();
-	glUniform2i(frame_offset_loc_, offset.x, offset.y);
+void TextShader::set_frame_offset(ivec2 offset) {
+	inst_->shader_.use();
+	glUniform2i(inst_->frame_offset_loc_, offset.x, offset.y);
 }
 
-void TextShader::set_scroll_offset(ivec2 offset) const {
-	shader_.use();
-	glUniform2i(scroll_offset_loc_, offset.x, offset.y);
+void TextShader::set_scroll_offset(ivec2 offset) {
+	inst_->shader_.use();
+	glUniform2i(inst_->scroll_offset_loc_, offset.x, offset.y);
 }
 
-void TextShader::set_line_index(int line_index) const {
-	shader_.use();
-	glUniform1i(line_index_loc_, line_index);
+void TextShader::set_line_index(int line_index) {
+	inst_->shader_.use();
+	glUniform1i(inst_->line_index_loc_, line_index);
 }
 
-void TextShader::set_line_height(int line_height) const {
-	shader_.use();
-	glUniform1i(line_height_loc_, line_height);
+void TextShader::set_line_height(int line_height) {
+	inst_->shader_.use();
+	glUniform1i(inst_->line_height_loc_, line_height);
 }
 
-void TextShader::set_is_foreground(bool is_foreground) const {
-	shader_.use();
-	glUniform1i(is_foreground_loc_, is_foreground ? 1 : 0);
+void TextShader::set_is_foreground(bool is_foreground) {
+	inst_->shader_.use();
+	glUniform1i(inst_->is_foreground_loc_, is_foreground ? 1 : 0);
+}
+
+const Font &TextShader::font() {
+	return inst_->font_;
 }

@@ -39,6 +39,9 @@ void GPShader::create_buffers() {
 }
 
 int GPShader::init() {
+	if (inst_) {
+		return -1; // Already initialized
+	}
 	inst_ = std::unique_ptr<GPShader>(new GPShader());
 	int ret = inst_->setup();
 	if (ret != 0) {
