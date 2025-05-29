@@ -14,12 +14,11 @@
 #include "file_view.h"
 #include "../shaders/text_shader.h"
 #include "util.h"
+#include "window.h"
 
 using namespace std::chrono;
 
-std::unique_ptr<App> App::app_ {};
-
-App::App() : Widget(nullptr, {0, 0}, {0, 0}) {
+App::App() {
 }
 
 void App::create(int argc, char *argv[]) {
@@ -27,8 +26,7 @@ void App::create(int argc, char *argv[]) {
         std::cerr << "App already created\n";
         return;
     }
-    app_ = std::make_unique<App>();
-    WidgetManager::set_root(app_.get());
+    app_ = std::unique_ptr<App>(new App());
     app_->start();
 
     if (argc > 1) {
@@ -65,12 +63,12 @@ int App::start() {
     // fb_h = mode->height;
 
     glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
-    window_ = glfwCreateWindow(800, 600, "Text Hello", nullptr, nullptr);
-    // window_ = glfwCreateWindow(mode->width, mode->height, "Text Hello", nullptr, nullptr);
-    glfwMakeContextCurrent(window_);
+    GLFWwindow *window = glfwCreateWindow(800, 600, "Text Hello", nullptr, nullptr);
+    // window = glfwCreateWindow(mode->width, mode->height, "Text Hello", nullptr, nullptr);
+    glfwMakeContextCurrent(window);
 
     int fb_width, fb_height;
-    glfwGetFramebufferSize(window_, &fb_width, &fb_height);
+    glfwGetFramebufferSize(window, &fb_width, &fb_height);
     fb_size_ = {fb_width, fb_height};
 
     // glfwSwapInterval(0);
@@ -82,16 +80,6 @@ int App::start() {
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    glfwSetKeyCallback(window_,              static_key_cb);
-    glfwSetCursorPosCallback(window_,        static_cursor_pos_cb);
-    glfwSetMouseButtonCallback(window_,      static_mouse_button_cb);
-    glfwSetScrollCallback(window_,           static_scroll_cb);
-    glfwSetDropCallback(window_,             static_drop_cb);
-    glfwSetFramebufferSizeCallback(window_,  static_frame_buffer_size_cb);
-    glfwSetWindowSizeCallback(window_,       static_window_size_cb);
-    glfwSetWindowRefreshCallback(window_,    static_window_refresh_cb);
-    // glfwSetMonitorCallback(                   [](GLFWmonitor* monitor, int event) { std::cout << "Monitor\n" << std::endl; });
 
     if (Font::init()) {
         std::cerr << "Failed to initialize FreeType\n";
@@ -125,11 +113,12 @@ int App::start() {
         return -1;
     }
 
+    window_ = std::make_unique<Window>(window, this);
     return 0;
 }
 
 int App::add_file(const char *path) {
-    auto view = std::make_unique<FileView>(*this, pos(), size(), path);
+    auto view = std::make_unique<FileView>(path);
     {
         Timeit file_open_timeit("File Open");
         if (view->open() != 0) {
@@ -141,10 +130,6 @@ int App::add_file(const char *path) {
     // view->set_viewport({0, 0, fb_size_});
     view->resize({0, 0}, fb_size_);
 
-    // TODO move
-    TextShader::set_viewport({}, fb_size_);
-    GPShader::set_viewport({}, fb_size_);
-
     file_views_.emplace_back(std::move(view));
     add_child(file_views_.back().get());
     return 0;
@@ -154,80 +139,20 @@ FileView& App::active_file_view() {
     return *file_views_.front();
 }
 
-void App::static_key_cb(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    app_->key_cb(window, key, scancode, action, mods);
-}
-void App::key_cb(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
-        if (action == GLFW_PRESS) {
-            shift_held_ = true;
-        } else if (action == GLFW_RELEASE) {
-            shift_held_ = false;
-        }
+bool App::on_scroll(glm::ivec2 offset) {
+    if (window_->shift_held()) {
+        offset.x = offset.y;
+        offset.y = 0;
     }
+    active_file_view().scroll(offset);
+    return true;
 }
 
-void App::static_cursor_pos_cb(GLFWwindow* window, double xpos, double ypos) {
-    app_->cursor_pos_cb(window, xpos, ypos);
-}
-void App::cursor_pos_cb(GLFWwindow* window, double xpos, double ypos) {
-    // mouse_ = {xpos, ypos};
-    WidgetManager::handle_cursor_pos({xpos, ypos});
-}
-
-
-void App::static_mouse_button_cb(GLFWwindow* window, int button, int action, int mods) {
-    app_->mouse_button_cb(window, button, action, mods);
-}
-void App::mouse_button_cb(GLFWwindow* window, int button, int action, int mods) {
-    WidgetManager::handle_mouse_button(button, action, mods);
-}
-
-void App::static_scroll_cb(GLFWwindow* window, double xoffset, double yoffset) {
-    app_->scroll_cb(window, xoffset, yoffset);
-}
-void App::scroll_cb(GLFWwindow* window, double xoffset, double yoffset) {
-    if (shift_held_) {
-        xoffset = yoffset;
-        yoffset = 0;
-    }
-    active_file_view().scroll({xoffset, yoffset});
-}
-
-void App::static_drop_cb(GLFWwindow* window, int path_count, const char* paths[]) {
-    app_->drop_cb(window, path_count, paths);
-}
-void App::drop_cb(GLFWwindow* window, int path_count, const char* paths[]) {
+bool App::on_drop(int path_count, const char* paths[]) {
     for (int i = 0; i < path_count; i++) {
         add_file(paths[i]);
     }
-}
-
-void App::static_frame_buffer_size_cb(GLFWwindow* window, int width, int height) {
-    app_->frame_buffer_size_cb(window, width, height);
-}
-void App::frame_buffer_size_cb(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
-    resize({0, 0}, {width, height});
-}
-
-void App::static_window_size_cb(GLFWwindow* window, int width, int height) {
-    app_->window_size_cb(window, width, height);
-}
-void App::window_size_cb(GLFWwindow* window, int width, int height) {
-}
-
-void App::static_window_refresh_cb(GLFWwindow* window) {
-    app_->window_refresh_cb(window);
-}
-void App::window_refresh_cb(GLFWwindow* window) {
-    draw();
-    glFinish();
-}
-
-
-void App::on_cursor_pos(glm::ivec2 pos) {
-    mouse_ = pos;
+    return true;
 }
 
 void App::on_resize() {
@@ -251,7 +176,7 @@ void App::draw() {
 
     GPShader::draw();
 
-    glfwSwapBuffers(window_);
+    glfwSwapBuffers(window_->glfw_window());
 }
 
 int App::run() {
@@ -263,7 +188,7 @@ int App::run() {
 
     auto last_stat = high_resolution_clock::now();
     size_t fps = 0;
-    while (!glfwWindowShouldClose(window_)) {
+    while (!glfwWindowShouldClose(window_->glfw_window())) {
         auto frame_start = high_resolution_clock::now();
         // Timeit frame("Frame");
         draw();

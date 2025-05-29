@@ -2,8 +2,8 @@
 
 using namespace glm;
 
-Scrollbar::Thumb::Thumb(Widget &parent, ivec2 pos, ivec2 size, std::function<void(double)> scroll_cb)
-	: Widget(&parent, pos, size), scroll_cb_(std::move(scroll_cb)) {}
+Scrollbar::Thumb::Thumb(std::function<void(double)> scroll_cb)
+	: scroll_cb_(std::move(scroll_cb)) {}
 
 
 void Scrollbar::Thumb::on_drag(ivec2 offset) {
@@ -17,6 +17,11 @@ void Scrollbar::Thumb::on_drag(ivec2 offset) {
 
 void Scrollbar::Thumb::draw() {
 	GPShader::rect(pos(), size(),{100, hovered() * 255, pressed() * 255, 255});
+}
+
+Scrollbar::Scrollbar(std::function<void(double)> scroll_cb)
+	: thumb_(scroll_cb) {
+	add_child(&thumb_);
 }
 
 void Scrollbar::on_resize() {

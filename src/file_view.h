@@ -45,7 +45,7 @@ class FileView : public Widget {
 	void scroll_cb(double percent);
 public:
 
-	FileView(Widget &parent, glm::ivec2 pos, glm::ivec2 size, const char *path);
+	FileView(const char *path);
 
 	int open();
 	int update_buffer();

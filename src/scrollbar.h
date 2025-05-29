@@ -16,7 +16,7 @@ class Scrollbar : public Widget {
 		void draw() override;
 
 	public:
-		Thumb(Widget &parent, glm::ivec2 pos, glm::ivec2 size, std::function<void(double)> scroll_cb);
+		Thumb(std::function<void(double)> scroll_cb);
 	};
 
 	Thumb thumb_;
@@ -24,11 +24,7 @@ class Scrollbar : public Widget {
 	double visible_percent_ {};
 
 public:
-	Scrollbar(Widget &parent, glm::ivec2 pos, glm::ivec2 size, std::function<void(double)> scroll_cb)
-		: Widget(&parent, pos, size), thumb_(*this, pos, {30, 50}, scroll_cb) {
-		add_child(&thumb_);
-	}
-
+	Scrollbar(std::function<void(double)> scroll_cb);
 	void on_resize() override;
 	void draw() override;
 

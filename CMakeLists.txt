@@ -60,6 +60,7 @@ add_executable(${PROJECT_NAME}
     src/file_view.cpp
     src/parser.cpp
     src/widget.cpp
+    src/window.cpp
     src/scrollbar.cpp
 )
 add_dependencies(${PROJECT_NAME} compile_shaders)

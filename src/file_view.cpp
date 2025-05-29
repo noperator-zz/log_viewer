@@ -8,13 +8,8 @@
 
 using namespace glm;
 
-
-
-
-
-FileView::FileView(Widget &parent, ivec2 pos, ivec2 size, const char *path)
-	: Widget(&parent, pos, size), file_(path)
-	, scrollbar_(*this, {pos.x + size.x - 30, pos.y}, {30, size.y}, [this](double p){scroll_cb(p);}) {
+FileView::FileView(const char *path)
+	: file_(path), scrollbar_([this](double p){scroll_cb(p);}) {
 
 }
 
@@ -157,8 +152,8 @@ void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
 }
 
 void FileView::draw() {
-	glEnable(GL_SCISSOR_TEST);
-	glScissor(pos().x, pos().y, size().x, size().y);
+	// glEnable(GL_SCISSOR_TEST);
+	// glScissor(pos().x, pos().y, size().x, size().y);
 
 	line_height_ = TextShader::font().size.y;
 
@@ -195,5 +190,5 @@ void FileView::draw() {
 	scrollbar_.draw();
 
 	// draw.stop();
-	glDisable(GL_SCISSOR_TEST);
+	// glDisable(GL_SCISSOR_TEST);
 }

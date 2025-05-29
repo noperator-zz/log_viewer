@@ -1,41 +1,16 @@
-#include "widget.h"
-
 #include <GLFW/glfw3.h>
+#include "widget.h"
+#include "window.h"
 
 using namespace glm;
 
-Widget *WidgetManager::root_ {};
-ivec2 WidgetManager::mouse_ {};
-
-bool WidgetManager::handle_mouse_button(int button, int action, int mods) {
-	if (root_) {
-		return root_->handle_mouse_button(button, action, mods);
-	}
-	return false;
-}
-
-bool WidgetManager::handle_cursor_pos(ivec2 pos) {
-	mouse_ = pos;
-	if (root_) {
-		return root_->handle_cursor_pos(pos);
-	}
-	return false;
-}
-
-void WidgetManager::set_root(Widget *root) {
-	root_ = root;
-}
-
-Widget::Widget(Widget *parent, ivec2 pos, ivec2 size) : parent_(parent), pos_(pos), size_(size) {
-}
-
-bool Widget::handle_mouse_button(int button, int action, int mods) {
+bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, int mods) {
 	if (!state_.hovered && !state_.pressed) {
 		return false; // Ignore mouse events if not hovered or pressed
 	}
 
 	for (auto child : children_) {
-		if (child->handle_mouse_button(button, action, mods)) {
+		if (child->mouse_button_cb(mouse, button, action, mods)) {
 			return true; // If a child handled the event, stop further processing
 		}
 	}
@@ -45,7 +20,7 @@ bool Widget::handle_mouse_button(int button, int action, int mods) {
 			if (!state_.pressed) {
 				// Only trigger on_press if not already pressed
 				state_.pressed = true;
-				pressed_mouse_pos_ = WidgetManager::mouse_;
+				pressed_mouse_pos_ = mouse;
 				pressed_pos_ = pos_;
 				on_press();
 			}
@@ -60,9 +35,9 @@ bool Widget::handle_mouse_button(int button, int action, int mods) {
 	return true; // Indicate that the event was handled
 }
 
-bool Widget::handle_cursor_pos(ivec2 mouse) {
+bool Widget::cursor_pos_cb(ivec2 mouse) {
 	for (auto child : children_) {
-		child->handle_cursor_pos(mouse);
+		child->cursor_pos_cb(mouse);
 	}
 
 	on_cursor_pos(mouse);
@@ -88,9 +63,49 @@ bool Widget::handle_cursor_pos(ivec2 mouse) {
 	return state_.hovered; // Return true if hovered, false otherwise
 }
 
+bool Widget::key_cb(int key, int scancode, int action, int mods) {
+	for (auto child : children_) {
+		if (child->key_cb(key, scancode, action, mods)) {
+			return true; // If a child handled the event, stop further processing
+		}
+	}
+	return on_key(key, scancode, action, mods);
+}
+
+bool Widget::scroll_cb(ivec2 offset) {
+	for (auto child : children_) {
+		if (child->scroll_cb(offset)) {
+			return true; // If a child handled the event, stop further processing
+		}
+	}
+	return on_scroll(offset);
+}
+
+bool Widget::drop_cb(int path_count, const char* paths[]) {
+	for (auto child : children_) {
+		if (child->drop_cb(path_count, paths)) {
+			return true; // If a child handled the event, stop further processing
+		}
+	}
+	return on_drop(path_count, paths);
+}
+
+void Widget::draw_cb() {
+	glScissor(pos().x, pos().y, size().x, size().y);
+	draw();
+
+	for (auto child : children_) {
+		child->draw_cb();
+	}
+}
+
 Widget *Widget::parent() const {
 	return parent_;
 }
+
+// Window *Widget::window() const {
+// 	return window_;
+// }
 
 ivec2 Widget::pos() const {
 	return pos_;
@@ -109,9 +124,13 @@ bool Widget::pressed() const {
 }
 
 void Widget::add_child(Widget *child) {
+	child->parent_ = this;
+	// child->window_ = window_;
 	children_.push_back(child);
 }
 void Widget::remove_child(Widget *child) {
+	child->parent_ = nullptr;
+	// child->window_ = nullptr;
 	std::erase(children_, child);
 }
 
