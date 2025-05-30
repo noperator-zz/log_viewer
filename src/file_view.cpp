@@ -173,24 +173,24 @@ int FileView::update_buffers() {
 	// max number of characters for all line numbers
 	auto linenum_chars = linenum_len(buf_lines_.y) * num_lines;
 
-	auto linenum_text = std::unique_ptr<uint8_t[]>(new uint8_t[linenum_chars]);
+	auto linenum_text = std::unique_ptr<uint8_t[]>(new uint8_t[linenum_chars + 1]); // +1 for the null terminator added by sprintf
 	auto linenum_styles = std::unique_ptr<TextShader::CharStyle[]>(new TextShader::CharStyle[linenum_chars]);
 
-	uint8_t *linenum_ptr = linenum_text.get();
+	c = 0;
 	for (uint line_idx = buf_lines_.x; line_idx < buf_lines_.y; line_idx++) {
 		// std::string linenum_str = std::to_string(line_idx + 1);
 		// linenum_text.insert(linenum_text.end(), linenum_str.begin(), linenum_str.end());
-		sprintf((char*)linenum_ptr, "%zu", line_idx + 1);
-		auto line_len = linenum_len(line_idx + 1); // TODO
-		linenum_ptr += line_len;
+		auto line_len = sprintf((char*)&linenum_text[c], "%zu", line_idx + 1);
+		// auto line_len = linenum_len(line_idx + 1); // TODO
 
 		for (size_t i = 0; i < line_len; i++) {
-			linenum_styles[i] = {
+			linenum_styles[c] = {
 				{},
 				line_idx,
 				vec4{200, 200, 200, 255},
 				vec4{100, 100, 100, 100}
 			};
+			c++;
 		}
 	}
 	glBindBuffer(GL_ARRAY_BUFFER, linenum_buf_.vbo_text);
@@ -269,8 +269,8 @@ void FileView::draw() {
 	TextShader::globals.set_viewport(pos() + ivec2{-100, 0}, size());
 	draw_content();
 
-	// TextShader::globals.set_viewport(pos(), size());
-	// draw_linenums();
+	TextShader::globals.set_viewport(pos(), size());
+	draw_linenums();
 
 	scroll_h_.draw();
 	scroll_v_.draw();
