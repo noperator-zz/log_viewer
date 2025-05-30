@@ -29,7 +29,6 @@ class FileView : public Widget {
 	// First and last lines in the buffer
 	glm::ivec2 buf_lines_ {};
 	glm::ivec2 scroll_ {};
-	int line_height_ {};
 
 	struct Line {
 		size_t start: 63;

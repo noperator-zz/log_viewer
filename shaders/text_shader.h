@@ -29,7 +29,6 @@ private:
 	GLint frame_offset_loc_ {};
 	GLint scroll_offset_loc_ {};
 	GLint line_index_loc_ {};
-	GLint line_height_loc_ {};
 	GLint is_foreground_loc_ {};
 
 	TextShader(const Font &font);
@@ -45,7 +44,6 @@ public:
 	static void set_frame_offset(glm::ivec2 offset);
 	static void set_scroll_offset(glm::ivec2 offset);
 	static void set_line_index(int line_index);
-	static void set_line_height(int line_height);
 	static void set_is_foreground(bool is_foreground);
 	static const Font &font();
 };

@@ -31,7 +31,6 @@ int TextShader::setup() {
 	frame_offset_loc_ = glGetUniformLocation(shader_.id(), "frame_offset");
 	scroll_offset_loc_ = glGetUniformLocation(shader_.id(), "scroll_offset");
 	line_index_loc_ = glGetUniformLocation(shader_.id(), "line_idx");
-	line_height_loc_ = glGetUniformLocation(shader_.id(), "line_height");
 	is_foreground_loc_ = glGetUniformLocation(shader_.id(), "is_foreground");
 
 	set_uniform(1i, shader_, "atlas", 0);
@@ -41,7 +40,6 @@ int TextShader::setup() {
 	set_uniform(1ui, shader_, "atlas_cols", font_.num_glyphs);
 	set_scroll_offset({0, 0});
 	set_line_index(0);
-	set_line_height(font_.size.y);
 	set_is_foreground(false);
 
 	return 0;
@@ -109,11 +107,6 @@ void TextShader::set_scroll_offset(ivec2 offset) {
 void TextShader::set_line_index(int line_index) {
 	inst_->shader_.use();
 	glUniform1i(inst_->line_index_loc_, line_index);
-}
-
-void TextShader::set_line_height(int line_height) {
-	inst_->shader_.use();
-	glUniform1i(inst_->line_height_loc_, line_height);
 }
 
 void TextShader::set_is_foreground(bool is_foreground) {

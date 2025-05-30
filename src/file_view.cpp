@@ -57,7 +57,7 @@ int FileView::parse() {
 
 int FileView::update_buffer() {
 	// first and last line visible on screen
-	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + size().y} / line_height_;
+	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + size().y} / TextShader::font().size.y;
 
 	if (screen_lines.x >= buf_lines_.x && screen_lines.y <= buf_lines_.y) {
 		// If the visible lines are within the current buffer, no need to update
@@ -129,7 +129,7 @@ void FileView::on_resize() {
 
 void FileView::update_scrollbar() {
 	scroll_h_.set(scroll_.x, size().x, longest_line_ * TextShader::font().size.x);
-	scroll_v_.set(scroll_.y, size().y, (line_starts_.size() - 1) * line_height_);
+	scroll_v_.set(scroll_.y, size().y, (line_starts_.size() - 1) * TextShader::font().size.y);
 }
 
 void FileView::scroll_h_cb(double percent) {
@@ -140,15 +140,14 @@ void FileView::scroll_h_cb(double percent) {
 }
 
 void FileView::scroll_v_cb(double percent) {
-	scroll_.y = (int)(percent * (line_starts_.size() - 1) * line_height_);
+	scroll_.y = (int)(percent * (line_starts_.size() - 1) * TextShader::font().size.y);
 	scroll_.y = std::max(scroll_.y, 0);
-	scroll_.y = std::min(scroll_.y, (int)(line_starts_.size() - 1) * line_height_);
+	scroll_.y = std::min(scroll_.y, (int)(line_starts_.size() - 1) * TextShader::font().size.y);
 	update_scrollbar();
 }
 
 void FileView::scroll(ivec2 scroll) {
-	scroll.x *= TextShader::font().size.x;
-	scroll.y *= line_height_;
+	scroll *= TextShader::font().size;
 	scroll *= -3;
 
 	scroll_.x += std::max(scroll.x, -scroll_.x);
@@ -170,8 +169,6 @@ void FileView::draw() {
 	// glEnable(GL_SCISSOR_TEST);
 	// glScissor(pos().x, pos().y, size().x, size().y);
 
-	line_height_ = TextShader::font().size.y;
-
 	TextShader::use();
 	glBindVertexArray(vao_);
 
@@ -188,7 +185,7 @@ void FileView::draw() {
 
 	// Timeit draw("Draw");
 	auto buf_offset = line_starts_[buf_lines_.x].start;
-	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + size().y} / line_height_;
+	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + size().y} / TextShader::font().size.y;
 	screen_lines.x = std::max(screen_lines.x, buf_lines_.x);
 	screen_lines.y = std::min(screen_lines.y, buf_lines_.y);
 
