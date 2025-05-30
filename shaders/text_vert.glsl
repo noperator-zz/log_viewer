@@ -1,15 +1,15 @@
 #version 330 core
 layout(location = 0) in uint glyph_idx_;
 layout(location = 1) in uint style_mask;
-layout(location = 2) in vec4 fg;
-layout(location = 3) in vec4 bg;
+layout(location = 2) in uint line_idx;
+layout(location = 3) in vec4 fg;
+layout(location = 4) in vec4 bg;
 
 layout(std140) uniform Globals {
     mat4 u_proj;
     vec2 glyph_size_px;
     ivec2 scroll_offset_px;
     ivec2 frame_offset_px;
-    int line_idx;
     uint atlas_cols;
     bool is_foreground;
 };

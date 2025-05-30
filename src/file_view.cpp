@@ -152,13 +152,20 @@ int FileView::update_buffers() {
 	}
 
 	auto content_styles = std::unique_ptr<TextShader::CharStyle[]>(new TextShader::CharStyle[num_chars]);
-	for (size_t i = 0; i < num_chars; i++) {
-		content_styles[i] = {
-			{},
-			vec4{200, 200, 200, 255},
-			vec4{100, 100, 100, 100}
-		};
+	size_t c = 0;
+	for (uint line_idx = buf_lines_.x; line_idx < buf_lines_.y; line_idx++) {
+		size_t line_len = line_starts_[line_idx + 1].start - line_starts_[line_idx].start;
+		for (size_t i = 0; i < line_len; i++) {
+			content_styles[c] = {
+				{},
+				line_idx,
+				vec4{200, 200, 200, 255},
+				vec4{100, 100, 100, 100}
+			};
+			c++;
+		}
 	}
+
 	glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_style);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars * sizeof(TextShader::CharStyle), content_styles.get());
 
@@ -180,6 +187,7 @@ int FileView::update_buffers() {
 		for (size_t i = 0; i < line_len; i++) {
 			linenum_styles[i] = {
 				{},
+				line_idx,
 				vec4{200, 200, 200, 255},
 				vec4{100, 100, 100, 100}
 			};
@@ -223,8 +231,6 @@ void FileView::draw_lines(bool is_linenum) {
 		} else {
 			next_line = line_starts_[line_offset].start;
 		}
-		// TextShader::globals.line_idx = line_offset - 1;
-		TextShader::update_uniforms();
 		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, next_line - line, line - buf_offset);
 		line = next_line;
 	}

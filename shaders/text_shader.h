@@ -18,6 +18,7 @@ public:
 			};
 			uint8_t style {};
 		};
+		glm::uint line_idx {};
 		glm::u8vec4 fg {};
 		glm::u8vec4 bg {};
 	};
@@ -27,7 +28,6 @@ public:
 		glm::vec2 glyph_size_px;
 		glm::ivec2 scroll_offset_px;
 		glm::ivec2 frame_offset_px;
-		int line_idx;
 		glm::uint atlas_cols;
 		alignas(4) bool is_foreground;
 
