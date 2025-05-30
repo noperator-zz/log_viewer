@@ -22,6 +22,7 @@ class FileView : public Widget {
 	Scrollbar scroll_h_;
 	Scrollbar scroll_v_;
 	TextShader::Buffer content_buf_ {};
+	TextShader::Buffer linenum_buf_ {};
 
 	// First and last lines in the buffer
 	glm::ivec2 buf_lines_ {};
@@ -40,6 +41,8 @@ class FileView : public Widget {
 
 	int parse();
 	void draw_lines(size_t first, size_t last, size_t buf_offset);
+	void draw_linenums(size_t first, size_t last, size_t buf_offset);
+	void draw_content(size_t first, size_t last, size_t buf_offset);
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
 public:

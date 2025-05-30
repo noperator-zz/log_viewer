@@ -29,7 +29,7 @@ int FileView::open() {
 	}
 
 	TextShader::create_buffers(content_buf_, MAX_VRAM_USAGE);
-
+	TextShader::create_buffers(linenum_buf_, MAX_VRAM_USAGE);
 
 	parse();
 	return 0;
@@ -156,24 +156,37 @@ void FileView::scroll(ivec2 scroll) {
 	update_scrollbar();
 }
 
+// void FileView::draw_linenums() {
+// 	TextShader::use(linenum_buf_);
+// 	TextShader::update_uniforms();
+// }
+
 void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
 	for (size_t line_offset = first; line_offset < last; line_offset++) {
 		auto line = line_starts_[line_offset].start - buf_offset;
 		auto next_line = line_starts_[line_offset+1].start - buf_offset;
-		content_buf_.globals.line_idx = line_offset;
-		TextShader::update_uniforms(content_buf_);
+		TextShader::globals.line_idx = line_offset;
+		TextShader::update_uniforms();
 		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, next_line - line, line);
 	}
 }
 
-void FileView::draw() {
-	content_buf_.globals.set_viewport(pos(), size());
-	content_buf_.globals.frame_offset_px = pos();
-	content_buf_.globals.scroll_offset_px = scroll_;
-	content_buf_.globals.is_foreground = false;
-
+void FileView::draw_content(size_t first, size_t last, size_t buf_offset) {
 	TextShader::use(content_buf_);
-	TextShader::update_uniforms(content_buf_);
+	TextShader::update_uniforms();
+	draw_lines(first, last, buf_offset);
+
+	TextShader::globals.is_foreground = true;
+	TextShader::update_uniforms();
+	draw_lines(first, last, buf_offset);
+}
+
+void FileView::draw() {
+	TextShader::globals.set_viewport(pos(), size());
+	TextShader::globals.frame_offset_px = pos();
+	TextShader::globals.scroll_offset_px = scroll_;
+	TextShader::globals.is_foreground = false;
+
 
 	update_buffer();
 
@@ -183,11 +196,8 @@ void FileView::draw() {
 	screen_lines.x = std::max(screen_lines.x, buf_lines_.x);
 	screen_lines.y = std::min(screen_lines.y, buf_lines_.y);
 
-	draw_lines(screen_lines.x, screen_lines.y, buf_offset);
-
-	content_buf_.globals.is_foreground = true;
-	TextShader::update_uniforms(content_buf_);
-	draw_lines(screen_lines.x, screen_lines.y, buf_offset);
+	draw_content(buf_lines_.x, buf_lines_.y, buf_offset);
+	// draw_linenums(buf_lines_.x, buf_lines_.y, buf_offset);
 
 	scroll_h_.draw();
 	scroll_v_.draw();

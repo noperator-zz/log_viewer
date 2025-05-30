@@ -34,6 +34,16 @@ int TextShader::setup() {
 	set_uniform(1i, shader_, "atlas", 0);
 	set_uniform(1i, shader_, "bearing_table", 1);
 
+	globals = {
+		.u_proj={},
+		.glyph_size_px=inst_->font_.size,
+		.scroll_offset_px={},
+		.frame_offset_px={},
+		.line_idx={},
+		.atlas_cols=inst_->font_.num_glyphs,
+		.is_foreground={},
+	};
+
 	return 0;
 }
 
@@ -71,21 +81,11 @@ void TextShader::create_buffers(Buffer &buf, size_t total_size) {
 	glBindBuffer(GL_UNIFORM_BUFFER, buf.ubo_globals);
 	glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformGlobals), nullptr, GL_DYNAMIC_DRAW);
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, buf.ubo_globals);
-
-	buf.globals = {
-		.u_proj={},
-		.glyph_size_px=inst_->font_.size,
-		.scroll_offset_px={},
-		.frame_offset_px={},
-		.line_idx={},
-		.atlas_cols=inst_->font_.num_glyphs,
-		.is_foreground={},
-	};
 }
 
-void TextShader::update_uniforms(Buffer &buf) {
+void TextShader::update_uniforms() {
 	// glBindBufferBase(GL_UNIFORM_BUFFER, 0, buf.ubo_globals);
-	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(buf.globals), &buf.globals);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(inst_->globals), &inst_->globals);
 }
 
 void TextShader::use(Buffer &buf) {

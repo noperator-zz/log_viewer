@@ -39,7 +39,6 @@ public:
 		GLuint vbo_text {};
 		GLuint vbo_style {};
 		GLuint ubo_globals {};
-		UniformGlobals globals {};
 	};
 
 private:
@@ -47,16 +46,18 @@ private:
 	Shader shader_;
 	const Font &font_;
 	GLint globals_idx_ {};
+	// Buffer *active_buf_ {};
 
 	TextShader(const Font &font);
 
 	int setup();
 
 public:
+	static inline UniformGlobals globals {};
 	static int init(const Font &font);
 	static void create_buffers(Buffer &buf, size_t total_size);
 
-	static void update_uniforms(Buffer &buf);
+	static void update_uniforms();
 	static void use(Buffer &buf);
 	static const Font &font();
 };
