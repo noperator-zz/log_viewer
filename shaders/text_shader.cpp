@@ -39,6 +39,7 @@ int TextShader::setup() {
 		.glyph_size_px=inst_->font_.size,
 		.scroll_offset_px={},
 		.frame_offset_px={},
+		.line_idx={},
 		.atlas_cols=inst_->font_.num_glyphs,
 		.is_foreground={},
 	};
@@ -68,17 +69,13 @@ void TextShader::create_buffers(Buffer &buf, size_t total_size) {
 	glEnableVertexAttribArray(1);
 	glVertexAttribDivisor(1, 1);
 
-	glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, sizeof(CharStyle), (void*)offsetof(CharStyle, line_idx));
+	glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, fg));
 	glEnableVertexAttribArray(2);
 	glVertexAttribDivisor(2, 1);
 
-	glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, fg));
+	glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, bg));
 	glEnableVertexAttribArray(3);
 	glVertexAttribDivisor(3, 1);
-
-	glVertexAttribPointer(4, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, bg));
-	glEnableVertexAttribArray(4);
-	glVertexAttribDivisor(4, 1);
 
 	glGenBuffers(1, &buf.ubo_globals);
 	glBindBuffer(GL_UNIFORM_BUFFER, buf.ubo_globals);

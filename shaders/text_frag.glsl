@@ -12,6 +12,7 @@ layout(std140) uniform Globals {
     vec2 glyph_size_px;
     ivec2 scroll_offset_px;
     ivec2 frame_offset_px;
+    int line_idx;
     uint atlas_cols;
     bool is_foreground;
 };

@@ -102,19 +102,13 @@ int FileView::update_content_buffer() {
 
 	glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_style);
 	std::vector<TextShader::CharStyle> styles;
-	styles.resize(num_chars);
-	size_t c = 0;
-	for (uint line_idx = buf_lines_.x; line_idx < buf_lines_.y; line_idx++) {
-		size_t line_len = line_starts_[line_idx + 1].start - line_starts_[line_idx].start;
-		for (size_t i = 0; i < line_len; i++) {
-			styles[c] = {
-				{},
-				line_idx,
-				vec4{200, 200, 200, 255},
-				vec4{100, 100, 100, 100}
-			};
-			c++;
-		}
+	styles.reserve(num_chars);
+	for (size_t i = 0; i < num_chars; i++) {
+		styles.push_back({
+			{},
+			vec4{200, 200, 200, 255},
+			vec4{100, 100, 100, 100}
+		});
 	}
 	glBufferSubData(GL_ARRAY_BUFFER, 0, styles.size() * sizeof(TextShader::CharStyle), styles.data());
 
@@ -206,6 +200,8 @@ void FileView::draw_lines(size_t first, size_t last, size_t buf_offset, bool lin
 	for (size_t line_offset = first; line_offset < last; line_offset++) {
 		auto line = line_starts_[line_offset].start - buf_offset;
 		auto next_line = line_starts_[line_offset+1].start - buf_offset;
+		TextShader::globals.line_idx = line_offset;
+		TextShader::update_uniforms();
 		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, next_line - line, line);
 	}
 }
