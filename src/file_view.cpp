@@ -160,18 +160,21 @@ void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
 	for (size_t line_offset = first; line_offset < last; line_offset++) {
 		auto line = line_starts_[line_offset].start - buf_offset;
 		auto next_line = line_starts_[line_offset+1].start - buf_offset;
-		TextShader::set_line_index(line_offset);
+		content_buf_.globals.line_idx = line_offset;
+		TextShader::update_uniforms(content_buf_);
 		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, next_line - line, line);
 	}
 }
 
 void FileView::draw() {
-	TextShader::use();
-	glBindVertexArray(content_buf_.vao);
+	content_buf_.globals.set_viewport(pos(), size());
+	content_buf_.globals.frame_offset_px = pos();
+	content_buf_.globals.scroll_offset_px = scroll_;
+	content_buf_.globals.is_foreground = false;
 
-    TextShader::set_viewport(pos(), size());
-	TextShader::set_frame_offset(pos());
-	TextShader::set_scroll_offset(scroll_);
+	TextShader::use(content_buf_);
+	TextShader::update_uniforms(content_buf_);
+
 	update_buffer();
 
 	// Timeit draw("Draw");
@@ -180,10 +183,10 @@ void FileView::draw() {
 	screen_lines.x = std::max(screen_lines.x, buf_lines_.x);
 	screen_lines.y = std::min(screen_lines.y, buf_lines_.y);
 
-	TextShader::set_is_foreground(false);
 	draw_lines(screen_lines.x, screen_lines.y, buf_offset);
 
-	TextShader::set_is_foreground(true);
+	content_buf_.globals.is_foreground = true;
+	TextShader::update_uniforms(content_buf_);
 	draw_lines(screen_lines.x, screen_lines.y, buf_offset);
 
 	scroll_h_.draw();

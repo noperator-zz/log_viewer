@@ -22,20 +22,31 @@ public:
 		glm::u8vec4 bg {};
 	};
 
+	struct UniformGlobals {
+		glm::mat4 u_proj;
+		glm::vec2 glyph_size_px;
+		glm::ivec2 scroll_offset_px;
+		glm::ivec2 frame_offset_px;
+		int line_idx;
+		glm::uint atlas_cols;
+		alignas(4) bool is_foreground;
+
+		void set_viewport(glm::ivec2 pos, glm::ivec2 size);
+	};
+
 	struct Buffer {
 		GLuint vao {};
 		GLuint vbo_text {};
 		GLuint vbo_style {};
+		GLuint ubo_globals {};
+		UniformGlobals globals {};
 	};
 
 private:
 	static inline std::unique_ptr<TextShader> inst_;
 	Shader shader_;
 	const Font &font_;
-	GLint frame_offset_loc_ {};
-	GLint scroll_offset_loc_ {};
-	GLint line_index_loc_ {};
-	GLint is_foreground_loc_ {};
+	GLint globals_idx_ {};
 
 	TextShader(const Font &font);
 
@@ -45,11 +56,7 @@ public:
 	static int init(const Font &font);
 	static void create_buffers(Buffer &buf, size_t total_size);
 
-	static void use();
-	static void set_viewport(glm::ivec2 pos, glm::ivec2 size);
-	static void set_frame_offset(glm::ivec2 offset);
-	static void set_scroll_offset(glm::ivec2 offset);
-	static void set_line_index(int line_index);
-	static void set_is_foreground(bool is_foreground);
+	static void update_uniforms(Buffer &buf);
+	static void use(Buffer &buf);
 	static const Font &font();
 };

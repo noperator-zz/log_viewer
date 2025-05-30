@@ -7,7 +7,16 @@ in vec4 v_fg;
 in vec4 v_bg;
 out vec4 color;
 
-uniform bool is_foreground;
+layout(std140) uniform Globals {
+    mat4 u_proj;
+    vec2 glyph_size_px;
+    ivec2 scroll_offset_px;
+    ivec2 frame_offset_px;
+    int line_idx;
+    uint atlas_cols;
+    bool is_foreground;
+};
+
 uniform sampler2D atlas;
 
 void main() {

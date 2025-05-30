@@ -28,40 +28,32 @@ int TextShader::setup() {
 		return ret;
 	}
 	shader_.use();
-	frame_offset_loc_ = glGetUniformLocation(shader_.id(), "frame_offset_px");
-	scroll_offset_loc_ = glGetUniformLocation(shader_.id(), "scroll_offset_px");
-	line_index_loc_ = glGetUniformLocation(shader_.id(), "line_idx");
-	is_foreground_loc_ = glGetUniformLocation(shader_.id(), "is_foreground");
+	globals_idx_ = glGetUniformBlockIndex(shader_.id(), "Globals");
+	glUniformBlockBinding(shader_.id(), globals_idx_, 0);
 
-	auto font_size = vec2(font_.size);
 	set_uniform(1i, shader_, "atlas", 0);
 	set_uniform(1i, shader_, "bearing_table", 1);
-	set_uniform(2fv, shader_, "glyph_size_px", 1, value_ptr(font_size));
-	set_uniform(1ui, shader_, "atlas_cols", font_.num_glyphs);
-	set_scroll_offset({0, 0});
-	set_line_index(0);
-	set_is_foreground(false);
 
 	return 0;
 }
 
 void TextShader::create_buffers(Buffer &buf, size_t total_size) {
 	glGenVertexArrays(1, &buf.vao);
-	glGenBuffers(1, &buf.vbo_text);
-	glGenBuffers(1, &buf.vbo_style);
 	glBindVertexArray(buf.vao);
 
+	glGenBuffers(1, &buf.vbo_text);
 	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_text);
 	glBufferData(GL_ARRAY_BUFFER, total_size / sizeof(CharStyle), nullptr, GL_DYNAMIC_DRAW);
-	glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+	glClearBufferData(GL_ARRAY_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
 
 	glVertexAttribIPointer(0, 1, GL_UNSIGNED_BYTE, 1, (void*)0);
 	glEnableVertexAttribArray(0);
 	glVertexAttribDivisor(0, 1);
 
+	glGenBuffers(1, &buf.vbo_style);
 	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
 	glBufferData(GL_ARRAY_BUFFER, total_size, nullptr, GL_DYNAMIC_DRAW);
-	glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+	glClearBufferData(GL_ARRAY_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
 
 	glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(CharStyle), (void*)offsetof(CharStyle, style));
 	glEnableVertexAttribArray(1);
@@ -74,44 +66,50 @@ void TextShader::create_buffers(Buffer &buf, size_t total_size) {
 	glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, bg));
 	glEnableVertexAttribArray(3);
 	glVertexAttribDivisor(3, 1);
+
+	glGenBuffers(1, &buf.ubo_globals);
+	glBindBuffer(GL_UNIFORM_BUFFER, buf.ubo_globals);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(UniformGlobals), nullptr, GL_DYNAMIC_DRAW);
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, buf.ubo_globals);
+
+	buf.globals = {
+		.u_proj={},
+		.glyph_size_px=inst_->font_.size,
+		.scroll_offset_px={},
+		.frame_offset_px={},
+		.line_idx={},
+		.atlas_cols=inst_->font_.num_glyphs,
+		.is_foreground={},
+	};
 }
 
-void TextShader::use() {
+void TextShader::update_uniforms(Buffer &buf) {
+	// glBindBufferBase(GL_UNIFORM_BUFFER, 0, buf.ubo_globals);
+	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(buf.globals), &buf.globals);
+}
+
+void TextShader::use(Buffer &buf) {
 	inst_->shader_.use();
+	// TODO can remove these?
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, inst_->font_.tex_atlas());
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, inst_->font_.tex_bearing());
+
+	glBindVertexArray(buf.vao);
+	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_text);
+	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
+	glBindBuffer(GL_UNIFORM_BUFFER, buf.ubo_globals);
+
+	glBindBufferBase(GL_UNIFORM_BUFFER, 0, buf.ubo_globals);
 }
 
-void TextShader::set_viewport(ivec2 pos, ivec2 size) {
-	auto mat = ortho<float>(
+void TextShader::UniformGlobals::set_viewport(ivec2 pos, ivec2 size) {
+	u_proj = ortho<float>(
 		pos.x, pos.x + size.x,
 		pos.y + size.y, pos.y,
 		-1.0f, 1.0f
 	);
-	inst_->shader_.use();
-	set_uniform(Matrix4fv, inst_->shader_, "u_proj", 1, GL_FALSE, value_ptr(mat));
-}
-
-void TextShader::set_frame_offset(ivec2 offset) {
-	inst_->shader_.use();
-	glUniform2i(inst_->frame_offset_loc_, offset.x, offset.y);
-}
-
-void TextShader::set_scroll_offset(ivec2 offset) {
-	inst_->shader_.use();
-	glUniform2i(inst_->scroll_offset_loc_, offset.x, offset.y);
-}
-
-void TextShader::set_line_index(int line_index) {
-	inst_->shader_.use();
-	glUniform1i(inst_->line_index_loc_, line_index);
-}
-
-void TextShader::set_is_foreground(bool is_foreground) {
-	inst_->shader_.use();
-	glUniform1i(inst_->is_foreground_loc_, is_foreground ? 1 : 0);
 }
 
 const Font &TextShader::font() {

@@ -4,13 +4,17 @@ layout(location = 1) in uint style_mask;
 layout(location = 2) in vec4 fg;
 layout(location = 3) in vec4 bg;
 
-uniform bool is_foreground;
-uniform vec2 glyph_size_px;
-uniform uint atlas_cols;
-uniform int line_idx;
-uniform mat4 u_proj;
-uniform ivec2 scroll_offset_px;
-uniform ivec2 frame_offset_px;
+layout(std140) uniform Globals {
+    mat4 u_proj;
+    vec2 glyph_size_px;
+    ivec2 scroll_offset_px;
+    ivec2 frame_offset_px;
+    int line_idx;
+    uint atlas_cols;
+    bool is_foreground;
+};
+
+uniform sampler2D atlas;
 uniform sampler2D bearing_table;
 
 flat out uint char_idx;
