@@ -143,7 +143,6 @@ int FileView::update_linenum_buffer() {
 		for (size_t i = 0; i < linenum_str.size(); i++) {
 			styles.push_back({
 				{},
-				line_idx,
 				vec4{200, 200, 200, 255},
 				vec4{100, 100, 100, 100}
 			});
