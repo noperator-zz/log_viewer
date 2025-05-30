@@ -16,7 +16,7 @@ class FileView : public Widget {
 	// static constexpr size_t USAGE_PER_CHAR = sizeof(TextShader::CharStyle) + sizeof(uint8_t);
 	// static constexpr size_t MAX_CHARS = MAX_VRAM_USAGE / USAGE_PER_CHAR;
 
-	static constexpr size_t OVERSCAN_LINES = 1;
+	static constexpr size_t OVERSCAN_LINES = 1000;
 
 	File file_;
 	Scrollbar scroll_h_;
@@ -40,11 +40,10 @@ class FileView : public Widget {
 	void update_scrollbar();
 
 	int parse();
-	int update_linenum_buffer();
-	int update_content_buffer();
-	void draw_lines(size_t first, size_t last, size_t buf_offset, bool linenum);
-	void draw_linenums(size_t first, size_t last, size_t buf_offset);
-	void draw_content(size_t first, size_t last, size_t buf_offset);
+	int update_buffers();
+	void draw_lines(bool is_linenum);
+	void draw_linenums();
+	void draw_content();
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
 public:
