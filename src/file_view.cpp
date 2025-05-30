@@ -29,7 +29,7 @@ int FileView::open() {
 	}
 
 	TextShader::create_buffers(content_buf_, MAX_VRAM_USAGE);
-	TextShader::create_buffers(linenum_buf_, MAX_VRAM_USAGE);
+	TextShader::create_buffers(linenum_buf_, 1024 * 1024); // 1 MiB for line numbers
 
 	parse();
 	return 0;
@@ -55,7 +55,7 @@ int FileView::parse() {
 	return 0;
 }
 
-int FileView::update_buffer() {
+int FileView::update_content_buffer() {
 	// first and last line visible on screen
 	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + size().y} / TextShader::font().size.y;
 
@@ -64,7 +64,7 @@ int FileView::update_buffer() {
 		return 0;
 	}
 
-	Timeit update_timeit("Update Buffer");
+	Timeit update_timeit("Update content buffer");
 
 	size_t middle_line = (screen_lines.x + screen_lines.y) / 2;
 	size_t min_num_lines = (screen_lines.y - screen_lines.x) / 2 + OVERSCAN_LINES;
@@ -119,13 +119,52 @@ int FileView::update_buffer() {
 	glBufferSubData(GL_ARRAY_BUFFER, 0, styles.size() * sizeof(TextShader::CharStyle), styles.data());
 
 	update_timeit.stop();
-	printf("Buffer size: %zu\n", num_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
+	printf("Content buffer size: %zu\n", num_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
 	return 0;
 }
 
-// void FileView::set_viewport(uvec4 rect) {
-// 	// rect_ = rect;
-// }
+int FileView::update_linenum_buffer() {
+	// first and last line visible on screen
+	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + size().y} / TextShader::font().size.y;
+	//
+	// if (screen_lines.x >= buf_lines_.x && screen_lines.y <= buf_lines_.y) {
+	// 	// If the visible lines are within the current buffer, no need to update
+	// 	return 0;
+	// }
+
+	Timeit update_timeit("Update linenum buffer");
+
+	size_t middle_line = (screen_lines.x + screen_lines.y) / 2;
+	size_t min_num_lines = (screen_lines.y - screen_lines.x) / 2 + OVERSCAN_LINES;
+
+	buf_lines_.x = middle_line <= min_num_lines ? 0 : middle_line - min_num_lines;
+	buf_lines_.y = middle_line + min_num_lines >= line_starts_.size() ? line_starts_.size() - 1 : middle_line + min_num_lines;
+
+	std::vector<uint8_t> linenum_text {};
+	std::vector<TextShader::CharStyle> styles {};
+	for (uint line_idx = buf_lines_.x; line_idx < buf_lines_.y; line_idx++) {
+		std::string linenum_str = std::to_string(line_idx + 1);
+		linenum_text.insert(linenum_text.end(), linenum_str.begin(), linenum_str.end());
+
+		for (size_t i = 0; i < linenum_str.size(); i++) {
+			styles.push_back({
+				{},
+				line_idx,
+				vec4{200, 200, 200, 255},
+				vec4{100, 100, 100, 100}
+			});
+		}
+	}
+	glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_text);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, linenum_text.size(), linenum_text.data());
+
+	glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_style);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, styles.size() * sizeof(TextShader::CharStyle), styles.data());
+
+	update_timeit.stop();
+	printf("linenum buffer size: %zu\n", linenum_text.size() * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
+	return 0;
+}
 
 void FileView::on_resize() {
 	scroll_h_.resize({pos().x, pos().y + size().y - 30}, {size().x, 30});
@@ -162,12 +201,8 @@ void FileView::scroll(ivec2 scroll) {
 	update_scrollbar();
 }
 
-// void FileView::draw_linenums() {
-// 	TextShader::use(linenum_buf_);
-// 	TextShader::update_uniforms();
-// }
 
-void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
+void FileView::draw_lines(size_t first, size_t last, size_t buf_offset, bool linenum) {
 	for (size_t line_offset = first; line_offset < last; line_offset++) {
 		auto line = line_starts_[line_offset].start - buf_offset;
 		auto next_line = line_starts_[line_offset+1].start - buf_offset;
@@ -175,14 +210,24 @@ void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
 	}
 }
 
-void FileView::draw_content(size_t first, size_t last, size_t buf_offset) {
-	TextShader::use(content_buf_);
+void FileView::draw_linenums(size_t first, size_t last, size_t buf_offset) {
+	TextShader::use(linenum_buf_);
 	TextShader::update_uniforms();
-	draw_lines(first, last, buf_offset);
+	draw_lines(first, last, buf_offset, true);
 
 	TextShader::globals.is_foreground = true;
 	TextShader::update_uniforms();
-	draw_lines(first, last, buf_offset);
+	draw_lines(first, last, buf_offset, true);
+}
+
+void FileView::draw_content(size_t first, size_t last, size_t buf_offset) {
+	TextShader::use(content_buf_);
+	TextShader::update_uniforms();
+	draw_lines(first, last, buf_offset, false);
+
+	TextShader::globals.is_foreground = true;
+	TextShader::update_uniforms();
+	draw_lines(first, last, buf_offset, false);
 }
 
 void FileView::draw() {
@@ -192,7 +237,8 @@ void FileView::draw() {
 	TextShader::globals.is_foreground = false;
 
 
-	update_buffer();
+	update_content_buffer();
+	update_linenum_buffer();
 
 	// Timeit draw("Draw");
 	auto buf_offset = line_starts_[buf_lines_.x].start;
@@ -201,7 +247,7 @@ void FileView::draw() {
 	screen_lines.y = std::min(screen_lines.y, buf_lines_.y);
 
 	draw_content(buf_lines_.x, buf_lines_.y, buf_offset);
-	// draw_linenums(buf_lines_.x, buf_lines_.y, buf_offset);
+	draw_linenums(buf_lines_.x, buf_lines_.y, buf_offset);
 
 	scroll_h_.draw();
 	scroll_v_.draw();

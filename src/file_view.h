@@ -40,7 +40,9 @@ class FileView : public Widget {
 	void update_scrollbar();
 
 	int parse();
-	void draw_lines(size_t first, size_t last, size_t buf_offset);
+	int update_linenum_buffer();
+	int update_content_buffer();
+	void draw_lines(size_t first, size_t last, size_t buf_offset, bool linenum);
 	void draw_linenums(size_t first, size_t last, size_t buf_offset);
 	void draw_content(size_t first, size_t last, size_t buf_offset);
 	void scroll_h_cb(double percent);
@@ -50,7 +52,6 @@ public:
 	FileView(const char *path);
 
 	int open();
-	int update_buffer();
 	void scroll(glm::ivec2 scroll);
 
 	void draw() override;
