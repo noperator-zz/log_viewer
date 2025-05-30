@@ -12,11 +12,14 @@
 #include "widget.h"
 
 class FileView : public Widget {
-	static constexpr size_t MAX_VRAM_USAGE = 256 * 1024 * 1024;
-	// static constexpr size_t USAGE_PER_CHAR = sizeof(TextShader::CharStyle) + sizeof(uint8_t);
-	// static constexpr size_t MAX_CHARS = MAX_VRAM_USAGE / USAGE_PER_CHAR;
+	// TODO make these limits dynamic
+	static constexpr size_t MAX_SCREEN_LINES = 200;
+	static constexpr size_t OVERSCAN_LINES = 1;
+	static constexpr size_t MAX_LINE_LENGTH = 16 * 1024;
+	static constexpr size_t CONTENT_BUFFER_SIZE = (MAX_SCREEN_LINES + OVERSCAN_LINES * 2) * MAX_LINE_LENGTH * (sizeof(TextShader::CharStyle) + sizeof(uint8_t));
+	static constexpr size_t LINENUM_BUFFER_SIZE = (MAX_SCREEN_LINES + OVERSCAN_LINES * 2) * 10 * (sizeof(TextShader::CharStyle) + sizeof(uint8_t));
 
-	static constexpr size_t OVERSCAN_LINES = 1000;
+	static_assert(CONTENT_BUFFER_SIZE < 64 * 1024 * 1024, "Content buffer size too large");
 
 	File file_;
 	Scrollbar scroll_h_;

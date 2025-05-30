@@ -28,8 +28,8 @@ int FileView::open() {
 		}
 	}
 
-	TextShader::create_buffers(content_buf_, MAX_VRAM_USAGE);
-	TextShader::create_buffers(linenum_buf_, 1024 * 1024); // 1 MiB for line numbers
+	TextShader::create_buffers(content_buf_, CONTENT_BUFFER_SIZE);
+	TextShader::create_buffers(linenum_buf_, LINENUM_BUFFER_SIZE);
 
 	parse();
 	return 0;
@@ -111,6 +111,7 @@ int FileView::update_buffers() {
 	buf_lines_.x = middle_line <= min_num_lines ? 0 : middle_line - min_num_lines;
 	buf_lines_.y = middle_line + min_num_lines >= line_starts_.size() ? line_starts_.size() - 1 : middle_line + min_num_lines;
 
+	// TODO detect if content won't fit in the buffer
 	glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_text);
 	const uint8_t *ptr;
 	size_t num_chars = 0;
@@ -195,18 +196,26 @@ int FileView::update_buffers() {
 }
 
 void FileView::draw_lines(bool is_linenum) {
-	auto first = buf_lines_.x;
-	auto last = buf_lines_.y;
+	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + size().y} / TextShader::font().size.y;
+	// auto first = buf_lines_.x;
+	// auto last = buf_lines_.y;
+	auto first = screen_lines.x;
+	auto last = screen_lines.y;
+
 	size_t buf_offset {};
 	size_t line {};
 	size_t next_line {};
 	size_t line_len = linenum_len(buf_lines_.y);
 	if (is_linenum) {
-		buf_offset = line = next_line = first * line_len;
+		buf_offset = buf_lines_.x * line_len;
+		line = next_line = first * line_len;
 	} else {
-		buf_offset = line = line_starts_[first].start;
+		buf_offset = line_starts_[buf_lines_.x].start;
+		line = line_starts_[first].start;
 	}
 
+	// TODO see if it's faster to put char_idx in the VBO to avoid a draw call per line
+	// TODO gl_DrawID?
 	for (size_t line_offset = first+1; line_offset < last; line_offset++) {
 		if (is_linenum) {
 			next_line += line_len;
