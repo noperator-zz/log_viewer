@@ -8,7 +8,7 @@
 #include "file.h"
 #include "gp_shader.h"
 #include "scrollbar.h"
-#include "../shaders/text_shader.h"
+#include "text_shader.h"
 #include "widget.h"
 
 class FileView : public Widget {
@@ -21,7 +21,6 @@ class FileView : public Widget {
 	File file_;
 	Scrollbar scroll_h_;
 	Scrollbar scroll_v_;
-	// glm::uvec4 rect_ {};
 	GLuint vao_ {};
 	GLuint vbo_text_ {};
 	GLuint vbo_style_ {};
@@ -51,7 +50,6 @@ public:
 
 	int open();
 	int update_buffer();
-	// void set_viewport(glm::uvec4 rect);
 	void scroll(glm::ivec2 scroll);
 
 	void draw() override;

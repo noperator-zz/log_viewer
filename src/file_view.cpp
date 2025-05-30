@@ -166,17 +166,8 @@ void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
 }
 
 void FileView::draw() {
-	// glEnable(GL_SCISSOR_TEST);
-	// glScissor(pos().x, pos().y, size().x, size().y);
-
 	TextShader::use();
 	glBindVertexArray(vao_);
-
-	// auto scroll_height = size().y - scrollbar_.size().y;
-	// auto scroll_pos = scrollbar_.pos().y - pos().y;
-	// float scroll_percent = (float)scroll_pos / (float)scroll_height;
-	//
-	// scroll_.y = (int)(scroll_percent * (line_starts_.size() - 1) * line_height_);
 
     TextShader::set_viewport(pos(), size());
 	TextShader::set_frame_offset(pos());
@@ -195,13 +186,8 @@ void FileView::draw() {
 	TextShader::set_is_foreground(true);
 	draw_lines(screen_lines.x, screen_lines.y, buf_offset);
 
-	// disable shader
-	// glBindVertexArray(0);
-	// glUseProgram(0);
-
 	scroll_h_.draw();
 	scroll_v_.draw();
 
 	// draw.stop();
-	// glDisable(GL_SCISSOR_TEST);
 }
