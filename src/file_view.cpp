@@ -94,19 +94,6 @@ static size_t linenum_len(size_t line) {
 	return (size_t)log10(line) + 1;
 }
 
-static size_t linenum_buf_offset(size_t line) {
-	// return the length of `line` line numbers
-	size_t offset = 0;
-	size_t num_digits;
-	while (line > 0) {
-		num_digits = linenum_len(line);
-		auto num_line_of_this_length = line + 1 - (size_t)pow(10, num_digits - 1);
-		offset += num_digits * num_line_of_this_length;
-		line -= num_line_of_this_length;
-	}
-	return offset;
-}
-
 int FileView::update_buffers() {
 	// first and last line visible on screen
 	ivec2 screen_lines = ivec2{scroll_.y, scroll_.y + size().y} / TextShader::font().size.y;
@@ -171,16 +158,18 @@ int FileView::update_buffers() {
 
 	auto num_lines = buf_lines_.y - buf_lines_.x;
 	// max number of characters for all line numbers
+	auto longest_linenum_len = linenum_len(buf_lines_.y);
 	auto linenum_chars = linenum_len(buf_lines_.y) * num_lines;
 
 	auto linenum_text = std::unique_ptr<uint8_t[]>(new uint8_t[linenum_chars + 1]); // +1 for the null terminator added by sprintf
 	auto linenum_styles = std::unique_ptr<TextShader::CharStyle[]>(new TextShader::CharStyle[linenum_chars]);
 
 	c = 0;
+	std::string fmt = "%" + std::to_string(longest_linenum_len) + "zu";
 	for (uint line_idx = buf_lines_.x; line_idx < buf_lines_.y; line_idx++) {
 		// std::string linenum_str = std::to_string(line_idx + 1);
 		// linenum_text.insert(linenum_text.end(), linenum_str.begin(), linenum_str.end());
-		auto line_len = sprintf((char*)&linenum_text[c], "%zu", line_idx + 1);
+		auto line_len = sprintf((char*)&linenum_text[c], fmt.c_str(), line_idx + 1);
 		// auto line_len = linenum_len(line_idx + 1); // TODO
 
 		for (size_t i = 0; i < line_len; i++) {
@@ -211,22 +200,15 @@ void FileView::draw_lines(bool is_linenum) {
 	size_t buf_offset {};
 	size_t line {};
 	size_t next_line {};
-	size_t line_len {};
-	size_t line_overflow {};
+	size_t line_len = linenum_len(buf_lines_.y);
 	if (is_linenum) {
-		line_len = linenum_len(first + 1);
-		line_overflow = pow(10, line_len);
-		buf_offset = line = next_line = linenum_buf_offset(first);
+		buf_offset = line = next_line = first * line_len;
 	} else {
 		buf_offset = line = line_starts_[first].start;
 	}
 
 	for (size_t line_offset = first+1; line_offset < last; line_offset++) {
 		if (is_linenum) {
-			if (line_offset == line_overflow) {
-				line_len++;
-				line_overflow *= 10;
-			}
 			next_line += line_len;
 		} else {
 			next_line = line_starts_[line_offset].start;
