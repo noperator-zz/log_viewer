@@ -28,15 +28,15 @@ int TextShader::setup() {
 		return ret;
 	}
 	shader_.use();
-	frame_offset_loc_ = glGetUniformLocation(shader_.id(), "frame_offset");
-	scroll_offset_loc_ = glGetUniformLocation(shader_.id(), "scroll_offset");
+	frame_offset_loc_ = glGetUniformLocation(shader_.id(), "frame_offset_px");
+	scroll_offset_loc_ = glGetUniformLocation(shader_.id(), "scroll_offset_px");
 	line_index_loc_ = glGetUniformLocation(shader_.id(), "line_idx");
 	is_foreground_loc_ = glGetUniformLocation(shader_.id(), "is_foreground");
 
+	auto font_size = vec2(font_.size);
 	set_uniform(1i, shader_, "atlas", 0);
 	set_uniform(1i, shader_, "bearing_table", 1);
-	set_uniform(1ui, shader_, "glyph_width", font_.size.x);
-	set_uniform(1ui, shader_, "glyph_height", font_.size.y);
+	set_uniform(2fv, shader_, "glyph_size_px", 1, value_ptr(font_size));
 	set_uniform(1ui, shader_, "atlas_cols", font_.num_glyphs);
 	set_scroll_offset({0, 0});
 	set_line_index(0);
