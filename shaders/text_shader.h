@@ -16,10 +16,16 @@ public:
 				uint8_t underline : 1;
 				uint8_t strikethrough : 1;
 			};
-			uint8_t style;
+			uint8_t style {};
 		};
-		glm::u8vec4 fg;
-		glm::u8vec4 bg;
+		glm::u8vec4 fg {};
+		glm::u8vec4 bg {};
+	};
+
+	struct Buffer {
+		GLuint vao {};
+		GLuint vbo_text {};
+		GLuint vbo_style {};
 	};
 
 private:
@@ -37,7 +43,7 @@ private:
 
 public:
 	static int init(const Font &font);
-	static void create_buffers(GLuint &vao, GLuint &vbo_text, GLuint &vbo_style, size_t total_size);
+	static void create_buffers(Buffer &buf, size_t total_size);
 
 	static void use();
 	static void set_viewport(glm::ivec2 pos, glm::ivec2 size);

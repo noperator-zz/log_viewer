@@ -21,9 +21,7 @@ class FileView : public Widget {
 	File file_;
 	Scrollbar scroll_h_;
 	Scrollbar scroll_v_;
-	GLuint vao_ {};
-	GLuint vbo_text_ {};
-	GLuint vbo_style_ {};
+	TextShader::Buffer content_buf_ {};
 
 	// First and last lines in the buffer
 	glm::ivec2 buf_lines_ {};

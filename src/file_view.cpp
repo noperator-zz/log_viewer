@@ -28,7 +28,7 @@ int FileView::open() {
 		}
 	}
 
-	TextShader::create_buffers(vao_, vbo_text_, vbo_style_, MAX_VRAM_USAGE);
+	TextShader::create_buffers(content_buf_, MAX_VRAM_USAGE);
 
 
 	parse();
@@ -72,7 +72,7 @@ int FileView::update_buffer() {
 	buf_lines_.x = middle_line <= min_num_lines ? 0 : middle_line - min_num_lines;
 	buf_lines_.y = middle_line + min_num_lines >= line_starts_.size() ? line_starts_.size() - 1 : middle_line + min_num_lines;
 
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_text_);
+	glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_text);
 	const uint8_t *ptr;
 	size_t num_chars = 0;
 	if (!line_starts_[buf_lines_.x].alternate && !line_starts_[buf_lines_.y].alternate) {
@@ -100,7 +100,7 @@ int FileView::update_buffer() {
 	}
 
 
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_style_);
+	glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_style);
 	std::vector<TextShader::CharStyle> styles;
 	styles.reserve(num_chars);
 	for (size_t i = 0; i < num_chars; i++) {
@@ -167,7 +167,7 @@ void FileView::draw_lines(size_t first, size_t last, size_t buf_offset) {
 
 void FileView::draw() {
 	TextShader::use();
-	glBindVertexArray(vao_);
+	glBindVertexArray(content_buf_.vao);
 
     TextShader::set_viewport(pos(), size());
 	TextShader::set_frame_offset(pos());

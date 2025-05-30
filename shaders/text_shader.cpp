@@ -45,13 +45,13 @@ int TextShader::setup() {
 	return 0;
 }
 
-void TextShader::create_buffers(GLuint &vao, GLuint &vbo_text, GLuint &vbo_style, size_t total_size) {
-	glGenVertexArrays(1, &vao);
-	glGenBuffers(1, &vbo_text);
-	glGenBuffers(1, &vbo_style);
-	glBindVertexArray(vao);
+void TextShader::create_buffers(Buffer &buf, size_t total_size) {
+	glGenVertexArrays(1, &buf.vao);
+	glGenBuffers(1, &buf.vbo_text);
+	glGenBuffers(1, &buf.vbo_style);
+	glBindVertexArray(buf.vao);
 
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_text);
+	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_text);
 	glBufferData(GL_ARRAY_BUFFER, total_size / sizeof(CharStyle), nullptr, GL_DYNAMIC_DRAW);
 	glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
 
@@ -59,7 +59,7 @@ void TextShader::create_buffers(GLuint &vao, GLuint &vbo_text, GLuint &vbo_style
 	glEnableVertexAttribArray(0);
 	glVertexAttribDivisor(0, 1);
 
-	glBindBuffer(GL_ARRAY_BUFFER, vbo_style);
+	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
 	glBufferData(GL_ARRAY_BUFFER, total_size, nullptr, GL_DYNAMIC_DRAW);
 	glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
 
