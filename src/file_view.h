@@ -31,13 +31,9 @@ class FileView : public Widget {
 	glm::ivec2 buf_lines_ {};
 	glm::ivec2 scroll_ {};
 
-	struct Line {
-		size_t start: 63;
-		bool alternate: 1;
-	};
-
-	std::vector<Line> line_starts_ {};
-	size_t longest_line_  {};
+	std::vector<size_t> line_starts_ {};
+	size_t num_mmapped_lines_ {};
+	size_t longest_line_ {};
 
 	void on_resize() override;
 	void update_scrollbar();

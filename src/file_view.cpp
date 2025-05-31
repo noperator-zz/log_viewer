@@ -40,15 +40,14 @@ int FileView::parse() {
 	size_t total_size = file_.size();
 	std::cout << "Parsing " << total_size / 1024 / 1024 << " MiB\n";
 	Timeit parse_timeit("Parse");
-	auto starts = find_newlines(file_.mapped_data(), total_size, num_threads);
-	line_starts_.reserve(starts.size());
+	line_starts_ = find_newlines(file_.mapped_data(), total_size, num_threads);
+	num_mmapped_lines_ = line_starts_.size();
 	longest_line_ = 0;
 	size_t prev_start = 0;
-	for (size_t i = 0; i < starts.size(); i++) {
-		line_starts_.emplace_back(starts[i], false);
-		size_t line_length = starts[i] - prev_start;
+	for (size_t i = 0; i < line_starts_.size(); i++) {
+		size_t line_length = line_starts_[i] - prev_start;
 		longest_line_ = std::max(longest_line_, line_length);
-		prev_start = starts[i];
+		prev_start = line_starts_[i];
 	}
 	parse_timeit.stop();
 	std::cout << "Found " << line_starts_.size() << " newlines\n";
@@ -115,34 +114,30 @@ int FileView::update_buffers() {
 	glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_text);
 	const uint8_t *ptr;
 	size_t num_chars = 0;
-	if (!line_starts_[buf_lines_.x].alternate && !line_starts_[buf_lines_.y].alternate) {
+	if (buf_lines_.y < num_mmapped_lines_) {
 		ptr = file_.mapped_data();
-		num_chars = line_starts_[buf_lines_.y].start - line_starts_[buf_lines_.x].start;
-		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + line_starts_[buf_lines_.x].start);
-	} else if (line_starts_[buf_lines_.x].alternate && line_starts_[buf_lines_.y].alternate) {
+		num_chars = line_starts_[buf_lines_.y] - line_starts_[buf_lines_.x];
+		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + line_starts_[buf_lines_.x]);
+	} else if (buf_lines_.x >= num_mmapped_lines_) {
 		ptr = file_.tailed_data();
-		num_chars = line_starts_[buf_lines_.y].start - line_starts_[buf_lines_.x].start;
-		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + line_starts_[buf_lines_.x].start);
+		num_chars = line_starts_[buf_lines_.y] - line_starts_[buf_lines_.x];
+		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + line_starts_[buf_lines_.x]);
 	} else {
-		assert(!line_starts_[buf_lines_.x].alternate && line_starts_[buf_lines_.y].alternate);
+		assert(buf_lines_.x < num_mmapped_lines_ && buf_lines_.y >= num_mmapped_lines_);
 		ptr = file_.mapped_data();
-		auto line = buf_lines_.x;
-		while (!line_starts_[line].alternate) {
-			line++;
-		}
-		num_chars = line_starts_[line].start - line_starts_[buf_lines_.x].start;
-		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + line_starts_[buf_lines_.x].start);
+		num_chars = line_starts_[num_mmapped_lines_] - line_starts_[buf_lines_.x];
+		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + line_starts_[buf_lines_.x]);
 
 		ptr = file_.tailed_data();
-		size_t num_chars2 = line_starts_[buf_lines_.y].start - line_starts_[line].start;
-		glBufferSubData(GL_ARRAY_BUFFER, num_chars, num_chars2, ptr + line_starts_[line].start);
+		size_t num_chars2 = line_starts_[buf_lines_.y] - line_starts_[num_mmapped_lines_];
+		glBufferSubData(GL_ARRAY_BUFFER, num_chars, num_chars2, ptr + line_starts_[num_mmapped_lines_]);
 		num_chars += num_chars2;
 	}
 
 	auto content_styles = std::unique_ptr<TextShader::CharStyle[]>(new TextShader::CharStyle[num_chars]);
 	size_t c = 0;
 	for (uint line_idx = buf_lines_.x; line_idx < buf_lines_.y; line_idx++) {
-		size_t line_len = line_starts_[line_idx + 1].start - line_starts_[line_idx].start;
+		size_t line_len = line_starts_[line_idx + 1] - line_starts_[line_idx];
 		for (size_t i = 0; i < line_len; i++) {
 			content_styles[c] = {
 				{},
@@ -210,8 +205,8 @@ void FileView::draw_lines(bool is_linenum) {
 		buf_offset = buf_lines_.x * line_len;
 		line = next_line = first * line_len;
 	} else {
-		buf_offset = line_starts_[buf_lines_.x].start;
-		line = line_starts_[first].start;
+		buf_offset = line_starts_[buf_lines_.x];
+		line = line_starts_[first];
 	}
 
 	// TODO see if it's faster to put char_idx in the VBO to avoid a draw call per line
@@ -220,7 +215,7 @@ void FileView::draw_lines(bool is_linenum) {
 		if (is_linenum) {
 			next_line += line_len;
 		} else {
-			next_line = line_starts_[line_offset].start;
+			next_line = line_starts_[line_offset];
 		}
 		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, next_line - line, line - buf_offset);
 		line = next_line;
