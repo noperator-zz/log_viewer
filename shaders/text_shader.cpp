@@ -86,6 +86,14 @@ void TextShader::create_buffers(Buffer &buf, size_t total_size) {
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, buf.ubo_globals);
 }
 
+void TextShader::destroy_buffers(Buffer &buf) {
+	glDeleteBuffers(1, &buf.vbo_text);
+	glDeleteBuffers(1, &buf.vbo_style);
+	glDeleteBuffers(1, &buf.ubo_globals);
+	glDeleteVertexArrays(1, &buf.vao);
+	buf = {};
+}
+
 void TextShader::update_uniforms() {
 	// glBindBufferBase(GL_UNIFORM_BUFFER, 0, buf.ubo_globals);
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(inst_->globals), &inst_->globals);

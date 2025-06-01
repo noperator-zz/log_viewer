@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <thread>
 #include "file_view.h"
 #include "../shaders/text_shader.h"
 #include "gp_shader.h"
@@ -25,6 +26,8 @@ class App : public Widget {
 	void draw() override;
 	int run();
 
+	void file_worker();
+
 	void on_resize() override;
 	bool on_scroll(glm::ivec2 offset) override;
 	bool on_drop(int path_count, const char* paths[]) override;
@@ -32,5 +35,6 @@ class App : public Widget {
 	FileView& active_file_view();
 
 public:
+	~App();
 	static void create(int argc, char *argv[]);
 };

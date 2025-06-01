@@ -25,7 +25,7 @@ public:
 
 	struct UniformGlobals {
 		glm::mat4 u_proj;
-		glm::vec2 glyph_size_px;
+		glm::ivec2 glyph_size_px;
 		glm::ivec2 scroll_offset_px;
 		glm::ivec2 frame_offset_px;
 		glm::uint atlas_cols;
@@ -56,6 +56,7 @@ public:
 	static inline UniformGlobals globals {};
 	static int init(const Font &font);
 	static void create_buffers(Buffer &buf, size_t total_size);
+	static void destroy_buffers(Buffer &buf);
 
 	static void update_uniforms();
 	static void use(Buffer &buf);

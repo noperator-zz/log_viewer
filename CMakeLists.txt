@@ -15,6 +15,8 @@ set(CMAKE_CXX_STANDARD 23)
 #endif()
 
 set(CMAKE_TOOLCHAIN_FILE "C:/development/.vcpkg-clion/vcpkg/scripts/buildsystems/vcpkg.cmake")
+#set(VCPKG_TARGET_TRIPLET "x64-mingw-static")
+#set(BUILD_SHARED_LIBS OFF)
 
 find_package(OpenGL REQUIRED)
 #find_package(PkgConfig REQUIRED)
@@ -62,6 +64,7 @@ add_executable(${PROJECT_NAME}
     src/widget.cpp
     src/window.cpp
     src/scrollbar.cpp
+    src/worker.cpp
 )
 add_dependencies(${PROJECT_NAME} compile_shaders)
 
@@ -74,7 +77,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     src
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE -march=native)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    _WIN32_WINNT=0x0A00 # Windows 10
+)
+
+target_compile_options(${PROJECT_NAME} PRIVATE -march=native)# -static -static-libgcc -static-libstdc++)
 
 #target_link_directories(${PROJECT_NAME} PRIVATE
 #    lib

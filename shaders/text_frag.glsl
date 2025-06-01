@@ -9,7 +9,7 @@ out vec4 color;
 
 layout(std140) uniform Globals {
     mat4 u_proj;
-    vec2 glyph_size_px;
+    ivec2 glyph_size_px;
     ivec2 scroll_offset_px;
     ivec2 frame_offset_px;
     uint atlas_cols;

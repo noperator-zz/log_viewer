@@ -1,4 +1,4 @@
-#version 330 core
+#version 400 core
 layout(location = 0) in uint glyph_idx_;
 layout(location = 1) in uint style_mask;
 layout(location = 2) in uint line_idx;
@@ -7,7 +7,7 @@ layout(location = 4) in vec4 bg;
 
 layout(std140) uniform Globals {
     mat4 u_proj;
-    vec2 glyph_size_px;
+    ivec2 glyph_size_px;
     ivec2 scroll_offset_px;
     ivec2 frame_offset_px;
     uint atlas_cols;
@@ -33,7 +33,9 @@ void main() {
 
     char_idx = uint(gl_InstanceID);  // Which glyph in the line
     vec2 corner_quant = quad_offsets[corner];
-    vec2 pos_px = (vec2(char_idx, line_idx) + corner_quant) * glyph_size_px + frame_offset_px - scroll_offset_px;
+    // Pre-calculate the line offset using integer arithmetic to acheive a greater scroll range compared to float (31-bit vs 24-bit mantissa).
+    ivec2 line_offset_px = ivec2(0, line_idx) * glyph_size_px.y - ivec2(scroll_offset_px);
+    vec2 pos_px = (vec2(char_idx, 0) + corner_quant) * glyph_size_px + frame_offset_px + line_offset_px;
     v_bg = bg;
     if (!is_foreground) {
         gl_Position = u_proj * vec4(pos_px, 0.0, 1.0);

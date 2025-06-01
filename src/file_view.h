@@ -1,6 +1,9 @@
 #pragma once
 
+#include <chrono>
+#include <condition_variable>
 #include <functional>
+#include <thread>
 #include <utility>
 #include <vector>
 #include <GL/glew.h>
@@ -10,6 +13,7 @@
 #include "scrollbar.h"
 #include "text_shader.h"
 #include "widget.h"
+#include "worker.h"
 
 class FileView : public Widget {
 	// TODO make these limits dynamic
@@ -20,34 +24,75 @@ class FileView : public Widget {
 	static constexpr size_t LINENUM_BUFFER_SIZE = (MAX_SCREEN_LINES + OVERSCAN_LINES * 2) * 10 * (sizeof(TextShader::CharStyle) + sizeof(uint8_t));
 
 	static_assert(CONTENT_BUFFER_SIZE < 64 * 1024 * 1024, "Content buffer size too large");
+	static_assert(OVERSCAN_LINES >= 1, "Overscan lines must be at least 1");
 
-	File file_;
+	class Loader {
+	public:
+		enum class State {
+			INIT,
+			FIRST_READY,
+			LOAD_TAIL,
+		};
+
+		std::mutex mtx {};
+	private:
+		File file_;
+		WorkerPool workers_;
+		State state_ {};
+		std::vector<size_t> line_ends_ {};
+		size_t mapped_lines_ {};
+		size_t longest_line_ {};
+
+		void worker(const Event &quit);
+		void load_mapped();
+		void load_tailed();
+
+	public:
+		Loader(File &&file, size_t num_workers);
+		~Loader();
+
+		std::thread start(const Event &quit);
+		State get_state(const std::unique_lock<std::mutex> &lock);
+		size_t get_mapped_lines(const std::unique_lock<std::mutex> &lock) const;
+		size_t get_longest_line(const std::unique_lock<std::mutex> &lock) const;
+		const std::vector<size_t> &get_line_ends(const std::unique_lock<std::mutex> &lock) const;
+		const uint8_t *get_mapped_data() const;
+		const uint8_t *get_tailed_data() const;
+	};
+
+	// File file_;
+	Loader loader_;
 	Scrollbar scroll_h_;
 	Scrollbar scroll_v_;
 	TextShader::Buffer content_buf_ {};
 	TextShader::Buffer linenum_buf_ {};
+	size_t linenum_chars_ {1};
 
 	// First and last lines in the buffer
 	glm::ivec2 buf_lines_ {};
 	glm::ivec2 scroll_ {};
 
-	std::vector<size_t> line_starts_ {};
-	size_t num_mmapped_lines_ {};
-	size_t longest_line_ {};
+	Event quit_ {};
+	std::thread loader_thread_ {};
+	size_t num_lines_ {0};
+	size_t longest_line_ {0};
+
+	FileView(const char *path);
 
 	void on_resize() override;
 	void update_scrollbar();
 
-	int parse();
-	int update_buffers();
-	void draw_lines(bool is_linenum);
-	void draw_linenums();
-	void draw_content();
+	void update_buffers(Loader::State state, size_t mapped_lines, const std::vector<size_t> &line_ends,
+		const uint8_t *mapped_data, const uint8_t *tailed_data);
+	void draw_lines(const std::vector<size_t> &line_ends, bool is_linenum) const;
+	void draw_linenums(const std::vector<size_t> &line_ends);
+	void draw_content(const std::vector<size_t> &line_ends);
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
-public:
 
-	FileView(const char *path);
+public:
+	static std::unique_ptr<FileView> create(const char *path);
+	~FileView();
 
 	int open();
 	void scroll(glm::ivec2 scroll);

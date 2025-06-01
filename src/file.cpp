@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #ifdef WIN32
 #include <windows.h>
+#include <memoryapi.h>
 #else
 #include <sys/mman.h>
 #endif
@@ -36,7 +37,7 @@ int File::open() {
 		return -1;
 	}
 
-	size_ = fileSize.QuadPart;
+	mapped_size_ = fileSize.QuadPart;
 #else
 	if (fd_ != -1) {
 		return 0;
@@ -53,7 +54,8 @@ int File::open() {
 	}
 	size_ = sb.st_size;
 #endif
-	return 0;
+
+	return mmap();
 }
 
 int File::mmap() {
@@ -62,7 +64,8 @@ int File::mmap() {
 		hFile_,                    // file handle
 		NULL,                     // security
 		PAGE_READONLY,            // protection
-		0, 0,                     // max size (0 = full file)
+		mapped_size_ >> 32,         // maximum size high
+		mapped_size_ & 0xFFFFFFFF,       // maximum size low
 		NULL                      // mapping name
 	);
 
@@ -110,4 +113,34 @@ void File::close() {
 	::close(fd_);
 	fd_ = -1;
 #endif
+}
+
+size_t File::mapped_size() const {
+	return mapped_size_;
+}
+const uint8_t *File::mapped_data() const {
+	return mapped_data_;
+}
+const uint8_t *File::tailed_data() const {
+	return tailed_data_.data();
+}
+
+void File::touch_pages(const uint8_t *addr, size_t size) {
+#ifdef WIN32
+	SYSTEM_INFO si;
+	GetSystemInfo(&si);
+	size_t page_size = si.dwPageSize;
+
+	WIN32_MEMORY_RANGE_ENTRY range;
+	range.VirtualAddress = (void*)addr;
+	range.NumberOfBytes = size;
+	PrefetchVirtualMemory(GetCurrentProcess(), 1, &range, 0);
+#else
+    size_t page_size = sysconf(_SC_PAGESIZE);
+	madvise(addr, length, MADV_WILLNEED);
+#endif
+	// for (size_t i = 0; i < size; i += page_size) {
+	// 	const volatile uint8_t dummy = addr[i];  // force page-in
+	// 	(void)dummy;
+	// }
 }

@@ -21,6 +21,10 @@ using namespace std::chrono;
 App::App() {
 }
 
+App::~App() {
+    glfwDestroyWindow(window_->glfw_window());
+}
+
 void App::create(int argc, char *argv[]) {
     if (app_) {
         std::cerr << "App already created\n";
@@ -118,9 +122,9 @@ int App::start() {
 }
 
 int App::add_file(const char *path) {
-    auto view = std::make_unique<FileView>(path);
+    auto view = FileView::create(path);
     {
-        Timeit file_open_timeit("File Open");
+        Timeit file_open_timeit("View Open");
         if (view->open() != 0) {
             std::cerr << "Failed to open file\n";
             return -1;
@@ -133,6 +137,14 @@ int App::add_file(const char *path) {
     file_views_.emplace_back(std::move(view));
     add_child(file_views_.back().get());
     return 0;
+}
+
+void App::file_worker() {
+    // This function is currently not used, but can be implemented for background file processing
+    // std::cout << "File worker started\n";
+    // while (true) {
+    //     std::this_thread::sleep_for(std::chrono::seconds(1));
+    // }
 }
 
 FileView& App::active_file_view() {

@@ -9,9 +9,9 @@
 
 class File {
 	const char *path_;
-	size_t size_ = 0;
-	const uint8_t *mapped_data_ = nullptr;
-	const std::vector<uint8_t> tailed_data_;
+	size_t mapped_size_ {};
+	const uint8_t *mapped_data_ {};
+	const std::vector<uint8_t> tailed_data_ {};
 #ifdef WIN32
 	HANDLE hFile_ = INVALID_HANDLE_VALUE;
 	HANDLE hMap_ = INVALID_HANDLE_VALUE;
@@ -19,20 +19,17 @@ class File {
 	int fd_ = -1;
 #endif
 
+	int mmap();
+
 public:
-	File(const char *path);
+	explicit File(const char *path);
 
 	int open();
 	void close();
-	int mmap();
 
-	size_t size() const {
-		return size_;
-	}
-	const uint8_t *mapped_data() const {
-		return mapped_data_;
-	}
-	const uint8_t *tailed_data() const {
-		return tailed_data_.data();
-	}
+	size_t mapped_size() const;
+	const uint8_t *mapped_data() const;
+	const uint8_t *tailed_data() const;
+
+	static void touch_pages(const uint8_t *addr, size_t size);
 };
