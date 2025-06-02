@@ -66,16 +66,28 @@ class FileView : public Widget {
 	Scrollbar scroll_v_;
 	TextShader::Buffer content_buf_ {};
 	TextShader::Buffer linenum_buf_ {};
-	size_t linenum_chars_ {1};
 
+	// struct RenderParams {
+	// 	std::vector<size_t> line_starts_ {};
+	// 	size_t linenum_chars_ {1};
+	// 	// First and last lines in the buffer
+	// 	glm::ivec2 buf_lines_ {};
+	// 	size_t num_lines_ {0};
+	// 	size_t longest_line_ {0};
+	// };
+	// RenderParams params_ {};
+
+	// std::vector<size_t> line_starts_ {};
+	size_t linenum_chars_ {1};
 	// First and last lines in the buffer
 	glm::ivec2 buf_lines_ {};
+
 	glm::ivec2 scroll_ {};
 
 	Event quit_ {};
 	std::thread loader_thread_ {};
-	size_t num_lines_ {0};
-	size_t longest_line_ {0};
+	size_t num_lines_ {};
+	size_t longest_line_ {};
 
 	FileView(const char *path);
 
@@ -84,9 +96,9 @@ class FileView : public Widget {
 
 	void update_buffers(Loader::State state, size_t mapped_lines, const std::vector<size_t> &line_ends,
 		const uint8_t *mapped_data, const uint8_t *tailed_data);
-	void draw_lines(const std::vector<size_t> &line_ends, bool is_linenum) const;
-	void draw_linenums(const std::vector<size_t> &line_ends);
-	void draw_content(const std::vector<size_t> &line_ends);
+	void draw_lines(Loader::State state, const std::vector<size_t> &line_ends, bool is_linenum) const;
+	void draw_linenums(Loader::State state, const std::vector<size_t> &line_ends);
+	void draw_content(Loader::State state, const std::vector<size_t> &line_ends);
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
 

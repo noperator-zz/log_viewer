@@ -132,7 +132,7 @@ int App::add_file(const char *path) {
     }
     // view->set_viewport({100, 100, screenWidth / 2, screenHeight / 2});
     // view->set_viewport({0, 0, fb_size_});
-    view->resize({0, 0}, fb_size_);
+    // view->resize({0, 0}, fb_size_);
 
     file_views_.emplace_back(std::move(view));
     add_child(file_views_.back().get());
@@ -200,6 +200,8 @@ int App::run() {
 
     auto last_stat = high_resolution_clock::now();
     size_t fps = 0;
+    // TODO limit framerate
+    // TODO separate processing from rendering
     while (!glfwWindowShouldClose(window_->glfw_window())) {
         auto frame_start = high_resolution_clock::now();
         // Timeit frame("Frame");

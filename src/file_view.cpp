@@ -135,8 +135,6 @@ void FileView::Loader::load_mapped() {
 
 	// Load the last chunk first
 	i = num_chunks - 1;
-	const auto offset = units[i].offset;
-	units[i].offset = 0; // Load the last chunk as if it starts at 0, to simplify the rendering logic
 	file_.touch_pages(units[i].data, units[i].size);
 	workers_.push([this, &units, i](const Event &q) {
 		find_newlines_avx2(units[i]);
@@ -159,14 +157,8 @@ void FileView::Loader::load_mapped() {
 	}
 	first_timeit.stop();
 
-	// return;
+	return;
 	std::this_thread::sleep_for(1s);
-
-	// Fixup the offsets for the last chunk
-	units[i].offset = offset;
-	for (size_t j = 0; j < units[i].output.size(); ++j) {
-		units[i].output[j] += offset;
-	}
 
 	for (i = 0; i < num_chunks - 1; ++i) {
 		file_.touch_pages(units[i].data, units[i].size);
@@ -267,6 +259,12 @@ void FileView::update_buffers(const Loader::State state, const size_t mapped_lin
 	screen_lines.x = std::min<int>(screen_lines.x, num_lines_ - 1);
 	screen_lines.y = std::min<int>(screen_lines.y, num_lines_);
 
+	if (state == Loader::State::FIRST_READY) {
+		// Don't allow showing the first line since we don't know where it starts
+		screen_lines.x = std::max(screen_lines.x, 1);
+		screen_lines.y = std::max(screen_lines.y, 1);
+	}
+
 	if (screen_lines.x >= buf_lines_.x && screen_lines.y <= buf_lines_.y) {
 		// If the visible lines are within the current buffer, no need to update
 		return;
@@ -274,10 +272,15 @@ void FileView::update_buffers(const Loader::State state, const size_t mapped_lin
 
 	Timeit update_timeit("Update content buffer");
 
-
 	// first (inclusive) and last (exclusive) lines to buffer
 	buf_lines_.x = std::max(0LL, middle_line - min_num_lines);
 	buf_lines_.y = std::min((ssize_t)num_lines_, middle_line + min_num_lines);
+
+	if (state == Loader::State::FIRST_READY) {
+		// Don't allow showing the first line since we don't know where it starts
+		buf_lines_.x = std::max(buf_lines_.x, 1);
+		buf_lines_.y = std::max(buf_lines_.y, 1);
+	}
 
 	assert(buf_lines_.y > 0);
 
@@ -286,6 +289,7 @@ void FileView::update_buffers(const Loader::State state, const size_t mapped_lin
 	// TODO detect if content won't fit in the buffer
 	// TODO If there is an extremely long line, only buffer the visible portion of the line
 	// TODO Handle 0 mapped lines, and other cases
+	// TODO Use glMapBufferRange
 	glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_text);
 	const uint8_t *ptr;
 	size_t num_chars = 0;
@@ -371,7 +375,7 @@ void FileView::update_buffers(const Loader::State state, const size_t mapped_lin
 	printf("Linenum buffer size: %zu\n", total_linenum_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
 }
 
-void FileView::draw_lines(const std::vector<size_t> &line_ends, const bool is_linenum) const {
+void FileView::draw_lines(const Loader::State state, const std::vector<size_t> &line_ends, const bool is_linenum) const {
 	if (!num_lines_) {
 		return; // No lines to draw
 	}
@@ -390,7 +394,7 @@ void FileView::draw_lines(const std::vector<size_t> &line_ends, const bool is_li
 		line = next_line = first * linenum_chars_;
 	} else {
 		buf_offset = buf_lines_.x == 0 ? 0 : line_ends[buf_lines_.x - 1];
-		line = first == 0 ? 0 : line_ends[first - 1];
+		line = first == 0 ? (state == Loader::State::FIRST_READY ? line_ends[0] : 0) : line_ends[first - 1];
 	}
 
 	// TODO see if it's faster to put char_idx in the VBO to avoid a draw call per line
@@ -407,24 +411,24 @@ void FileView::draw_lines(const std::vector<size_t> &line_ends, const bool is_li
 	}
 }
 
-void FileView::draw_linenums(const std::vector<size_t> &line_ends) {
+void FileView::draw_linenums(const Loader::State state, const std::vector<size_t> &line_ends) {
 	TextShader::use(linenum_buf_);
 	TextShader::update_uniforms();
-	draw_lines(line_ends, true);
+	draw_lines(state, line_ends, true);
 
 	TextShader::globals.is_foreground = true;
 	TextShader::update_uniforms();
-	draw_lines(line_ends, true);
+	draw_lines(state, line_ends, true);
 }
 
-void FileView::draw_content(const std::vector<size_t> &line_ends) {
+void FileView::draw_content(const Loader::State state, const std::vector<size_t> &line_ends) {
 	TextShader::use(content_buf_);
 	TextShader::update_uniforms();
-	draw_lines(line_ends, false);
+	draw_lines(state, line_ends, false);
 
 	TextShader::globals.is_foreground = true;
 	TextShader::update_uniforms();
-	draw_lines(line_ends, false);
+	draw_lines(state, line_ends, false);
 }
 
 void FileView::draw() {
@@ -432,38 +436,40 @@ void FileView::draw() {
 	TextShader::globals.scroll_offset_px = scroll_;
 	TextShader::globals.is_foreground = false;
 
-	std::unique_lock lock(loader_.mtx);
+	{
+		// TODO release this lock sooner by making copies of the data we need
+		std::unique_lock lock(loader_.mtx);
 
-	const auto state = loader_.get_state(lock);
-	const auto mapped_lines = loader_.get_mapped_lines(lock);
-	longest_line_ = loader_.get_longest_line(lock);
-	const auto line_ends = loader_.get_line_ends(lock);
-	const auto mapped_data = loader_.get_mapped_data();
-	const auto tailed_data = loader_.get_tailed_data();
+		const auto state = loader_.get_state(lock);
+		const auto mapped_lines = loader_.get_mapped_lines(lock);
+		longest_line_ = loader_.get_longest_line(lock);
+		const auto &line_ends = loader_.get_line_ends(lock);
+		const auto mapped_data = loader_.get_mapped_data();
+		const auto tailed_data = loader_.get_tailed_data();
 
-	// This is a hacky way to detect the transition from INIT to FIRST_READY state
-	if (state == Loader::State::FIRST_READY && !line_ends.empty() && !num_lines_) {
-		// jump to the end of the file
+		// This is a hacky way to detect the transition from INIT to FIRST_READY state
+		if (state == Loader::State::FIRST_READY && !line_ends.empty() && !num_lines_) {
+			// jump to the end of the file
 
+		}
+
+		num_lines_ = line_ends.size();
+		if (state == Loader::State::FIRST_READY) {
+			linenum_chars_ = 1;
+		} else {
+			linenum_chars_ = linenum_len(mapped_lines);
+		}
+		update_buffers(state, mapped_lines, line_ends, mapped_data, tailed_data);
+
+
+		// Timeit draw("Draw");
+
+		TextShader::globals.set_viewport(pos() + ivec2{-(linenum_chars_ * TextShader::font().size.x + 20), 0}, size());
+		draw_content(state, line_ends);
+
+		TextShader::globals.set_viewport(pos(), size());
+		draw_linenums(state, line_ends);
 	}
-
-	num_lines_ = line_ends.size();
-	if (state == Loader::State::FIRST_READY) {
-		linenum_chars_ = 1;
-	} else {
-		linenum_chars_ = linenum_len(mapped_lines);
-	}
-	update_buffers(state, mapped_lines, line_ends, mapped_data, tailed_data);
-
-	lock.unlock();
-
-	// Timeit draw("Draw");
-
-	TextShader::globals.set_viewport(pos() + ivec2{-(linenum_chars_ * TextShader::font().size.x + 20), 0}, size());
-	draw_content(line_ends);
-
-	TextShader::globals.set_viewport(pos(), size());
-	draw_linenums(line_ends);
 
 	scroll_h_.draw();
 	scroll_v_.draw();
