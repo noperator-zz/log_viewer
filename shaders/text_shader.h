@@ -59,6 +59,6 @@ public:
 	static void destroy_buffers(Buffer &buf);
 
 	static void update_uniforms();
-	static void use(Buffer &buf);
+	static void use(const Buffer &buf);
 	static const Font &font();
 };

@@ -99,7 +99,7 @@ void TextShader::update_uniforms() {
 	glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(inst_->globals), &inst_->globals);
 }
 
-void TextShader::use(Buffer &buf) {
+void TextShader::use(const Buffer &buf) {
 	inst_->shader_.use();
 	// TODO can remove these?
 	glActiveTexture(GL_TEXTURE0);

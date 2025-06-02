@@ -18,7 +18,7 @@
 class FileView : public Widget {
 	// TODO make these limits dynamic
 	static constexpr size_t MAX_SCREEN_LINES = 200;
-	static constexpr size_t OVERSCAN_LINES = 1;
+	static constexpr ssize_t OVERSCAN_LINES = 1;
 	static constexpr size_t MAX_LINE_LENGTH = 16 * 1024;
 	static constexpr size_t CONTENT_BUFFER_SIZE = (MAX_SCREEN_LINES + OVERSCAN_LINES * 2) * MAX_LINE_LENGTH * (sizeof(TextShader::CharStyle) + sizeof(uint8_t));
 	static constexpr size_t LINENUM_BUFFER_SIZE = (MAX_SCREEN_LINES + OVERSCAN_LINES * 2) * 10 * (sizeof(TextShader::CharStyle) + sizeof(uint8_t));
@@ -74,6 +74,7 @@ class FileView : public Widget {
 	// 	glm::ivec2 buf_lines_ {};
 	// 	size_t num_lines_ {0};
 	// 	size_t longest_line_ {0};
+	// buf_offset
 	// };
 	// RenderParams params_ {};
 
@@ -94,14 +95,14 @@ class FileView : public Widget {
 	void on_resize() override;
 	void update_scrollbar();
 
-	void update_buffers(Loader::State state, size_t mapped_lines, const std::vector<size_t> &line_ends,
+	glm::uvec2 update_buffers(Loader::State state, size_t mapped_lines, const std::vector<size_t> &line_ends,
 		const uint8_t *mapped_data, const uint8_t *tailed_data);
-	void draw_lines(Loader::State state, const std::vector<size_t> &line_ends, bool is_linenum) const;
-	void draw_linenums(Loader::State state, const std::vector<size_t> &line_ends);
-	void draw_content(Loader::State state, const std::vector<size_t> &line_ends);
+	void draw_lines(glm::uvec2 render_size) const;
+	void draw_linenums(glm::uvec2 render_size) const;
+	void draw_content(glm::uvec2 render_size) const;
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
-
+	static size_t get_line_start(Loader::State state, size_t line_idx, const std::vector<size_t> &line_ends);
 public:
 	static std::unique_ptr<FileView> create(const char *path);
 	~FileView();
