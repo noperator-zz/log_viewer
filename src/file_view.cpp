@@ -42,22 +42,22 @@ std::thread FileView::Loader::start(const Event &quit) {
 	return std::thread(&Loader::worker, this, std::ref(quit));
 }
 
-FileView::Loader::State FileView::Loader::get_state(const std::unique_lock<std::mutex> &lock) {
+FileView::Loader::State FileView::Loader::get_state(const std::lock_guard<std::mutex> &lock) {
 	(void)lock;
 	return state_;
 }
 
-size_t FileView::Loader::get_mapped_lines(const std::unique_lock<std::mutex> &lock) const {
+size_t FileView::Loader::get_mapped_lines(const std::lock_guard<std::mutex> &lock) const {
 	(void)lock;
 	return mapped_lines_;
 }
 
-size_t FileView::Loader::get_longest_line(const std::unique_lock<std::mutex> &lock) const {
+size_t FileView::Loader::get_longest_line(const std::lock_guard<std::mutex> &lock) const {
 	(void)lock;
 	return longest_line_;
 }
 
-const std::vector<size_t> &FileView::Loader::get_line_ends(const std::unique_lock<std::mutex> &lock) const {
+const std::vector<size_t> &FileView::Loader::get_line_ends(const std::lock_guard<std::mutex> &lock) const {
 	(void)lock;
 	return line_ends_;
 }
@@ -93,10 +93,6 @@ void FileView::Loader::worker(const Event &quit) {
 		switch (state_) {
 			case State::INIT: {
 				load_mapped();
-				// {
-				// 	std::lock_guard lock(mtx);
-				// 	state_ = State::LOAD_TAIL;
-				// }
 				break;
 			}
 			case State::LOAD_TAIL:
@@ -116,7 +112,7 @@ void FileView::Loader::load_mapped() {
 	Timeit load_timeit("Load");
 	Timeit first_timeit("First chunk");
 
-	size_t chunk_size = 100ULL * 1024 * 1024;
+	size_t chunk_size = 1ULL * 1024 * 1024;
 	size_t num_chunks = (total_size + chunk_size - 1) / chunk_size;
 	// size_t num_chunks = 8;
 	// size_t chunk_size = total_size / num_chunks;
@@ -141,7 +137,6 @@ void FileView::Loader::load_mapped() {
 	});
 
 	// std::this_thread::sleep_for(1s);
-
 	workers_.wait_free(8); // Wait for the last job to finish
 	{
 		std::lock_guard lock(mtx);
@@ -149,16 +144,8 @@ void FileView::Loader::load_mapped() {
 		line_ends_ = units[i].output;
 		longest_line_ = units[i].longest_line;
 		mapped_lines_ = units[i].output.size();
-
-		// line_ends_ = {};
-		// line_ends_.push_back(units[i].output[0]);
-		// longest_line_ = units[i].output[0];
-		// mapped_lines_ = 1;
 	}
 	first_timeit.stop();
-
-	return;
-	std::this_thread::sleep_for(1s);
 
 	for (i = 0; i < num_chunks - 1; ++i) {
 		file_.touch_pages(units[i].data, units[i].size);
@@ -167,6 +154,7 @@ void FileView::Loader::load_mapped() {
 		});
 	}
 
+	// std::this_thread::sleep_for(1s);
 	workers_.wait_free(8); // Wait for the last job to finish
 
 	load_timeit.stop();
@@ -174,6 +162,7 @@ void FileView::Loader::load_mapped() {
 
 	{
 		std::lock_guard lock(mtx);
+		state_ = State::LOAD_TAIL;
 		mapped_lines_ = 0;
 		for (i = 0; i < num_chunks; ++i) {
 			mapped_lines_ += units[i].output.size();
@@ -193,12 +182,12 @@ void FileView::Loader::load_mapped() {
 	std::cout << "Found " << mapped_lines_ << " newlines\n";
 	std::cout << "Longest line: " << longest_line_ << "\n";
 	// assert(num_mmapped_lines_ == 10001);
-	// assert(mapped_lines_ == 27294137);
-	// assert(longest_line_ == 6567);
+	assert(mapped_lines_ == 27294137);
+	assert(longest_line_ == 6567);
 }
 
 void FileView::Loader::load_tailed() {
-	std::cout << "Loading tailed data\n";
+	// std::cout << "Loading tailed data\n";
 }
 
 void FileView::on_resize() {
@@ -227,7 +216,7 @@ void FileView::scroll_v_cb(double percent) {
 }
 
 void FileView::scroll(ivec2 scroll) {
-	scroll *= TextShader::font().size;
+	// scroll *= TextShader::font().size;
 	scroll *= -3;
 
 	scroll_.x += std::max(scroll.x, -scroll_.x);
@@ -270,10 +259,10 @@ uvec2 FileView::update_buffers(const Loader::State state, const size_t mapped_li
 	// Check if the visible lines are already in the buffer
 	if (visible_lines.x >= buf_lines_.x && visible_lines.y <= buf_lines_.y) {
 		// Already in the buffer
-		return uvec2{get_line_start(state, visible_lines.x, line_ends), line_ends[visible_lines.y]} - (uint)line_ends[buf_lines_.x];
+		return u64vec2{get_line_start(state, visible_lines.x, line_ends), line_ends[visible_lines.y - 1]} - get_line_start(state, buf_lines_.x, line_ends);
 	}
 
-	Timeit update_timeit("Update content buffer");
+	// Timeit update_timeit("Update content buffer");
 
 	// first (inclusive) and last (exclusive) lines to buffer
 	buf_lines_.x = std::max(0LL, visible_lines.x - OVERSCAN_LINES);
@@ -369,11 +358,11 @@ uvec2 FileView::update_buffers(const Loader::State state, const size_t mapped_li
 	glBindBuffer(GL_ARRAY_BUFFER, linenum_buf_.vbo_style);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, total_linenum_chars * sizeof(TextShader::CharStyle), linenum_styles.get());
 
-	update_timeit.stop();
-	printf("Content buffer size: %zu\n", num_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
-	printf("Linenum buffer size: %zu\n", total_linenum_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
+	// update_timeit.stop();
+	// printf("Content buffer size: %zu\n", num_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
+	// printf("Linenum buffer size: %zu\n", total_linenum_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
 
-	return uvec2{get_line_start(state, visible_lines.x, line_ends), line_ends[visible_lines.y]} - (uint)line_ends[buf_lines_.x];
+	return u64vec2{get_line_start(state, visible_lines.x, line_ends), line_ends[visible_lines.y - 1]} - get_line_start(state, buf_lines_.x, line_ends);
 }
 
 void FileView::draw_lines(const uvec2 render_size) const {
@@ -401,14 +390,10 @@ void FileView::draw_content(const uvec2 render_size) const {
 }
 
 void FileView::draw() {
-	// TextShader::globals.frame_offset_px = pos();
-	TextShader::globals.scroll_offset_px = scroll_;
-	TextShader::globals.is_foreground = false;
-
 	uvec2 render_size;
 	{
 		// TODO release this lock sooner by making copies of the data we need
-		std::unique_lock lock(loader_.mtx);
+		std::lock_guard lock(loader_.mtx);
 
 		const auto state = loader_.get_state(lock);
 		const auto mapped_lines = loader_.get_mapped_lines(lock);
@@ -417,13 +402,19 @@ void FileView::draw() {
 		const auto mapped_data = loader_.get_mapped_data();
 		const auto tailed_data = loader_.get_tailed_data();
 
-		// This is a hacky way to detect the transition from INIT to FIRST_READY state
-		if (state == Loader::State::FIRST_READY && !line_ends.empty() && !num_lines_) {
-			// jump to the end of the file
+		auto prev_num_lines = num_lines_;
+		num_lines_ = line_ends.size();
 
+		if (state_ == Loader::State::INIT && state != Loader::State::INIT) {
+			// jump to the end of the file
+			scroll_.y = num_lines_ * TextShader::font().size.y - size().y;
+		} else if (state_ == Loader::State::FIRST_READY && state != Loader::State::FIRST_READY) {
+			// Re-sync the scroll position after line_ends was updated
+			scroll_.y += (num_lines_ - prev_num_lines) * TextShader::font().size.y;
 		}
 
-		num_lines_ = line_ends.size();
+		state_ = state;
+
 		if (state == Loader::State::FIRST_READY) {
 			linenum_chars_ = 1;
 		} else {
@@ -431,6 +422,12 @@ void FileView::draw() {
 		}
 		render_size = update_buffers(state, mapped_lines, line_ends, mapped_data, tailed_data);
 	}
+
+	std::cout << render_size.x << " " << render_size.y << "\n";
+
+	// TextShader::globals.frame_offset_px = pos();
+	TextShader::globals.scroll_offset_px = scroll_;
+	TextShader::globals.is_foreground = false;
 
 	// Timeit draw("Draw");
 

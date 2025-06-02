@@ -218,7 +218,7 @@ int App::run() {
 
         auto stat_elapsed = duration_cast<milliseconds>(frame_start - last_stat);
         if (stat_elapsed.count() > 1000) {
-            std::cout << "FPS: " << fps << "\n";
+            // std::cout << "FPS: " << fps << "\n";
             last_stat = frame_start;
             fps = 0;
         }

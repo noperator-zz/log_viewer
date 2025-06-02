@@ -52,10 +52,10 @@ class FileView : public Widget {
 		~Loader();
 
 		std::thread start(const Event &quit);
-		State get_state(const std::unique_lock<std::mutex> &lock);
-		size_t get_mapped_lines(const std::unique_lock<std::mutex> &lock) const;
-		size_t get_longest_line(const std::unique_lock<std::mutex> &lock) const;
-		const std::vector<size_t> &get_line_ends(const std::unique_lock<std::mutex> &lock) const;
+		State get_state(const std::lock_guard<std::mutex> &lock);
+		size_t get_mapped_lines(const std::lock_guard<std::mutex> &lock) const;
+		size_t get_longest_line(const std::lock_guard<std::mutex> &lock) const;
+		const std::vector<size_t> &get_line_ends(const std::lock_guard<std::mutex> &lock) const;
 		const uint8_t *get_mapped_data() const;
 		const uint8_t *get_tailed_data() const;
 	};
@@ -87,6 +87,7 @@ class FileView : public Widget {
 
 	Event quit_ {};
 	std::thread loader_thread_ {};
+	Loader::State state_ {};
 	size_t num_lines_ {};
 	size_t longest_line_ {};
 
