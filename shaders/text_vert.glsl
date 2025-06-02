@@ -1,7 +1,7 @@
 #version 400 core
 layout(location = 0) in uint glyph_idx_;
 layout(location = 1) in uint style_mask;
-layout(location = 2) in uint line_idx;
+layout(location = 2) in uvec2 char_pos;
 layout(location = 3) in vec4 fg;
 layout(location = 4) in vec4 bg;
 
@@ -17,9 +17,6 @@ layout(std140) uniform Globals {
 uniform sampler2D atlas;
 uniform sampler2D bearing_table;
 
-flat out uint char_idx;
-flat out uint v_style_mask;
-flat out float bearing_y_px;
 out vec2 v_uv;
 out vec4 v_fg;
 out vec4 v_bg;
@@ -31,11 +28,11 @@ void main() {
         vec2(0, 1), vec2(1, 1)
     );
 
-    char_idx = uint(gl_InstanceID);  // Which glyph in the line
+//    char_idx = uint(gl_InstanceID);  // Which glyph in the line
     vec2 corner_quant = quad_offsets[corner];
     // Pre-calculate the line offset using integer arithmetic to acheive a greater scroll range compared to float (31-bit vs 24-bit mantissa).
-    ivec2 line_offset_px = ivec2(0, line_idx) * glyph_size_px.y - ivec2(scroll_offset_px);
-    vec2 pos_px = (vec2(char_idx, 0) + corner_quant) * glyph_size_px + frame_offset_px + line_offset_px;
+    ivec2 line_offset_px = ivec2(0, char_pos.y) * glyph_size_px.y - ivec2(scroll_offset_px);
+    vec2 pos_px = (vec2(char_pos.x, 0) + corner_quant) * glyph_size_px + frame_offset_px + line_offset_px;
     v_bg = bg;
     if (!is_foreground) {
         gl_Position = u_proj * vec4(pos_px, 0.0, 1.0);
@@ -44,10 +41,8 @@ void main() {
 
     uint glyph_idx = glyph_idx_ & 0xFFU;
     uint style_idx = style_mask & 3U;
-    v_style_mask = style_mask;
 
-    bearing_y_px = texelFetch(bearing_table, ivec2(glyph_idx, style_idx), 0).r;
-    pos_px.y += bearing_y_px;
+    pos_px.y += texelFetch(bearing_table, ivec2(glyph_idx, style_idx), 0).r;
 
     v_uv = (vec2(glyph_idx, style_idx) + corner_quant) / vec2(atlas_cols, 4U);
     v_fg = fg;

@@ -18,7 +18,7 @@ public:
 			};
 			uint8_t style {};
 		};
-		glm::uint line_idx {};
+		glm::uvec2 char_pos {};
 		glm::u8vec4 fg {};
 		glm::u8vec4 bg {};
 	};

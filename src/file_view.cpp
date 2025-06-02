@@ -323,7 +323,7 @@ void FileView::update_buffers(const Loader::State state, const size_t mapped_lin
 		for (size_t i = 0; i < line_len; i++) {
 			content_styles[c] = {
 				{},
-				line_idx,
+				uvec2{i, line_idx},
 				vec4{200, 200, 200, 255},
 				vec4{100, 100, 100, 100}
 			};
@@ -357,7 +357,7 @@ void FileView::update_buffers(const Loader::State state, const size_t mapped_lin
 		for (size_t i = 0; i < line_len; i++) {
 			linenum_styles[c] = {
 				{},
-				line_idx,
+				uvec2{i, line_idx},
 				vec4{200, 200, 200, 255},
 				vec4{100, 100, 100, 100}
 			};

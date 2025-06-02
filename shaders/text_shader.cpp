@@ -68,7 +68,7 @@ void TextShader::create_buffers(Buffer &buf, size_t total_size) {
 	glEnableVertexAttribArray(1);
 	glVertexAttribDivisor(1, 1);
 
-	glVertexAttribIPointer(2, 1, GL_UNSIGNED_INT, sizeof(CharStyle), (void*)offsetof(CharStyle, line_idx));
+	glVertexAttribIPointer(2, 2, GL_UNSIGNED_INT, sizeof(CharStyle), (void*)offsetof(CharStyle, char_pos));
 	glEnableVertexAttribArray(2);
 	glVertexAttribDivisor(2, 1);
 

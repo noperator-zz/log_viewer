@@ -1,7 +1,4 @@
 #version 330 core
-flat in uint char_idx;
-flat in uint v_style_mask;
-flat in float bearingY;
 in vec2 v_uv;
 in vec4 v_fg;
 in vec4 v_bg;
