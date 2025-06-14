@@ -53,8 +53,8 @@ void find_newlines_avx2(WorkUnit& unit) {
 	const __m256i newline = _mm256_set1_epi8('\n');
 	size_t i = 0;
 
-	size_t prev_start = unit.offset;
-	size_t start;
+	size_t prev_end = unit.offset - 1;
+	size_t end;
 	for (; i + 32 <= unit.size; i += 32) {
 		__m256i chunk = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(unit.data + i));
 		__m256i cmp = _mm256_cmpeq_epi8(chunk, newline);
@@ -63,23 +63,47 @@ void find_newlines_avx2(WorkUnit& unit) {
 		while (mask != 0) {
 			int bit = __builtin_ctz(mask);
 			mask &= (mask - 1);
-			start = unit.offset + i + bit + 1;
-			unit.output.push_back(start);
-			unit.longest_line = std::max(unit.longest_line, start - prev_start);
-			prev_start = start;
+			end = unit.offset + i + bit;
+			unit.output.push_back(end);
+			unit.longest_line = std::max(unit.longest_line, end - prev_end);
+			prev_end = end;
 		}
 	}
 
 	// Tail loop
 	for (; i < unit.size; ++i) {
 		if (unit.data[i] == '\n') {
-			start = unit.offset + i + 1;
-			unit.output.push_back(start);
-			unit.longest_line = std::max(unit.longest_line, start - prev_start);
-			prev_start = start;
+			end = unit.offset + i;
+			unit.output.push_back(end);
+			unit.longest_line = std::max(unit.longest_line, end - prev_end);
+			prev_end = end;
 		}
 	}
 }
+
+void find_newlines_avx512(WorkUnit& unit) {
+	const __m512i newline = _mm512_set1_epi8('\n');
+	size_t i = 0;
+
+	for (; i + 64 <= unit.size; i += 64) {
+		__m512i chunk = _mm512_loadu_si512(reinterpret_cast<const __m512i*>(unit.data + i));
+		__mmask64 mask = _mm512_cmpeq_epi8_mask(chunk, newline); // 64-bit mask
+
+		while (mask) {
+			int bit = _tzcnt_u64(mask);  // Find first set bit
+			unit.output.push_back(unit.offset + i + bit);
+			mask &= (mask - 1); // Clear lowest set bit
+		}
+	}
+
+	// Tail bytes
+	for (; i < unit.size; ++i) {
+		if (unit.data[i] == '\n') {
+			unit.output.push_back(unit.offset + i);
+		}
+	}
+}
+
 
 // std::vector<size_t> find_newlines(const uint8_t* data, size_t total_size, size_t num_threads) {
 // 	std::vector<size_t> newline_positions;

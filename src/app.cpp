@@ -222,6 +222,7 @@ int App::run() {
             last_stat = frame_start;
             fps = 0;
         }
+		fflush(stdout);
     }
 
     glfwTerminate();
