@@ -21,7 +21,7 @@ int File::open() {
 	hFile_ = CreateFileA(
 		path_,
 		GENERIC_READ,             // desired access
-		FILE_SHARE_READ,          // share mode
+		FILE_SHARE_READ | FILE_SHARE_WRITE,          // share mode
 		NULL,                     // security
 		OPEN_EXISTING,            // creation disposition
 		FILE_ATTRIBUTE_NORMAL,    // flags
@@ -115,12 +115,51 @@ void File::close() {
 #endif
 }
 
+void File::seek(size_t offset) {
+#ifdef WIN32
+	LARGE_INTEGER li;
+	li.QuadPart = offset;
+	SetFilePointerEx(hFile_, li, NULL, FILE_BEGIN);
+#else
+	lseek(fd_, offset, SEEK_SET);
+#endif
+}
+
+size_t File::read_tail() {
+	static constexpr size_t READ_SIZE = 1024 * 1024; // 1 MiB
+	size_t total = 0;
+	while (1) {
+		tailed_data_.reserve(total + READ_SIZE); // Reserve more space for the next read
+#ifdef WIN32
+		DWORD bytesRead;
+		if (!ReadFile(hFile_, tailed_data_.data() + tailed_data_.size(), READ_SIZE, &bytesRead, nullptr) || bytesRead == 0) {
+			break;
+		}
+#else
+		bytesRead = ::read(fd_, tailed_data_.data() + tailed_data_.size(), READ_SIZE);
+		if (bytesRead <= 0) {
+			bytesRead = 0;
+			break;
+		}
+#endif
+		tailed_data_.resize_uninitialized(tailed_data_.size() + bytesRead);
+		total += bytesRead;
+	}
+	return total;
+}
+
 size_t File::mapped_size() const {
 	return mapped_size_;
 }
+
 const uint8_t *File::mapped_data() const {
 	return mapped_data_;
 }
+
+size_t File::tailed_size() const {
+	return tailed_data_.size();
+}
+
 const uint8_t *File::tailed_data() const {
 	return tailed_data_.data();
 }
