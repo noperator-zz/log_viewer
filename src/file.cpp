@@ -31,13 +31,6 @@ int File::open() {
 	if (hFile_ == INVALID_HANDLE_VALUE) {
 		return -1;
 	}
-
-	LARGE_INTEGER fileSize;
-	if (!GetFileSizeEx(hFile_, &fileSize)) {
-		return -1;
-	}
-
-	mapped_size_ = fileSize.QuadPart;
 #else
 	if (fd_ != -1) {
 		return 0;
@@ -47,19 +40,29 @@ int File::open() {
 	if (fd_ == -1) {
 		return -1;
 	}
-
-	struct stat sb;
-	if (fstat(fd_, &sb) == -1) {
-		return -2;
-	}
-	size_ = sb.st_size;
 #endif
-
-	return mmap();
+	return 0;
 }
 
 int File::mmap() {
 #ifdef WIN32
+	LARGE_INTEGER fileSize;
+	if (!GetFileSizeEx(hFile_, &fileSize)) {
+		return -1;
+	}
+
+	if (fileSize.QuadPart == mapped_size_) {
+		return 0; // Already mapped
+	}
+
+	mapped_size_ = fileSize.QuadPart;
+
+	if (hMap_ != INVALID_HANDLE_VALUE) {
+		UnmapViewOfFile(hMap_);
+		CloseHandle(hMap_);
+		hMap_ = INVALID_HANDLE_VALUE;
+	}
+
 	hMap_ = CreateFileMappingA(
 		hFile_,                    // file handle
 		NULL,                     // security
@@ -84,9 +87,24 @@ int File::mmap() {
 		CloseHandle(hMap_);
 		return -2;
 	}
-
 #else
-	mapped_data_ = (const uint8_t*)::mmap(NULL, size_, PROT_READ, MAP_SHARED, fd_, 0);
+	struct stat sb;
+	if (fstat(fd_, &sb) == -1) {
+		return -2;
+	}
+
+	if (sb.st_size == mapped_size_) {
+		return 0; // Already mapped
+	}
+
+	mapped_size_ = sb.st_size;
+
+	if (mapped_data_ && mapped_data_ != MAP_FAILED) {
+		::munmap((void*)mapped_data_, mapped_size_);
+		mapped_data_ = nullptr;
+	}
+
+	mapped_data_ = (const uint8_t*)::mmap(NULL, mapped_size_, PROT_READ, MAP_SHARED, fd_, 0);
 	if (mapped_data_ == MAP_FAILED) {
 		return -1;
 	}
@@ -107,45 +125,12 @@ void File::close() {
 	}
 #else
 	if (mapped_data_ && mapped_data_ != MAP_FAILED) {
-		::munmap((void*)mapped_data_, size_);
+		::munmap((void*)mapped_data_, mapped_size_);
 		mapped_data_ = nullptr;
 	}
 	::close(fd_);
 	fd_ = -1;
 #endif
-}
-
-void File::seek(size_t offset) {
-#ifdef WIN32
-	LARGE_INTEGER li;
-	li.QuadPart = offset;
-	SetFilePointerEx(hFile_, li, NULL, FILE_BEGIN);
-#else
-	lseek(fd_, offset, SEEK_SET);
-#endif
-}
-
-size_t File::read_tail() {
-	static constexpr size_t READ_SIZE = 1024 * 1024; // 1 MiB
-	size_t total = 0;
-	while (1) {
-		tailed_data_.reserve(total + READ_SIZE); // Reserve more space for the next read
-#ifdef WIN32
-		DWORD bytesRead;
-		if (!ReadFile(hFile_, tailed_data_.data() + tailed_data_.size(), READ_SIZE, &bytesRead, nullptr) || bytesRead == 0) {
-			break;
-		}
-#else
-		bytesRead = ::read(fd_, tailed_data_.data() + tailed_data_.size(), READ_SIZE);
-		if (bytesRead <= 0) {
-			bytesRead = 0;
-			break;
-		}
-#endif
-		tailed_data_.resize_uninitialized(tailed_data_.size() + bytesRead);
-		total += bytesRead;
-	}
-	return total;
 }
 
 size_t File::mapped_size() const {
@@ -154,14 +139,6 @@ size_t File::mapped_size() const {
 
 const uint8_t *File::mapped_data() const {
 	return mapped_data_;
-}
-
-size_t File::tailed_size() const {
-	return tailed_data_.size();
-}
-
-const uint8_t *File::tailed_data() const {
-	return tailed_data_.data();
 }
 
 void File::touch_pages(const uint8_t *addr, size_t size) {

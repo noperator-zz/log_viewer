@@ -41,23 +41,26 @@ class FileView : public Widget {
 		State state_ {};
 		std::vector<size_t> line_ends_ {};
 		size_t mapped_lines_ {};
+		// NOTE: This length includes the newline character. It's only used for scroll bar size calculations, so fine for now.
 		size_t longest_line_ {};
 
 		void worker(const Event &quit);
-		void load_mapped();
-		void load_tailed();
+		void load_inital();
+		void load_tail();
 
 	public:
 		Loader(File &&file, size_t num_workers);
 		~Loader();
 
+		struct Snapshot {
+			State state;
+			size_t longest_line;
+			const std::vector<size_t> &line_ends;
+			const uint8_t *data;
+		};
+
 		std::thread start(const Event &quit);
-		State get_state(const std::lock_guard<std::mutex> &lock);
-		size_t get_mapped_lines(const std::lock_guard<std::mutex> &lock) const;
-		size_t get_longest_line(const std::lock_guard<std::mutex> &lock) const;
-		const std::vector<size_t> &get_line_ends(const std::lock_guard<std::mutex> &lock) const;
-		const uint8_t *get_mapped_data() const;
-		const uint8_t *get_tailed_data() const;
+		Snapshot snapshot(const std::lock_guard<std::mutex> &lock) const;
 	};
 
 	// File file_;
@@ -96,11 +99,11 @@ class FileView : public Widget {
 	void on_resize() override;
 	void update_scrollbar();
 
-	glm::uvec2 update_buffers(Loader::State state, size_t mapped_lines, const std::vector<size_t> &line_ends,
-		const uint8_t *mapped_data, const uint8_t *tailed_data);
-	void draw_lines(glm::uvec2 render_size) const;
-	void draw_linenums(glm::uvec2 render_size) const;
-	void draw_content(glm::uvec2 render_size) const;
+	void really_update_buffers(int start, int end, const Loader::Snapshot &snapshot);
+	void update_buffers(glm::uvec2 &content_render_range, glm::uvec2 &linenum_render_range, const Loader::Snapshot &snapshot);
+	void draw_lines(glm::uvec2 render_range) const;
+	void draw_linenums(glm::uvec2 render_range) const;
+	void draw_content(glm::uvec2 render_range) const;
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
 	static size_t get_line_start(Loader::State state, size_t line_idx, const std::vector<size_t> &line_ends);

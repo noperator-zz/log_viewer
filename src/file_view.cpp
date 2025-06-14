@@ -42,32 +42,9 @@ std::thread FileView::Loader::start(const Event &quit) {
 	return std::thread(&Loader::worker, this, std::ref(quit));
 }
 
-FileView::Loader::State FileView::Loader::get_state(const std::lock_guard<std::mutex> &lock) {
+FileView::Loader::Snapshot FileView::Loader::snapshot(const std::lock_guard<std::mutex> &lock) const {
 	(void)lock;
-	return state_;
-}
-
-size_t FileView::Loader::get_mapped_lines(const std::lock_guard<std::mutex> &lock) const {
-	(void)lock;
-	return mapped_lines_;
-}
-
-size_t FileView::Loader::get_longest_line(const std::lock_guard<std::mutex> &lock) const {
-	(void)lock;
-	return longest_line_;
-}
-
-const std::vector<size_t> &FileView::Loader::get_line_ends(const std::lock_guard<std::mutex> &lock) const {
-	(void)lock;
-	return line_ends_;
-}
-
-const uint8_t *FileView::Loader::get_mapped_data() const {
-	return file_.mapped_data();
-}
-
-const uint8_t *FileView::Loader::get_tailed_data() const {
-	return file_.tailed_data();
+	return {state_, longest_line_, line_ends_, file_.mapped_data()};
 }
 
 int FileView::open() {
@@ -82,22 +59,32 @@ int FileView::open() {
 
 void FileView::Loader::worker(const Event &quit) {
 	{
-		Timeit file_open_timeit("File Open");
+		Timeit timeit("File Open");
 		if (file_.open() != 0) {
 			std::cerr << "Failed to open file_\n";
 			// TODO better error handling
 			return;
 		}
 	}
+	{
+		Timeit timeit("File Initial Mapping");
+		if (file_.mmap() != 0) {
+			std::cerr << "Failed to map file_\n";
+			// TODO better error handling
+			return;
+		}
+		timeit.stop();
+		std::cout << "File mapped: " << file_.mapped_size() << " B\n";
+	}
 	while (!quit.wait(0ms)) {
 		switch (state_) {
 			case State::INIT: {
-				load_mapped();
+				load_inital();
 				break;
 			}
 			case State::LOAD_TAIL:
-				load_tailed();
-				(void)quit.wait(1s);
+				load_tail();
+				(void)quit.wait(100ms);
 				break;
 			// default:
 			// 	assert(false);
@@ -105,14 +92,15 @@ void FileView::Loader::worker(const Event &quit) {
 	}
 }
 
-void FileView::Loader::load_mapped() {
+void FileView::Loader::load_inital() {
 	size_t total_size = file_.mapped_size();
 	std::cout << "Loading " << total_size / 1024 / 1024 << " MiB\n";
 	Timeit total_timeit("Load mapped");
 	Timeit load_timeit("Load");
 	Timeit first_timeit("First chunk");
 
-	size_t chunk_size = 1ULL * 1024 * 1024;
+	size_t chunk_size = 10ULL * 1024 * 1024;
+	// size_t chunk_size = 1024;
 	size_t num_chunks = (total_size + chunk_size - 1) / chunk_size;
 	// size_t num_chunks = 8;
 	// size_t chunk_size = total_size / num_chunks;
@@ -164,30 +152,94 @@ void FileView::Loader::load_mapped() {
 		std::lock_guard lock(mtx);
 		state_ = State::LOAD_TAIL;
 		mapped_lines_ = 0;
-		for (i = 0; i < num_chunks; ++i) {
-			mapped_lines_ += units[i].output.size();
-			longest_line_ = std::max(longest_line_, units[i].longest_line);
-		}
-
 		line_ends_.clear();
 		line_ends_.reserve(mapped_lines_);
 		// line_ends.push_back(0);
+		size_t prev = 0;
 		for (const auto& unit : units) {
+			if (unit.output.empty()) {
+				continue; // Skip empty units
+			}
+			size_t line_len = unit.output.front() - prev;
+			prev = unit.output.back();
+			line_len = std::max(line_len, unit.longest_line);
+			mapped_lines_ += unit.output.size();
+			longest_line_ = std::max(longest_line_, line_len);
 			line_ends_.insert(line_ends_.end(), unit.output.begin(), unit.output.end());
 		}
+		if (!line_ends_.empty() && line_ends_.back() < (total_size - 1)) {
+			// NOTE Mapped data is truncated to the last newline. The tailed_data will contain the rest.
+			printf("Ignoring %zu bytes at the end of the mapped data\n", total_size - line_ends_.back());
+			// // Ensure the last line ends at the end of the file
+			// longest_line_ = std::max(longest_line_, total_size - line_ends_.back());
+			// line_ends_.push_back(total_size);
+			// mapped_lines_++;
+		}
+		// file_.seek(line_ends_.empty() ? 0 : line_ends_.back());
 	}
 
 	combine_timeit.stop();
 	total_timeit.stop();
+
+	i = 0;
+	for (const auto& unit : units) {
+		printf("Unit %3zu (0x%08zx - 0x%08zx): First line 0x%08zx, Last line 0x%08zx, # lines %9zu\n",
+			i, unit.offset, unit.offset + unit.size,
+			unit.output.empty() ? 0 : unit.output.front(),
+			unit.output.empty() ? 0 : unit.output.back(),
+			unit.output.size());
+		i++;
+		fflush(stdout);
+	}
+
 	std::cout << "Found " << mapped_lines_ << " newlines\n";
 	std::cout << "Longest line: " << longest_line_ << "\n";
-	// assert(num_mmapped_lines_ == 10001);
-	assert(mapped_lines_ == 27294137);
-	assert(longest_line_ == 6567);
+	fflush(stdout);
+	// assert(mapped_lines_ == 1000);
+	// assert(longest_line_ == 4092);
+	// assert(mapped_lines_ == 27294137);
+	// assert(longest_line_ == 6567);
 }
 
-void FileView::Loader::load_tailed() {
-	// std::cout << "Loading tailed data\n";
+void FileView::Loader::load_tail() {
+	auto prev_size = file_.mapped_size();
+	{
+		Timeit timeit("File remap");
+		if (file_.mmap() != 0) {
+			std::cerr << "Failed to map file_\n";
+			// TODO better error handling
+			return;
+		}
+		timeit.stop();
+		std::cout << "File remapped: " << prev_size << " B -> " << file_.mapped_size() << " B\n";
+	}
+
+	if (prev_size == file_.mapped_size()) {
+		return;
+	}
+
+	// size_t total = file_.read_tail();
+	// std::cout << "Loading tail " << total << " bytes\n";
+	// auto offset = line_ends_.empty() ? 0 : line_ends_[mapped_lines_ - 1];
+	// size_t parsed_tailed_bytes = line_ends_.empty() ? 0 : line_ends_.back() - line_ends_[mapped_lines_ - 1];
+	// if (file_.tailed_size() > parsed_tailed_bytes) {
+	// 	WorkUnit unit {
+	// 		std::vector<size_t>{},
+	// 		file_.tailed_data() + parsed_tailed_bytes,
+	// 		file_.tailed_size() - parsed_tailed_bytes,
+	// 		parsed_tailed_bytes + offset
+	// 	};
+	// 	find_newlines_avx2(unit);
+	// 	{
+	// 		std::lock_guard lock(mtx);
+	// 		size_t num_lines = unit.output.size();
+	// 		if (num_lines > 0) {
+	// 			line_ends_.insert(line_ends_.end(), unit.output.begin(), unit.output.end());
+	// 			printf("Tailed data: First line 0x%08zx, Last line 0x%08zx, # lines %9zu\n",
+	// 				unit.output.front(), unit.output.back(), num_lines);
+	// 		}
+	// 	}
+	// }
 }
 
 void FileView::on_resize() {
@@ -239,80 +291,39 @@ size_t FileView::get_line_start(Loader::State state, size_t line_idx, const std:
 	return line_ends[line_idx - 1];
 }
 
-uvec2 FileView::update_buffers(const Loader::State state, const size_t mapped_lines, const std::vector<size_t> &line_ends,
-	const uint8_t *mapped_data, const uint8_t *tailed_data) {
-	if (state == Loader::State::INIT) {
-		return {};
-	}
-
-	if (!num_lines_) {
-		return {};
-	}
-
-	// first (inclusive) and last (exclusive) lines which would be visible on the screen
-	ivec2 visible_lines = ivec2{0, 1} + ivec2{scroll_.y, scroll_.y + size().y} / TextShader::font().size.y;
-
-	// Clamp to the total number of lines available
-	visible_lines.x = std::min(visible_lines.x, (int)num_lines_ - 1);
-	visible_lines.y = std::min(visible_lines.y, (int)num_lines_);
-
-	// Check if the visible lines are already in the buffer
-	if (visible_lines.x >= buf_lines_.x && visible_lines.y <= buf_lines_.y) {
-		// Already in the buffer
-		return u64vec2{get_line_start(state, visible_lines.x, line_ends), line_ends[visible_lines.y - 1]} - get_line_start(state, buf_lines_.x, line_ends);
-	}
+void FileView::really_update_buffers(int start, int end, const Loader::Snapshot &snapshot) {
 
 	// Timeit update_timeit("Update content buffer");
 
 	// first (inclusive) and last (exclusive) lines to buffer
-	buf_lines_.x = std::max(0LL, visible_lines.x - OVERSCAN_LINES);
-	buf_lines_.y = std::min((ssize_t)num_lines_, visible_lines.y + OVERSCAN_LINES);
+	buf_lines_ = {start, end};
 	assert(buf_lines_.y > 0);
-	assert(mapped_lines > 0);
+	assert(!snapshot.line_ends.empty());
 
 	// TODO The lines on screen have already been parsed. Cache and reuse them instead of re-parsing
 
-	const auto first_line_start = get_line_start(state, buf_lines_.x, line_ends);
+	const auto first_line_start = get_line_start(snapshot.state, buf_lines_.x, snapshot.line_ends);
 
 	// TODO detect if content won't fit in the buffer
 	// TODO If there is an extremely long line, only buffer the visible portion of the line
 	// TODO Handle 0 mapped lines, and other cases
 	// TODO Use glMapBufferRange
 	glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_text);
-	const uint8_t *ptr;
 	size_t num_chars = 0;
-	if (buf_lines_.y <= mapped_lines) {
-		ptr = mapped_data;
-		num_chars = line_ends[buf_lines_.y-1] - first_line_start;
-		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + first_line_start);
-	} else if (buf_lines_.x >= mapped_lines) {
-		ptr = tailed_data;
-		num_chars = line_ends[buf_lines_.y-1] - first_line_start;
-		const auto offset = line_ends[mapped_lines - 1];
-		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + first_line_start - offset);
-	} else {
-		assert(buf_lines_.x < mapped_lines && buf_lines_.y > mapped_lines);
-		ptr = mapped_data;
-		num_chars = line_ends[mapped_lines-1] - first_line_start;
-		glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, ptr + first_line_start);
-
-		ptr = tailed_data;
-		size_t num_chars2 = line_ends[buf_lines_.y-1] - line_ends[mapped_lines-1];
-		glBufferSubData(GL_ARRAY_BUFFER, num_chars, num_chars2, ptr);
-		num_chars += num_chars2;
-	}
+	num_chars = snapshot.line_ends[buf_lines_.y-1] - first_line_start;
+	glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, snapshot.data + first_line_start);
 
 	auto content_styles = std::make_unique<TextShader::CharStyle[]>(num_chars);
 	size_t c = 0;
 	size_t prev_end = first_line_start;
 	for (uint line_idx = buf_lines_.x; line_idx < buf_lines_.y; line_idx++) {
-		size_t line_len = line_ends[line_idx] - prev_end;
-		prev_end = line_ends[line_idx];
+		size_t line_len = snapshot.line_ends[line_idx] - prev_end;
+		prev_end = snapshot.line_ends[line_idx];
 		for (size_t i = 0; i < line_len; i++) {
 			content_styles[c] = {
 				{},
 				uvec2{i, line_idx},
-				vec4{200, 200, 200, 255},
+				vec4{100, 200, 200, 255},
 				vec4{100, 100, 100, 100}
 			};
 			c++;
@@ -335,7 +346,7 @@ uvec2 FileView::update_buffers(const Loader::State state, const size_t mapped_li
 		// std::string linenum_str = std::to_string(line_idx + 1);
 		// linenum_text.insert(linenum_text.end(), linenum_str.begin(), linenum_str.end());
 		size_t line_len;
-		if (state == Loader::State::FIRST_READY) {
+		if (snapshot.state == Loader::State::FIRST_READY) {
 			linenum_text[c] = '?';
 			line_len = 1;
 		} else {
@@ -361,69 +372,97 @@ uvec2 FileView::update_buffers(const Loader::State state, const size_t mapped_li
 	// update_timeit.stop();
 	// printf("Content buffer size: %zu\n", num_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
 	// printf("Linenum buffer size: %zu\n", total_linenum_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
-
-	return u64vec2{get_line_start(state, visible_lines.x, line_ends), line_ends[visible_lines.y - 1]} - get_line_start(state, buf_lines_.x, line_ends);
 }
 
-void FileView::draw_lines(const uvec2 render_size) const {
-	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, render_size.y - render_size.x, render_size.x);
+void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render_range, const Loader::Snapshot &snapshot) {
+	content_render_range = {};
+	linenum_render_range = {};
+
+	if (snapshot.state == Loader::State::INIT) {
+		return;
+	}
+
+	if (!num_lines_) {
+		return;
+	}
+
+	// first (inclusive) and last (exclusive) lines which would be visible on the screen
+	ivec2 visible_lines = ivec2{0, 1} + ivec2{scroll_.y, scroll_.y + size().y} / TextShader::font().size.y;
+
+	// Clamp to the total number of lines available
+	visible_lines.x = std::min(visible_lines.x, (int)num_lines_ - 1);
+	visible_lines.y = std::min(visible_lines.y, (int)num_lines_);
+
+	// Check if the visible lines are already in the buffer
+	if (visible_lines.x < buf_lines_.x || visible_lines.y > buf_lines_.y) {
+		really_update_buffers(
+			// first (inclusive) and last (exclusive) lines to buffer
+			std::max(0LL, visible_lines.x - OVERSCAN_LINES),
+			std::min((ssize_t)num_lines_, visible_lines.y + OVERSCAN_LINES),
+			snapshot
+		);
+	}
+
+	content_render_range = u64vec2{get_line_start(snapshot.state, visible_lines.x, snapshot.line_ends), snapshot.line_ends[visible_lines.y - 1]} - get_line_start(snapshot.state, buf_lines_.x, snapshot.line_ends);
+	linenum_render_range = (uvec2{visible_lines.x, visible_lines.y} - (uint)buf_lines_.x) * (uint)linenum_chars_;
 }
 
-void FileView::draw_linenums(const uvec2 render_size) const {
+void FileView::draw_lines(const uvec2 render_range) const {
+	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, render_range.y - render_range.x, render_range.x);
+}
+
+void FileView::draw_linenums(const uvec2 render_range) const {
 	TextShader::use(linenum_buf_);
 	TextShader::update_uniforms();
-	draw_lines(render_size);
+	draw_lines(render_range);
 
 	TextShader::globals.is_foreground = true;
 	TextShader::update_uniforms();
-	draw_lines(render_size);
+	draw_lines(render_range);
 }
 
-void FileView::draw_content(const uvec2 render_size) const {
+void FileView::draw_content(const uvec2 render_range) const {
 	TextShader::use(content_buf_);
 	TextShader::update_uniforms();
-	draw_lines(render_size);
+	draw_lines(render_range);
 
 	TextShader::globals.is_foreground = true;
 	TextShader::update_uniforms();
-	draw_lines(render_size);
+	draw_lines(render_range);
 }
 
 void FileView::draw() {
-	uvec2 render_size;
+	uvec2 content_render_range;
+	uvec2 linenum_render_range;
 	{
 		// TODO release this lock sooner by making copies of the data we need
 		std::lock_guard lock(loader_.mtx);
 
-		const auto state = loader_.get_state(lock);
-		const auto mapped_lines = loader_.get_mapped_lines(lock);
-		longest_line_ = loader_.get_longest_line(lock);
-		const auto &line_ends = loader_.get_line_ends(lock);
-		const auto mapped_data = loader_.get_mapped_data();
-		const auto tailed_data = loader_.get_tailed_data();
+		const auto snapshot = loader_.snapshot(lock);
+		longest_line_ = snapshot.longest_line;
 
 		auto prev_num_lines = num_lines_;
-		num_lines_ = line_ends.size();
+		num_lines_ = snapshot.line_ends.size();
 
-		if (state_ == Loader::State::INIT && state != Loader::State::INIT) {
+		if (state_ == Loader::State::INIT && snapshot.state != Loader::State::INIT) {
 			// jump to the end of the file
 			scroll_.y = num_lines_ * TextShader::font().size.y - size().y;
-		} else if (state_ == Loader::State::FIRST_READY && state != Loader::State::FIRST_READY) {
+		} else if (state_ == Loader::State::FIRST_READY && snapshot.state != Loader::State::FIRST_READY) {
 			// Re-sync the scroll position after line_ends was updated
 			scroll_.y += (num_lines_ - prev_num_lines) * TextShader::font().size.y;
 		}
 
-		state_ = state;
+		state_ = snapshot.state;
 
-		if (state == Loader::State::FIRST_READY) {
+		if (snapshot.state == Loader::State::FIRST_READY) {
 			linenum_chars_ = 1;
 		} else {
-			linenum_chars_ = linenum_len(mapped_lines);
+			linenum_chars_ = linenum_len(num_lines_);
 		}
-		render_size = update_buffers(state, mapped_lines, line_ends, mapped_data, tailed_data);
+		update_buffers(content_render_range, linenum_render_range, snapshot);
 	}
 
-	std::cout << render_size.x << " " << render_size.y << "\n";
+	// std::cout << content_render_range.x << " " << content_render_range.y << "\n";
 
 	// TextShader::globals.frame_offset_px = pos();
 	TextShader::globals.scroll_offset_px = scroll_;
@@ -432,10 +471,10 @@ void FileView::draw() {
 	// Timeit draw("Draw");
 
 	TextShader::globals.set_viewport(pos() + ivec2{-(linenum_chars_ * TextShader::font().size.x + 20), 0}, size());
-	draw_content(render_size);
+	draw_content(content_render_range);
 
 	TextShader::globals.set_viewport(pos(), size());
-	draw_linenums(render_size);
+	draw_linenums(linenum_render_range);
 
 	scroll_h_.draw();
 	scroll_v_.draw();
