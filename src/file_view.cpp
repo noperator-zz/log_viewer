@@ -5,11 +5,24 @@
 #include <mutex>
 
 #include "parser.h"
+#include "search.h"
 #include "../shaders/text_shader.h"
 #include "util.h"
 
 using namespace glm;
 using namespace std::chrono;
+
+struct Match {
+	size_t start;
+	size_t end;
+};
+
+static std::vector<Match> matches;
+static int handler (unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void *context) {
+	printf("Match found: id=%u, from=%llu, to=%llu, flags=%u, context=%p\n", id, from, to, flags, context);
+	matches.push_back({from, to});
+	return 0; // Continue matching
+}
 
 std::unique_ptr<FileView> FileView::create(const char *path) {
 	return std::unique_ptr<FileView>(new FileView(path));
@@ -199,6 +212,12 @@ void FileView::Loader::load_inital() {
 	// assert(longest_line_ == 4092);
 	// assert(mapped_lines_ == 27294137);
 	// assert(longest_line_ == 6567);
+
+	{
+		Timeit handler_timeit("search");
+		search("TkMPPopupHandler", (const char*)file_.mapped_data(), file_.mapped_size(), handler);
+	}
+	printf("Search found %llu matches\n", matches.size());
 }
 
 void FileView::Loader::load_tail() {
@@ -315,18 +334,30 @@ void FileView::really_update_buffers(int start, int end, const Loader::Snapshot 
 
 	auto content_styles = std::make_unique<TextShader::CharStyle[]>(num_chars);
 	size_t c = 0;
+	size_t current_char = first_line_start;
 	size_t prev_end = first_line_start;
+
+	auto next_match = matches.begin();
+
 	for (uint line_idx = buf_lines_.x; line_idx < buf_lines_.y; line_idx++) {
+		while (next_match != matches.end() && current_char > next_match->end) {
+			// Skip matches that are before the current character
+			next_match++;
+		}
+
+
 		size_t line_len = snapshot.line_ends[line_idx] - prev_end;
 		prev_end = snapshot.line_ends[line_idx];
 		for (size_t i = 0; i < line_len; i++) {
+			bool is_match = next_match != matches.end() && current_char >= next_match->start && current_char < next_match->end;
 			content_styles[c] = {
 				{},
 				uvec2{i, line_idx},
-				vec4{100, 200, 200, 255},
+				vec4{is_match ? 200 : 100, 200, 200, 255},
 				vec4{100, 100, 100, 100}
 			};
 			c++;
+			current_char++;
 		}
 	}
 
@@ -341,6 +372,7 @@ void FileView::really_update_buffers(int start, int end, const Loader::Snapshot 
 	auto linenum_styles = std::make_unique<TextShader::CharStyle[]>(total_linenum_chars);
 
 	c = 0;
+
 	const std::string fmt = "%" + std::to_string(linenum_chars_) + "zu";
 	for (uint line_idx = buf_lines_.x; line_idx < buf_lines_.y; line_idx++) {
 		// std::string linenum_str = std::to_string(line_idx + 1);

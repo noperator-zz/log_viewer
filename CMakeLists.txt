@@ -3,6 +3,11 @@ project(log_viewer)
 
 set(CMAKE_CXX_STANDARD 23)
 
+include(CheckCXXCompilerFlag)
+
+check_cxx_compiler_flag("-mavx2" HAS_AVX2)
+check_cxx_compiler_flag("-mavx512f" HAS_AVX512)
+
 #find_program(CCACHE ccache)
 #if (CCACHE)
 #    set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
@@ -25,6 +30,7 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glm REQUIRED)
+#find_package(hyperscan REQUIRED)
 
 # Path to your shaders
 set(SHADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
@@ -65,6 +71,7 @@ add_executable(${PROJECT_NAME}
     src/window.cpp
     src/scrollbar.cpp
     src/worker.cpp
+    src/search.cpp
 )
 add_dependencies(${PROJECT_NAME} compile_shaders)
 
@@ -75,17 +82,31 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_BINARY_DIR}/shaders
     shaders
     src
+    "C:/Program Files (x86)/hyperscan/include"
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     _WIN32_WINNT=0x0A00 # Windows 10
 )
 
+#target_compile_options(${PROJECT_NAME} PRIVATE -mavx512bw)
 target_compile_options(${PROJECT_NAME} PRIVATE -march=native)# -static -static-libgcc -static-libstdc++)
 
-#target_link_directories(${PROJECT_NAME} PRIVATE
-#    lib
-#)
+
+#if (HAS_AVX512)
+#    target_compile_definitions(your_target PRIVATE USE_AVX512)
+#    target_compile_options(your_target PRIVATE -mavx512f)
+#elseif (HAS_AVX2)
+#    target_compile_definitions(your_target PRIVATE USE_AVX2)
+#    target_compile_options(your_target PRIVATE -mavx2)
+#else()
+#    message(WARNING "Neither AVX2 nor AVX512 available. Falling back to SSE2.")
+#endif()
+
+
+target_link_directories(${PROJECT_NAME} PRIVATE
+    "C:/Program Files (x86)/hyperscan/lib"
+)
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     OpenGL::GL
@@ -93,4 +114,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     freetype
     GLEW::GLEW
     glm::glm
+#    hyperscan::hs
+    hs
 )
