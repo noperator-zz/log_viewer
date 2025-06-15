@@ -236,29 +236,6 @@ void FileView::Loader::load_tail() {
 	if (prev_size == file_.mapped_size()) {
 		return;
 	}
-
-	// size_t total = file_.read_tail();
-	// std::cout << "Loading tail " << total << " bytes\n";
-	// auto offset = line_ends_.empty() ? 0 : line_ends_[mapped_lines_ - 1];
-	// size_t parsed_tailed_bytes = line_ends_.empty() ? 0 : line_ends_.back() - line_ends_[mapped_lines_ - 1];
-	// if (file_.tailed_size() > parsed_tailed_bytes) {
-	// 	WorkUnit unit {
-	// 		std::vector<size_t>{},
-	// 		file_.tailed_data() + parsed_tailed_bytes,
-	// 		file_.tailed_size() - parsed_tailed_bytes,
-	// 		parsed_tailed_bytes + offset
-	// 	};
-	// 	find_newlines_avx2(unit);
-	// 	{
-	// 		std::lock_guard lock(mtx);
-	// 		size_t num_lines = unit.output.size();
-	// 		if (num_lines > 0) {
-	// 			line_ends_.insert(line_ends_.end(), unit.output.begin(), unit.output.end());
-	// 			printf("Tailed data: First line 0x%08zx, Last line 0x%08zx, # lines %9zu\n",
-	// 				unit.output.front(), unit.output.back(), num_lines);
-	// 		}
-	// 	}
-	// }
 }
 
 void FileView::on_resize() {
