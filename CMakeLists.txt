@@ -72,6 +72,7 @@ add_executable(${PROJECT_NAME}
     src/scrollbar.cpp
     src/worker.cpp
     src/search.cpp
+    src/loader.cpp
 )
 add_dependencies(${PROJECT_NAME} compile_shaders)
 
