@@ -26,6 +26,8 @@ class FileView : public Widget {
 	static_assert(CONTENT_BUFFER_SIZE < 128 * 1024 * 1024, "Content buffer size too large");
 	static_assert(OVERSCAN_LINES >= 1, "Overscan lines must be at least 1");
 
+	static constexpr int SCROLL_W = 20;
+
 	class Loader {
 	public:
 		enum class State {

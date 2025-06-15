@@ -262,8 +262,8 @@ void FileView::Loader::load_tail() {
 }
 
 void FileView::on_resize() {
-	scroll_h_.resize({pos().x, pos().y + size().y - 30}, {size().x, 30});
-	scroll_v_.resize({pos().x + size().x - 30, pos().y}, {30, size().y});
+	scroll_h_.resize({pos().x, pos().y + size().y - SCROLL_W}, {size().x - SCROLL_W, SCROLL_W});
+	scroll_v_.resize({pos().x + size().x - SCROLL_W, pos().y}, {SCROLL_W, size().y});
 	update_scrollbar();
 }
 
@@ -344,7 +344,6 @@ void FileView::really_update_buffers(int start, int end, const Loader::Snapshot 
 			// Skip matches that are before the current character
 			next_match++;
 		}
-
 
 		size_t line_len = snapshot.line_ends[line_idx] - prev_end;
 		prev_end = snapshot.line_ends[line_idx];
