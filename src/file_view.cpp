@@ -90,8 +90,11 @@ size_t FileView::get_line_start(Loader::State state, size_t line_idx, const std:
 	return line_ends[line_idx - 1];
 }
 
-void FileView::really_update_buffers(int start, int end, const Loader::Snapshot &snapshot) {
+size_t FileView::get_line_len(Loader::State state, size_t line_idx, const std::vector<size_t> &line_ends) {
+	return line_ends[line_idx] - get_line_start(state, line_idx, line_ends);
+}
 
+void FileView::really_update_buffers(int start, int end, const Loader::Snapshot &snapshot) {
 	// Timeit update_timeit("Update content buffer");
 
 	// first (inclusive) and last (exclusive) lines to buffer
@@ -129,10 +132,13 @@ void FileView::really_update_buffers(int start, int end, const Loader::Snapshot 
 		prev_end = snapshot.line_ends[line_idx];
 		for (size_t i = 0; i < line_len; i++) {
 			bool is_match = false;//next_match != matches.end() && current_char >= next_match->start && current_char < next_match->end;
+			uint8_t r = is_match ? 200 : 100;
+			uint8_t g = 100;
+			uint8_t b = 100;
 			content_styles[c] = {
 				{},
 				uvec2{i, line_idx},
-				vec4{is_match ? 200 : 100, 200, 200, 255},
+				vec4{r, g, b, 255},
 				vec4{100, 100, 100, 100}
 			};
 			c++;
@@ -214,8 +220,44 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 		);
 	}
 
-	content_render_range = u64vec2{get_line_start(snapshot.state, visible_lines.x, snapshot.line_ends), snapshot.line_ends[visible_lines.y - 1]} - get_line_start(snapshot.state, buf_lines_.x, snapshot.line_ends);
+	auto buf_start_char = get_line_start(snapshot.state, buf_lines_.x, snapshot.line_ends);
+	content_render_range = u64vec2{
+		get_line_start(snapshot.state, visible_lines.x, snapshot.line_ends),
+		snapshot.line_ends[visible_lines.y - 1]
+	} - buf_start_char;
+
 	linenum_render_range = (uvec2{visible_lines.x, visible_lines.y} - (uint)buf_lines_.x) * (uint)linenum_chars_;
+
+	auto first_visible_buf_line = (scroll_.y / TextShader::font().size.y) - buf_lines_.x;
+	// printf("Line offset: %ld\n", first_visible_buf_line);
+
+	auto hidden_pixels = scroll_.y % TextShader::font().size.y;
+	ivec2 mouse_buf_pos = {
+		last_mouse_pos().x / TextShader::font().size.x,
+		(last_mouse_pos().y + hidden_pixels) / TextShader::font().size.y + first_visible_buf_line + buf_lines_.x
+	};
+	mouse_buf_pos.y = std::min(mouse_buf_pos.y, (int)num_lines_ - 1);
+	auto mouse_line_len = get_line_len(snapshot.state, mouse_buf_pos.y, snapshot.line_ends);
+	mouse_buf_pos.x = std::min(mouse_buf_pos.x, (int)mouse_line_len - 1);
+
+	auto mouse_char_offset = get_line_start(snapshot.state, mouse_buf_pos.y, snapshot.line_ends) + mouse_buf_pos.x;
+	auto buf_mouse_char = mouse_char_offset - buf_start_char;
+
+	// auto buf_mouse_char = get_line_start(snapshot.state, buf_lines_.x + mouse_buf_pos.y, snapshot.line_ends) - buf_start_char + mouse_buf_pos.x;
+
+	printf("first buf line: %d, first visible buf line: %d, Mouse position in buffer: %d %d\n", buf_lines_.x, first_visible_buf_line, mouse_buf_pos.x, mouse_buf_pos.y);
+	printf("buf_start_char: %zu, buf_mouse_char: %zu\n", buf_start_char, buf_mouse_char);
+
+	if (mouse_buf_pos.x < mouse_line_len) {
+		TextShader::CharStyle style {
+			{},
+			mouse_buf_pos,
+			vec4{255, 255, 255, 255},
+			vec4{100, 100, 100, 100}
+		};
+		glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_style);
+		glBufferSubData(GL_ARRAY_BUFFER, buf_mouse_char * sizeof(TextShader::CharStyle), sizeof(TextShader::CharStyle), &style);
+	}
 }
 
 void FileView::draw_lines(const uvec2 render_range) const {

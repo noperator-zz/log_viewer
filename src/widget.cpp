@@ -43,7 +43,6 @@ bool Widget::cursor_pos_cb(ivec2 mouse) {
 		child->cursor_pos_cb(mouse);
 	}
 
-	on_cursor_pos(mouse);
 	if (state_.l_pressed) {
 		auto mouse_offset = mouse - pressed_mouse_pos_;
 		auto self_offset = pos_ - pressed_pos_;
@@ -63,6 +62,12 @@ bool Widget::cursor_pos_cb(ivec2 mouse) {
 			on_unhover();
 		}
 	}
+
+	if (state_.hovered) {
+		last_mouse_pos_ = mouse; // Update last mouse position if hovered
+	}
+	on_cursor_pos(mouse);
+
 	return state_.hovered; // Return true if hovered, false otherwise
 }
 
@@ -109,6 +114,11 @@ Widget *Widget::parent() const {
 // Window *Widget::window() const {
 // 	return window_;
 // }
+
+
+ivec2 Widget::last_mouse_pos() const {
+	return last_mouse_pos_;
+}
 
 ivec2 Widget::pos() const {
 	return pos_;

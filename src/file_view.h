@@ -73,6 +73,7 @@ class FileView : public Widget {
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
 	static size_t get_line_start(Loader::State state, size_t line_idx, const std::vector<size_t> &line_ends);
+	static size_t get_line_len(Loader::State state, size_t line_idx, const std::vector<size_t> &line_ends);
 public:
 	static std::unique_ptr<FileView> create(const char *path);
 	~FileView();

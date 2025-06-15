@@ -22,6 +22,7 @@ class Widget {
 	Widget *parent_ {};
 	// Window *window_ {};
 	std::vector<Widget*> children_ {};
+	glm::ivec2 last_mouse_pos_ {};
 	glm::ivec2 pressed_mouse_pos_ {};
 	glm::ivec2 pressed_pos_ {};
 	glm::ivec2 pos_ {};
@@ -67,6 +68,7 @@ public:
 
 	[[nodiscard]] Widget *parent() const;
 	// Window *window() const;
+	[[nodiscard]] glm::ivec2 last_mouse_pos() const;
 	[[nodiscard]] glm::ivec2 pos() const;
 	[[nodiscard]] glm::ivec2 size() const;
 	[[nodiscard]] bool hovered() const;
