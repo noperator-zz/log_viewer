@@ -5,7 +5,7 @@
 using namespace glm;
 
 bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, int mods) {
-	if (!state_.hovered && !state_.pressed) {
+	if (!state_.hovered && !state_.l_pressed && !state_.r_pressed && !state_.m_pressed) {
 		return false; // Ignore mouse events if not hovered or pressed
 	}
 
@@ -15,33 +15,36 @@ bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, int mods) {
 		}
 	}
 
-	if (button == GLFW_MOUSE_BUTTON_LEFT) {
-		if (action == GLFW_PRESS) {
-			if (!state_.pressed) {
-				// Only trigger on_press if not already pressed
-				state_.pressed = true;
+	bool pressed = action == GLFW_PRESS;
+	switch (button) {
+		case GLFW_MOUSE_BUTTON_LEFT:
+			state_.l_pressed = pressed;
+			if (state_.l_pressed) {
 				pressed_mouse_pos_ = mouse;
 				pressed_pos_ = pos_;
-				on_press();
 			}
-		} else if (action == GLFW_RELEASE) {
-			if (state_.pressed) {
-				// Only trigger on_release if it was pressed
-				state_.pressed = false;
-				on_release();
-			}
-		}
+			break;
+		case GLFW_MOUSE_BUTTON_RIGHT:
+			state_.r_pressed = pressed;
+			break;
+		case GLFW_MOUSE_BUTTON_MIDDLE:
+			state_.m_pressed = pressed;
+			break;
+		default:
+			return false; // Unsupported button
 	}
-	return false;
+
+	return on_mouse_button(mouse, button, action, mods);
 }
 
 bool Widget::cursor_pos_cb(ivec2 mouse) {
 	for (auto child : children_) {
+		// TODO only call if child hovered (or pressed?) and handle return value
 		child->cursor_pos_cb(mouse);
 	}
 
 	on_cursor_pos(mouse);
-	if (state_.pressed) {
+	if (state_.l_pressed) {
 		auto mouse_offset = mouse - pressed_mouse_pos_;
 		auto self_offset = pos_ - pressed_pos_;
 		auto offset = mouse_offset - self_offset;
@@ -119,8 +122,17 @@ bool Widget::hovered() const {
 	return state_.hovered;
 }
 
-bool Widget::pressed() const {
-	return state_.pressed;
+bool Widget::pressed(int button) const {
+	switch (button) {
+		case GLFW_MOUSE_BUTTON_LEFT:
+			return state_.l_pressed;
+		case GLFW_MOUSE_BUTTON_RIGHT:
+			return state_.r_pressed;
+		case GLFW_MOUSE_BUTTON_MIDDLE:
+			return state_.m_pressed;
+		default:
+			return false; // Unsupported button
+	}
 }
 
 void Widget::add_child(Widget *child) {

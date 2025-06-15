@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <glm/vec2.hpp>
+#include <GLFW/glfw3.h>
 
 class Window;
 
@@ -12,7 +13,9 @@ class Widget {
 		// bool enabled: 1;
 		// bool focused: 1;
 		bool hovered: 1;
-		bool pressed: 1;
+		bool l_pressed: 1;
+		bool r_pressed: 1;
+		bool m_pressed: 1;
 		// bool clicked: 1;
 	};
 
@@ -48,11 +51,11 @@ protected:
 	virtual void on_hover() {}
 	virtual void on_unhover() {}
 
-	virtual void on_press() {}
-	virtual void on_release() {}
+	// TODO should these default to return true to stop event propagation unless explicitly overridden?
+	virtual bool on_mouse_button(glm::ivec2 mouse, int button, int action, int mods) { return false; }
 
-	virtual void on_cursor_pos(glm::ivec2 pos) {}
-	virtual void on_drag(glm::ivec2 offset) {}
+	virtual bool on_cursor_pos(glm::ivec2 pos) { return false; }
+	virtual bool on_drag(glm::ivec2 offset) { return false; }
 
 	virtual bool on_key(int key, int scancode, int action, int mods) { return false; }
 	virtual bool on_scroll(glm::ivec2 offset) { return false; }
@@ -62,12 +65,12 @@ public:
 	Widget() = default;
 	virtual ~Widget() = default;
 
-	Widget *parent() const;
+	[[nodiscard]] Widget *parent() const;
 	// Window *window() const;
-	glm::ivec2 pos() const;
-	glm::ivec2 size() const;
-	bool hovered() const;
-	bool pressed() const;
+	[[nodiscard]] glm::ivec2 pos() const;
+	[[nodiscard]] glm::ivec2 size() const;
+	[[nodiscard]] bool hovered() const;
+	[[nodiscard]] bool pressed(int button = GLFW_MOUSE_BUTTON_LEFT) const;
 
 	void resize(glm::ivec2 pos, glm::ivec2 size);
 	virtual void draw() {};
