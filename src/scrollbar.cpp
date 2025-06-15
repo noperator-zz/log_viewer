@@ -2,41 +2,51 @@
 
 using namespace glm;
 
-Scrollbar::Thumb::Thumb(std::function<void(ivec2)> scroll_cb)
-	: scroll_cb_(std::move(scroll_cb)) {}
+Scrollbar::Thumb::Thumb(bool horizontal, std::function<void(int)> scroll_cb)
+	: horizontal_(horizontal), scroll_cb_(std::move(scroll_cb)) {}
 
-
-void Scrollbar::Thumb::on_drag(ivec2 offset) {
-	scroll_cb_(offset);
+bool Scrollbar::Thumb::on_drag(ivec2 offset) {
+	scroll_cb_(horizontal_ ? offset.x : offset.y);
+	return true;
 }
 
 void Scrollbar::Thumb::draw() {
 	GPShader::rect(pos(), size(),{100, hovered() * 255, pressed() * 255, 255});
 }
 
+
 Scrollbar::Scrollbar(bool horizontal, std::function<void(double)> scroll_cb)
-	: scroll_cb_(std::move(scroll_cb)), thumb_([this](ivec2 o){thumb_cb(o);}), horizontal_(horizontal) {
+	: scroll_cb_(std::move(scroll_cb)), thumb_(horizontal, [this](int o){thumb_cb(o);}) {
 	add_child(&thumb_);
-}
-
-void Scrollbar::thumb_cb(ivec2 offset) {
-	if (horizontal_) {
-		thumb_.resize({thumb_.pos().x + offset.x, thumb_.pos().y}, thumb_.size());
-
-		auto scroll_range = size().x - thumb_.size().x;
-		auto scroll_percent = (double)(thumb_.pos().x - pos().x) / (double)scroll_range;
-		scroll_cb_(scroll_percent);
-	} else {
-		thumb_.resize({thumb_.pos().x, thumb_.pos().y + offset.y}, thumb_.size());
-
-		auto scroll_range = size().y - thumb_.size().y;
-		auto scroll_percent = (double)(thumb_.pos().y - pos().y) / (double)scroll_range;
-		scroll_cb_(scroll_percent);
-	}
 }
 
 void Scrollbar::on_resize() {
 	resize_thumb();
+}
+
+bool Scrollbar::on_cursor_pos(ivec2 mouse) {
+	if (pressed(GLFW_MOUSE_BUTTON_LEFT)) {
+		// scroll_toward_mouse(mouse, 1);
+	} else if (pressed(GLFW_MOUSE_BUTTON_RIGHT)) {
+		scroll_to_mouse(mouse);
+	}
+	return false;
+}
+
+/// If pressed below the thumb, move down one page. If pressed above the thumb, move up one page.
+/// If right-clicked, move directly to the pressed position
+bool Scrollbar::on_mouse_button(ivec2 mouse, int button, int action, int mods) {
+	// Ignore clicks on the thumb
+	if (thumb_.hovered()) {
+		return false;
+	}
+
+	if (pressed(GLFW_MOUSE_BUTTON_LEFT)) {
+		scroll_toward_mouse(mouse, 1);
+	} else if (pressed(GLFW_MOUSE_BUTTON_RIGHT)) {
+		scroll_to_mouse(mouse);
+	}
+	return false;
 }
 
 void Scrollbar::set(size_t position, size_t visible_extents, size_t total_extents) {
@@ -47,7 +57,7 @@ void Scrollbar::set(size_t position, size_t visible_extents, size_t total_extent
 }
 
 void Scrollbar::resize_thumb() {
-	if (horizontal_) {
+	if (thumb_.horizontal_) {
 		auto thumb_size = std::max<int>(50, (double)size().x * visible_percent_);
 		double scroll_range = size().x - thumb_size;
 		int thumb_top = scroll_range * position_percent_;
@@ -60,10 +70,40 @@ void Scrollbar::resize_thumb() {
 	}
 }
 
+size_t Scrollbar::scroll_range() const {
+	if (thumb_.horizontal_) {
+		return size().x - thumb_.size().x;
+	}
+	return size().y - thumb_.size().y;
+}
+
+void Scrollbar::scroll_toward_mouse(ivec2 mouse, uint pages) const {
+	if (mouse.y < thumb_.pos().y) {
+		scroll_cb_(std::max(0.0, position_percent_ - visible_percent_));
+	} else {
+		scroll_cb_(std::min(1.0, position_percent_ + visible_percent_));
+	}
+}
+
+void Scrollbar::scroll_to_mouse(ivec2 mouse) const {
+	int offset;
+	if (thumb_.horizontal_) {
+		offset = mouse.x - thumb_.pos().x;
+	} else {
+		offset = mouse.y - thumb_.pos().y;
+	}
+	thumb_cb(offset);
+}
+
+void Scrollbar::thumb_cb(int offset) const {
+	auto scroll_percent = position_percent_ + offset / (double)scroll_range();
+	scroll_cb_(scroll_percent);
+}
+
 void Scrollbar::draw() {
 	if (visible_percent_ >= 1.0f) {
 		return; // No need to draw the thumb if it covers the whole scrollbar
 	}
-	GPShader::rect(pos(), size(), {100, 100, 100, 255});
+	GPShader::rect(pos(), size(), {100, 100, 100, 50});
 	thumb_.draw();
 }

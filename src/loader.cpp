@@ -188,14 +188,14 @@ void Loader::load_inital() {
 void Loader::load_tail() {
 	auto prev_size = file_.mapped_size();
 	{
-		Timeit timeit("File remap");
+		// Timeit timeit("File remap");
 		if (file_.mmap() != 0) {
 			std::cerr << "Failed to map file_\n";
 			// TODO better error handling
 			return;
 		}
-		timeit.stop();
-		std::cout << "File remapped: " << prev_size << " B -> " << file_.mapped_size() << " B\n";
+		// timeit.stop();
+		// std::cout << "File remapped: " << prev_size << " B -> " << file_.mapped_size() << " B\n";
 	}
 
 	if (prev_size == file_.mapped_size()) {
