@@ -264,7 +264,7 @@ void FileView::scroll_v_cb(double percent) {
 }
 
 void FileView::scroll(ivec2 scroll) {
-	// scroll *= TextShader::font().size;
+	scroll *= TextShader::font().size;
 	scroll *= -3;
 
 	scroll_.x += std::max(scroll.x, -scroll_.x);
@@ -469,6 +469,9 @@ void FileView::draw() {
 		}
 		update_buffers(content_render_range, linenum_render_range, snapshot);
 	}
+
+	// TODO this is only needed if longest_line_ or num_lines_ changed
+	update_scrollbar();
 
 	// std::cout << content_render_range.x << " " << content_render_range.y << "\n";
 
