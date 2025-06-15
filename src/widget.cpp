@@ -32,7 +32,7 @@ bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, int mods) {
 			}
 		}
 	}
-	return true; // Indicate that the event was handled
+	return false;
 }
 
 bool Widget::cursor_pos_cb(ivec2 mouse) {
