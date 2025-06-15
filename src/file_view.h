@@ -16,7 +16,26 @@
 #include "worker.h"
 #include "loader.h"
 
+class FileView;
+
+
+class LinenumView : public Widget {
+	FileView &parent_;
+public:
+	LinenumView(FileView &parent);
+	void draw() override;
+};
+
+class ContentView : public Widget {
+	FileView &parent_;
+public:
+	ContentView(FileView &parent);
+	void draw() override;
+};
+
 class FileView : public Widget {
+	friend class LinenumView;
+	friend class ContentView;
 	// TODO make these limits dynamic
 	static constexpr size_t MAX_SCREEN_LINES = 200;
 	static constexpr ssize_t OVERSCAN_LINES = 1;
@@ -31,10 +50,14 @@ class FileView : public Widget {
 
 	// File file_;
 	Loader loader_;
-	Scrollbar scroll_h_;
-	Scrollbar scroll_v_;
+	LinenumView linenum_view_ {*this};
+	ContentView content_view_ {*this};
+	Scrollbar scroll_h_ {true, [this](double p){scroll_h_cb(p);}};
+	Scrollbar scroll_v_ {false, [this](double p){scroll_v_cb(p);}};
 	TextShader::Buffer content_buf_ {};
 	TextShader::Buffer linenum_buf_ {};
+	glm::uvec2 content_render_range_ {};
+	glm::uvec2 linenum_render_range_ {};
 
 	// struct RenderParams {
 	// 	std::vector<size_t> line_starts_ {};
@@ -68,8 +91,6 @@ class FileView : public Widget {
 	void really_update_buffers(int start, int end, const Loader::Snapshot &snapshot);
 	void update_buffers(glm::uvec2 &content_render_range, glm::uvec2 &linenum_render_range, const Loader::Snapshot &snapshot);
 	void draw_lines(glm::uvec2 render_range) const;
-	void draw_linenums(glm::uvec2 render_range) const;
-	void draw_content(glm::uvec2 render_range) const;
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
 	static size_t get_line_start(Loader::State state, size_t line_idx, const std::vector<size_t> &line_ends);

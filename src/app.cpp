@@ -170,6 +170,7 @@ bool App::on_drop(int path_count, const char* paths[]) {
 void App::on_resize() {
     fb_size_ = size();
     GPShader::set_viewport({}, fb_size_);
+	TextShader::globals.set_viewport({}, fb_size_);
     if (file_views_.empty()) {
         return; // No file views to resize
     }

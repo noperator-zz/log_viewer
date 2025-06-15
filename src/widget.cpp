@@ -99,12 +99,12 @@ bool Widget::drop_cb(int path_count, const char* paths[]) {
 }
 
 void Widget::draw_cb() {
-	glScissor(pos().x, pos().y, size().x, size().y);
+	// glScissor(pos().x, pos().y, size().x, size().y);
 	draw();
-
-	for (auto child : children_) {
-		child->draw_cb();
-	}
+	//
+	// for (auto child : children_) {
+	// 	child->draw_cb();
+	// }
 }
 
 Widget *Widget::parent() const {

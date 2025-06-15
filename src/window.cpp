@@ -65,7 +65,7 @@ void Window::window_refresh_cb(GLFWwindow* glfw_window) {
 }
 
 void Window::draw() {
-	glEnable(GL_SCISSOR_TEST);
+	// glEnable(GL_SCISSOR_TEST);
 	root_->draw_cb();
-	glDisable(GL_SCISSOR_TEST);
+	// glDisable(GL_SCISSOR_TEST);
 }

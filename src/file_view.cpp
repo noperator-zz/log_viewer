@@ -17,8 +17,10 @@ std::unique_ptr<FileView> FileView::create(const char *path) {
 }
 
 FileView::FileView(const char *path)
-	: loader_(File{path}, 8), scroll_h_(true, [this](double p){scroll_h_cb(p);}), scroll_v_(false, [this](double p){scroll_v_cb(p);}) {
+	: loader_(File{path}, 8) {
 
+	add_child(&linenum_view_);
+	add_child(&content_view_);
 	add_child(&scroll_h_);
 	add_child(&scroll_v_);
 }
@@ -42,7 +44,10 @@ int FileView::open() {
 }
 
 void FileView::on_resize() {
-	scroll_h_.resize({pos().x, pos().y + size().y - SCROLL_W}, {size().x - SCROLL_W, SCROLL_W});
+	auto linenum_width = linenum_chars_ * TextShader::font().size.x + 20;
+	linenum_view_.resize(pos(), {linenum_width, size().y});
+	content_view_.resize({pos().x + linenum_width, pos().y}, {size().x - linenum_width, size().y});
+	scroll_h_.resize({pos().x + linenum_width, pos().y + size().y - SCROLL_W}, {size().x - linenum_width - SCROLL_W, SCROLL_W});
 	scroll_v_.resize({pos().x + size().x - SCROLL_W, pos().y}, {SCROLL_W, size().y});
 	update_scrollbar();
 }
@@ -228,14 +233,13 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 
 	linenum_render_range = (uvec2{visible_lines.x, visible_lines.y} - (uint)buf_lines_.x) * (uint)linenum_chars_;
 
-	auto first_visible_buf_line = (scroll_.y / TextShader::font().size.y) - buf_lines_.x;
+	auto first_visible_char = scroll_ / TextShader::font().size;
 	// printf("Line offset: %ld\n", first_visible_buf_line);
 
-	auto hidden_pixels = scroll_.y % TextShader::font().size.y;
-	ivec2 mouse_buf_pos = {
-		last_mouse_pos().x / TextShader::font().size.x,
-		(last_mouse_pos().y + hidden_pixels) / TextShader::font().size.y + first_visible_buf_line + buf_lines_.x
-	};
+	auto hidden_pixels = scroll_ % TextShader::font().size;
+	auto content_mouse_pos = last_mouse_pos() - content_view_.pos();
+	ivec2 mouse_buf_pos = (content_mouse_pos + hidden_pixels) / TextShader::font().size + first_visible_char;
+
 	mouse_buf_pos.y = std::min(mouse_buf_pos.y, (int)num_lines_ - 1);
 	auto mouse_line_len = get_line_len(snapshot.state, mouse_buf_pos.y, snapshot.line_ends);
 	mouse_buf_pos.x = std::min(mouse_buf_pos.x, (int)mouse_line_len - 1);
@@ -243,50 +247,26 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 	auto mouse_char_offset = get_line_start(snapshot.state, mouse_buf_pos.y, snapshot.line_ends) + mouse_buf_pos.x;
 	auto buf_mouse_char = mouse_char_offset - buf_start_char;
 
-	// auto buf_mouse_char = get_line_start(snapshot.state, buf_lines_.x + mouse_buf_pos.y, snapshot.line_ends) - buf_start_char + mouse_buf_pos.x;
-
-	printf("first buf line: %d, first visible buf line: %d, Mouse position in buffer: %d %d\n", buf_lines_.x, first_visible_buf_line, mouse_buf_pos.x, mouse_buf_pos.y);
+	printf("first buf line: %d, first visible buf line: %d, Mouse position in buffer: %d %d\n", buf_lines_.x, first_visible_char.y - buf_lines_.x, mouse_buf_pos.x, mouse_buf_pos.y);
 	printf("buf_start_char: %zu, buf_mouse_char: %zu\n", buf_start_char, buf_mouse_char);
 
-	if (mouse_buf_pos.x < mouse_line_len) {
-		TextShader::CharStyle style {
-			{},
-			mouse_buf_pos,
-			vec4{255, 255, 255, 255},
-			vec4{100, 100, 100, 100}
-		};
-		glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_style);
-		glBufferSubData(GL_ARRAY_BUFFER, buf_mouse_char * sizeof(TextShader::CharStyle), sizeof(TextShader::CharStyle), &style);
-	}
+	// TODO don't highlight if mouse not touching a char. rn pos is clamped to the line length
+	TextShader::CharStyle style {
+		{},
+		mouse_buf_pos,
+		vec4{255, 255, 255, 255},
+		vec4{100, 100, 100, 100}
+	};
+	glBindBuffer(GL_ARRAY_BUFFER, content_buf_.vbo_style);
+	glBufferSubData(GL_ARRAY_BUFFER, buf_mouse_char * sizeof(TextShader::CharStyle), sizeof(TextShader::CharStyle), &style);
 }
 
 void FileView::draw_lines(const uvec2 render_range) const {
 	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, render_range.y - render_range.x, render_range.x);
 }
 
-void FileView::draw_linenums(const uvec2 render_range) const {
-	TextShader::use(linenum_buf_);
-	TextShader::update_uniforms();
-	draw_lines(render_range);
-
-	TextShader::globals.is_foreground = true;
-	TextShader::update_uniforms();
-	draw_lines(render_range);
-}
-
-void FileView::draw_content(const uvec2 render_range) const {
-	TextShader::use(content_buf_);
-	TextShader::update_uniforms();
-	draw_lines(render_range);
-
-	TextShader::globals.is_foreground = true;
-	TextShader::update_uniforms();
-	draw_lines(render_range);
-}
-
 void FileView::draw() {
-	uvec2 content_render_range;
-	uvec2 linenum_render_range;
+	auto prev_linenum_chars = linenum_chars_;
 	{
 		// TODO release this lock sooner by making copies of the data we need
 		std::lock_guard lock(loader_.mtx);
@@ -312,9 +292,13 @@ void FileView::draw() {
 		} else {
 			linenum_chars_ = linenum_len(num_lines_);
 		}
-		update_buffers(content_render_range, linenum_render_range, snapshot);
+
+		update_buffers(content_render_range_, linenum_render_range_, snapshot);
 	}
 
+	if (linenum_chars_ != prev_linenum_chars) {
+		on_resize();
+	}
 	// TODO this is only needed if longest_line_ or num_lines_ changed
 	update_scrollbar();
 
@@ -325,15 +309,40 @@ void FileView::draw() {
 	TextShader::globals.is_foreground = false;
 
 	// Timeit draw("Draw");
-
-	TextShader::globals.set_viewport(pos() + ivec2{-(linenum_chars_ * TextShader::font().size.x + 20), 0}, size());
-	draw_content(content_render_range);
-
-	TextShader::globals.set_viewport(pos(), size());
-	draw_linenums(linenum_render_range);
+	//
+	content_view_.draw();
+	linenum_view_.draw();
 
 	scroll_h_.draw();
 	scroll_v_.draw();
 
 	// draw.stop();
+}
+
+LinenumView::LinenumView(FileView &parent) : Widget(), parent_(parent) {}
+
+void LinenumView::draw() {
+	TextShader::globals.frame_offset_px = pos();
+
+	TextShader::use(parent_.linenum_buf_);
+	TextShader::update_uniforms();
+	parent_.draw_lines(parent_.linenum_render_range_);
+
+	TextShader::globals.is_foreground = true;
+	TextShader::update_uniforms();
+	parent_.draw_lines(parent_.linenum_render_range_);
+}
+
+ContentView::ContentView(FileView &parent) : Widget(), parent_(parent) {}
+
+void ContentView::draw() {
+	TextShader::globals.frame_offset_px = pos();
+
+	TextShader::use(parent_.content_buf_);
+	TextShader::update_uniforms();
+	parent_.draw_lines(parent_.content_render_range_);
+
+	TextShader::globals.is_foreground = true;
+	TextShader::update_uniforms();
+	parent_.draw_lines(parent_.content_render_range_);
 }
