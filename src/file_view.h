@@ -8,6 +8,8 @@
 #include <vector>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
+
+#include "dynarray.h"
 #include "file.h"
 #include "gp_shader.h"
 #include "scrollbar.h"
@@ -34,6 +36,9 @@ class ContentView : public Widget {
 	FileView &parent_;
 	TextShader::Buffer buf_ {};
 	glm::uvec2 render_range_ {};
+
+	dynarray<TextShader::CharStyle> base_styles_ {};
+	dynarray<TextShader::CharStyle> mod_styles_ {};
 
 	bool on_mouse_button(glm::ivec2 mouse, int button, int action, int mods) override;
 	bool on_cursor_pos(glm::ivec2 mouse) override;

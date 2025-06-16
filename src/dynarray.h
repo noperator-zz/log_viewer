@@ -27,6 +27,7 @@ public:
 	}
 
 	void resize_uninitialized(const size_t n) {
+		reserve(n);
 		size_ = n;
 	}
 
@@ -42,6 +43,12 @@ public:
 	T* data() { return data_; }
 	const T* data() const { return data_; }
 	size_t size() const { return size_; }
+	T& operator[](size_t index) {
+		// if (index >= size_) {
+			// throw std::out_of_range("Index out of bounds");
+		// }
+		return data_[index];
+	}
 
 private:
 	T* data_ = nullptr;

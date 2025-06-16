@@ -118,7 +118,8 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 	num_chars = line_ends_[buf_lines_.y-1] - first_line_start;
 	glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, data + first_line_start);
 
-	auto content_styles = std::make_unique<TextShader::CharStyle[]>(num_chars);
+	content_view_.base_styles_.resize_uninitialized(num_chars);
+	content_view_.mod_styles_.resize_uninitialized(num_chars);
 	size_t c = 0;
 	size_t current_char = first_line_start;
 	size_t prev_end = first_line_start;
@@ -138,7 +139,7 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 			uint8_t r = is_match ? 200 : 100;
 			uint8_t g = 200;
 			uint8_t b = 200;
-			content_styles[c] = {
+			content_view_.base_styles_[c] = {
 				{},
 				uvec2{i, line_idx},
 				vec4{r, g, b, 255},
@@ -149,8 +150,7 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 		}
 	}
 
-	glBindBuffer(GL_ARRAY_BUFFER, content_view_.buf_.vbo_style);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars * sizeof(TextShader::CharStyle), content_styles.get());
+	std::memcpy(content_view_.mod_styles_.data(), content_view_.base_styles_.data(), num_chars * sizeof(TextShader::CharStyle));
 
 	const auto num_lines = buf_lines_.y - buf_lines_.x;
 	// max number of characters for all line numbers
@@ -334,8 +334,7 @@ bool ContentView::on_cursor_pos(ivec2 mouse) {
 				vec4{100, 200, 200, 255},
 				vec4{200, 200, 200, 100}
 	};
-	glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
-	glBufferSubData(GL_ARRAY_BUFFER, buf_mouse_char * sizeof(TextShader::CharStyle), sizeof(TextShader::CharStyle), &style);
+	mod_styles_[buf_mouse_char] = style;
 	return false;
 }
 
@@ -343,6 +342,10 @@ void ContentView::draw() {
 	TextShader::globals.frame_offset_px = pos();
 
 	TextShader::use(buf_);
+
+	glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
+
 	TextShader::update_uniforms();
 	parent_.draw_lines(render_range_);
 
