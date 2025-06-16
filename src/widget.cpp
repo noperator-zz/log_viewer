@@ -43,6 +43,13 @@ bool Widget::cursor_pos_cb(ivec2 mouse) {
 		child->cursor_pos_cb(mouse);
 	}
 
+	bool hovered = mouse.x >= pos_.x && mouse.x < pos_.x + size_.x &&
+		mouse.y >= pos_.y && mouse.y < pos_.y + size_.y;
+
+	if (hovered) {
+		mouse_pos_ = mouse;
+	}
+
 	if (state_.l_pressed) {
 		auto mouse_offset = mouse - pressed_mouse_pos_;
 		auto self_offset = pos_ - pressed_pos_;
@@ -50,8 +57,7 @@ bool Widget::cursor_pos_cb(ivec2 mouse) {
 		on_drag(offset);
 	}
 
-	if (mouse.x >= pos_.x && mouse.x < pos_.x + size_.x &&
-	    mouse.y >= pos_.y && mouse.y < pos_.y + size_.y) {
+	if (hovered) {
 		if (!state_.hovered) {
 			state_.hovered = true;
 			on_hover();
@@ -63,9 +69,6 @@ bool Widget::cursor_pos_cb(ivec2 mouse) {
 		}
 	}
 
-	if (state_.hovered) {
-		last_mouse_pos_ = mouse; // Update last mouse position if hovered
-	}
 	on_cursor_pos(mouse);
 
 	return state_.hovered; // Return true if hovered, false otherwise
@@ -116,8 +119,8 @@ Widget *Widget::parent() const {
 // }
 
 
-ivec2 Widget::last_mouse_pos() const {
-	return last_mouse_pos_;
+ivec2 Widget::mouse_pos() const {
+	return mouse_pos_;
 }
 
 ivec2 Widget::pos() const {
