@@ -71,6 +71,7 @@ public:
 	[[nodiscard]] glm::ivec2 mouse_pos() const;
 	[[nodiscard]] glm::ivec2 pos() const;
 	[[nodiscard]] glm::ivec2 size() const;
+	[[nodiscard]] glm::ivec2 rel_pos(glm::ivec2 abs_pos) const;
 	[[nodiscard]] bool hovered() const;
 	[[nodiscard]] bool pressed(int button = GLFW_MOUSE_BUTTON_LEFT) const;
 

@@ -13,6 +13,7 @@ class Scrollbar : public Widget {
 		bool horizontal_;
 		std::function<void(int)> scroll_cb_;
 
+		bool on_mouse_button(glm::ivec2 mouse, int button, int action, int mods) override;
 		bool on_drag(glm::ivec2 offset) override;
 		void draw() override;
 

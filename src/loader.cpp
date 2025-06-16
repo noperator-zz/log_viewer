@@ -30,9 +30,9 @@ std::thread Loader::start(const Event &quit) {
 	return std::thread(&Loader::worker, this, std::ref(quit));
 }
 
-void Loader::update(std::vector<size_t> &line_ends, size_t &longest_line, const uint8_t *&data) {
-	line_ends.insert(line_ends.end(), line_ends_.begin(), line_ends_.end());
-	line_ends_.clear();
+void Loader::update(std::vector<size_t> &line_starts, size_t &longest_line, const uint8_t *&data) {
+	line_starts.insert(line_starts.end(), line_starts_.begin(), line_starts_.end());
+	line_starts_.clear();
 	longest_line = longest_line_;
 	data = file_.mapped_data();
 }
@@ -121,8 +121,8 @@ void Loader::load_inital() {
 
 	{
 		std::lock_guard lock(mtx);
-		line_ends_.clear();
-		// line_ends.push_back(0);
+		line_starts_.clear();
+		line_starts_.push_back(0);
 		size_t prev = 0;
 		for (const auto& unit : units) {
 			if (unit.output.empty()) {
@@ -132,18 +132,18 @@ void Loader::load_inital() {
 			prev = unit.output.back();
 			line_len = std::max(line_len, unit.longest_line);
 			longest_line_ = std::max(longest_line_, line_len);
-			line_ends_.insert(line_ends_.end(), unit.output.begin(), unit.output.end());
+			line_starts_.insert(line_starts_.end(), unit.output.begin(), unit.output.end());
 		}
-		if (!line_ends_.empty() && line_ends_.back() < (total_size - 1)) {
+		if (!line_starts_.empty() && line_starts_.back() < (total_size - 1)) {
 			// NOTE Mapped data is truncated to the last newline. The tailed_data will contain the rest.
-			printf("Ignoring %zu bytes at the end of the mapped data\n", total_size - line_ends_.back());
+			printf("Ignoring %zu bytes at the end of the mapped data\n", total_size - line_starts_.back());
 			// // Ensure the last line ends at the end of the file
 			// longest_line = std::max(longest_line, total_size - line_ends.back());
 			// line_ends.push_back(total_size);
 			// mapped_lines_++;
 		}
 		// file_.seek(line_ends.empty() ? 0 : line_ends.back());
-		std::cout << "Found " << line_ends_.size() << " newlines\n";
+		std::cout << "Found " << line_starts_.size() << " newlines\n";
 	}
 
 	combine_timeit.stop();

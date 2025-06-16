@@ -21,8 +21,6 @@ FileView::FileView(const char *path)
 
 	add_child(&linenum_view_);
 	add_child(&content_view_);
-	add_child(&scroll_h_);
-	add_child(&scroll_v_);
 }
 
 FileView::~FileView() {
@@ -48,28 +46,20 @@ void FileView::on_resize() {
 	auto linenum_width = linenum_chars_ * TextShader::font().size.x + 20;
 	linenum_view_.resize(pos(), {linenum_width, size().y});
 	content_view_.resize({pos().x + linenum_width, pos().y}, {size().x - linenum_width, size().y});
-	scroll_h_.resize({pos().x + linenum_width, pos().y + size().y - SCROLL_W}, {size().x - linenum_width - SCROLL_W, SCROLL_W});
-	scroll_v_.resize({pos().x + size().x - SCROLL_W, pos().y}, {SCROLL_W, size().y});
-	update_scrollbar();
-}
-
-void FileView::update_scrollbar() {
-	scroll_h_.set(scroll_.x, size().x, longest_line_ * TextShader::font().size.x);
-	scroll_v_.set(scroll_.y, size().y, (line_ends_.size() - 1) * TextShader::font().size.y);
 }
 
 void FileView::scroll_h_cb(double percent) {
 	scroll_.x = (int)(percent * longest_line_ * TextShader::font().size.x);
 	scroll_.x = std::max(scroll_.x, 0);
 	scroll_.x = std::min(scroll_.x, (int)longest_line_ * TextShader::font().size.x);
-	update_scrollbar();
+	content_view_.update_scrollbar();
 }
 
 void FileView::scroll_v_cb(double percent) {
-	scroll_.y = (int)(percent * (line_ends_.size() - 1) * TextShader::font().size.y);
+	scroll_.y = (int)(percent * num_lines() * TextShader::font().size.y);
 	scroll_.y = std::max(scroll_.y, 0);
-	scroll_.y = std::min(scroll_.y, (int)(line_ends_.size() - 1) * TextShader::font().size.y);
-	update_scrollbar();
+	scroll_.y = std::min(scroll_.y, (int)num_lines() * TextShader::font().size.y);
+	content_view_.update_scrollbar();
 }
 
 void FileView::scroll(ivec2 scroll) {
@@ -79,22 +69,57 @@ void FileView::scroll(ivec2 scroll) {
 	scroll_.x += std::max(scroll.x, -scroll_.x);
 	scroll_.y += std::max(scroll.y, -scroll_.y);
 
-	update_scrollbar();
+	content_view_.update_scrollbar();
 }
 
 static size_t linenum_len(size_t line) {
 	return line == 0 ? 1 : (size_t)log10(line) + 1;
 }
 
-size_t FileView::get_line_start(size_t line_idx, const std::vector<size_t> &line_ends) {
-	if (line_idx == 0) {
-		return 0;
-	}
-	return line_ends[line_idx - 1];
+size_t FileView::get_line_len(size_t line_idx) const {
+	assert(line_idx < line_starts_.size() - 1);
+	return line_starts_[line_idx + 1] - line_starts_[line_idx];
 }
 
-size_t FileView::get_line_len(size_t line_idx, const std::vector<size_t> &line_ends) {
-	return line_ends[line_idx] - get_line_start(line_idx, line_ends);
+size_t FileView::num_lines() const {
+	return line_starts_.empty() ? 0 : line_starts_.size() - 1;
+}
+
+// NOTE Terminology:
+//  - abs_pos:         Pixel coordinate (x, y) relative to the window
+//  - view_pos:        Pixel coordinate (x, y) relative to the widget position
+//  - abs_char_loc:    Character coordinate (col, row/line) relative to the start of the file
+//  - buf_char_loc:    Character coordinate (col, row/line) relative to the start of the GPU buffer
+//  - abs_char_idx:    Character index relative to the start of the file
+//  - buf_char_idx:    Character index relative to the start of the GPU buffer
+//  - buf:             The subset of lines currently loaded in the GPU buffer, which is larger than the visible range by ~2 * OVERSCAN_LINES
+
+// NOTE Trivial Conversions:
+//  abs_pos -> view_pos: rel_pos(abs_pos)
+//  -
+//  abs_char_loc -> abs_char_idx: line_starts[abs_loc.y] + abs_loc.x
+//  abs_char_loc -> buf_char_loc: abs_loc - {buf_lines_.x, 0}
+//  -
+//  abs_char_idx -> buf_char_idx: abs_idx - line_starts[buf_lines_.x]
+//  buf_char_loc -> buf_char_idx: abs_char_loc(buf_loc) - line_start[buf_lines_.x]
+//  -
+
+size_t FileView::abs_char_loc_to_abs_char_idx(const ivec2 &abs_loc) const {
+	return line_starts_[abs_loc.y] + abs_loc.x;
+}
+
+size_t FileView::abs_char_idx_to_buf_char_idx(size_t abs_idx) const {
+	if (abs_idx < line_starts_[buf_lines_.x]) {
+		return 0; // If the index is before the start of the buffer, return 0
+	}
+	if (abs_idx > line_starts_[buf_lines_.y]) {
+		abs_idx = line_starts_[buf_lines_.y];
+	}
+	return abs_idx - line_starts_[buf_lines_.x];
+}
+
+size_t FileView::abs_char_loc_to_buf_char_idx(const ivec2 &abs_loc) const {
+	return abs_char_idx_to_buf_char_idx(abs_char_loc_to_abs_char_idx(abs_loc));
 }
 
 void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
@@ -103,11 +128,11 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 	// first (inclusive) and last (exclusive) lines to buffer
 	buf_lines_ = {start, end};
 	assert(buf_lines_.y > 0);
-	assert(!line_ends_.empty());
+	assert(num_lines() > 0);
 
 	// TODO The lines on screen have already been parsed. Cache and reuse them instead of re-parsing
 
-	const auto first_line_start = get_line_start(buf_lines_.x, line_ends_);
+	const auto first_line_start = line_starts_[buf_lines_.x];
 
 	// TODO detect if content won't fit in the buffer
 	// TODO If there is an extremely long line, only buffer the visible portion of the line
@@ -115,14 +140,13 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 	// TODO Use glMapBufferRange
 	glBindBuffer(GL_ARRAY_BUFFER, content_view_.buf_.vbo_text);
 	size_t num_chars = 0;
-	num_chars = line_ends_[buf_lines_.y-1] - first_line_start;
+	num_chars = line_starts_[buf_lines_.y] - first_line_start;
 	glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, data + first_line_start);
 
 	content_view_.base_styles_.resize_uninitialized(num_chars);
 	content_view_.mod_styles_.resize_uninitialized(num_chars);
 	size_t c = 0;
 	size_t current_char = first_line_start;
-	size_t prev_end = first_line_start;
 
 	// auto next_match = matches.begin();
 
@@ -132,8 +156,7 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 		// 	next_match++;
 		// }
 
-		size_t line_len = line_ends_[line_idx] - prev_end;
-		prev_end = line_ends_[line_idx];
+		size_t line_len = get_line_len(line_idx);
 		for (size_t i = 0; i < line_len; i++) {
 			bool is_match = false;//next_match != matches.end() && current_char >= next_match->start && current_char < next_match->end;
 			uint8_t r = is_match ? 200 : 100;
@@ -149,8 +172,6 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 			current_char++;
 		}
 	}
-
-	std::memcpy(content_view_.mod_styles_.data(), content_view_.base_styles_.data(), num_chars * sizeof(TextShader::CharStyle));
 
 	const auto num_lines = buf_lines_.y - buf_lines_.x;
 	// max number of characters for all line numbers
@@ -189,11 +210,10 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 }
 
 void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render_range, const uint8_t *data) {
-	auto num_lines_ = line_ends_.size();
 	content_render_range = {};
 	linenum_render_range = {};
 
-	if (line_ends_.empty()) {
+	if (num_lines() == 0) {
 		return;
 	}
 
@@ -201,23 +221,23 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 	ivec2 visible_lines = ivec2{0, 1} + ivec2{scroll_.y, scroll_.y + size().y} / TextShader::font().size.y;
 
 	// Clamp to the total number of lines available
-	visible_lines.x = std::min(visible_lines.x, (int)num_lines_ - 1);
-	visible_lines.y = std::min(visible_lines.y, (int)num_lines_);
+	visible_lines.x = std::min(visible_lines.x, (int)num_lines() - 1);
+	visible_lines.y = std::min(visible_lines.y, (int)num_lines());
 
 	// Check if the visible lines are already in the buffer
 	if (visible_lines.x < buf_lines_.x || visible_lines.y > buf_lines_.y) {
 		really_update_buffers(
 			// first (inclusive) and last (exclusive) lines to buffer
 			std::max(0LL, visible_lines.x - OVERSCAN_LINES),
-			std::min((ssize_t)num_lines_, visible_lines.y + OVERSCAN_LINES),
+			std::min((ssize_t)num_lines(), visible_lines.y + OVERSCAN_LINES),
 			data
 		);
 	}
 
-	auto buf_start_char = get_line_start(buf_lines_.x, line_ends_);
+	auto buf_start_char = line_starts_[buf_lines_.x];
 	content_render_range = u64vec2{
-		get_line_start(visible_lines.x, line_ends_),
-		line_ends_[visible_lines.y - 1]
+		line_starts_[visible_lines.x],
+		line_starts_[visible_lines.y]
 	} - buf_start_char;
 
 	linenum_render_range = (uvec2{visible_lines.x, visible_lines.y} - (uint)buf_lines_.x) * (uint)linenum_chars_;
@@ -230,18 +250,18 @@ void FileView::draw_lines(const uvec2 render_range) const {
 void FileView::draw() {
 	const uint8_t *data;
 	auto prev_linenum_chars = linenum_chars_;
-	auto prev_num_lines = line_ends_.size();
+	auto prev_num_lines = num_lines();
 
 	{
 		std::lock_guard lock(loader_.mtx);
-		loader_.update(line_ends_, longest_line_, data);
+		loader_.update(line_starts_, longest_line_, data);
 
-		if (prev_num_lines == 0 && !line_ends_.empty()) {
+		if (prev_num_lines == 0 && num_lines() > 0) {
 			// jump to the end of the file
-			scroll_.y = line_ends_.size() * TextShader::font().size.y - size().y;
+			scroll_.y = num_lines() * TextShader::font().size.y - size().y;
 		}
 
-		linenum_chars_ = linenum_len(line_ends_.size());
+		linenum_chars_ = linenum_len(num_lines());
 
 		update_buffers(content_view_.render_range_, linenum_view_.render_range_, data);
 	}
@@ -249,7 +269,7 @@ void FileView::draw() {
 		on_resize();
 	}
 	// TODO this is only needed if longest_line_ or num_lines_ changed
-	update_scrollbar();
+	content_view_.update_scrollbar();
 
 	// std::cout << content_render_range.x << " " << content_render_range.y << "\n";
 
@@ -261,9 +281,6 @@ void FileView::draw() {
 	//
 	content_view_.draw();
 	linenum_view_.draw();
-
-	scroll_h_.draw();
-	scroll_v_.draw();
 
 	// draw.stop();
 }
@@ -282,32 +299,36 @@ void LinenumView::draw() {
 	parent_.draw_lines(render_range_);
 }
 
-ContentView::ContentView(FileView &parent) : Widget(), parent_(parent) {}
+ContentView::ContentView(FileView &parent) : Widget(), parent_(parent) {
+	add_child(&scroll_h_);
+	add_child(&scroll_v_);
+}
 
-void ContentView::get_mouse_char(ivec2 mouse, size_t &buf_mouse_char, ivec2 &mouse_buf_pos) const {
-	auto buf_start_char = parent_.get_line_start(parent_.buf_lines_.x, parent_.line_ends_);
-	auto first_visible_char = parent_.scroll_ / TextShader::font().size;
-	// printf("Line offset: %ld\n", first_visible_buf_line);
+void ContentView::scroll_h_cb(double percent) {
+	parent_.scroll_h_cb(percent);
+}
 
-	auto hidden_pixels = parent_.scroll_ % TextShader::font().size;
-	auto content_mouse_pos = mouse - pos();
-	mouse_buf_pos = (content_mouse_pos + hidden_pixels) / TextShader::font().size + first_visible_char;
+void ContentView::scroll_v_cb(double percent) {
+	parent_.scroll_v_cb(percent);
+}
 
-	mouse_buf_pos.y = std::min(mouse_buf_pos.y, (int)parent_.line_ends_.size() - 1);
-	auto mouse_line_len = parent_.get_line_len(mouse_buf_pos.y, parent_.line_ends_);
-	mouse_buf_pos.x = std::min(mouse_buf_pos.x, (int)mouse_line_len - 1);
+void ContentView::on_resize() {
+	scroll_h_.resize({pos().x, pos().y + size().y - SCROLL_W}, {size().x - SCROLL_W, SCROLL_W});
+	scroll_v_.resize({pos().x + size().x - SCROLL_W, pos().y}, {SCROLL_W, size().y});
+	update_scrollbar();
+}
 
-	auto mouse_char_offset = parent_.get_line_start(mouse_buf_pos.y, parent_.line_ends_) + mouse_buf_pos.x;
-	buf_mouse_char = mouse_char_offset - buf_start_char;
+void ContentView::update_scrollbar() {
+	scroll_h_.set(parent_.scroll_.x, size().x, parent_.longest_line_ * TextShader::font().size.x);
+	scroll_v_.set(parent_.scroll_.y, size().y, parent_.num_lines() * TextShader::font().size.y);
 }
 
 bool ContentView::on_mouse_button(ivec2 mouse, int button, int action, int mods) {
-	// if (pressed()) {
-	// 	auto mouse_char = get_mouse_char(mouse);
-	// 	selection = {mouse_char, mouse_char};
-	// } else {
-	// 	selecting = false;
-	// }
+	if (pressed()) {
+		ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));
+		selection_abs_char_loc = {mouse_abs_char_loc, mouse_abs_char_loc};
+		selection_active_ = true;
+	}
 	return false;
 }
 
@@ -316,32 +337,49 @@ bool ContentView::on_cursor_pos(ivec2 mouse) {
 		return false;
 	}
 
-	if (parent_.line_ends_.empty()) {
+	if (parent_.line_starts_.empty()) {
 		return false;
 	}
 
-	size_t buf_mouse_char;
-	ivec2 mouse_buf_pos;
-	get_mouse_char(mouse, buf_mouse_char, mouse_buf_pos);
+	ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));
+	selection_abs_char_loc.second = mouse_abs_char_loc;
 
-	// printf("first buf line: %d, first visible buf line: %d, Mouse position in buffer: %d %d\n", parent_.buf_lines_.x, first_visible_char.y - parent_.buf_lines_.x, mouse_buf_pos.x, mouse_buf_pos.y);
-	// printf("buf_start_char: %zu, buf_mouse_char: %zu\n", buf_start_char, buf_mouse_char);
-
-	// TODO don't highlight if mouse not touching a char. rn pos is clamped to the line length
-	TextShader::CharStyle style {
-				{},
-				mouse_buf_pos,
-				vec4{100, 200, 200, 255},
-				vec4{200, 200, 200, 100}
-	};
-	mod_styles_[buf_mouse_char] = style;
 	return false;
+}
+
+ivec2 ContentView::view_pos_to_abs_char_loc(ivec2 view_pos) const {
+	return (view_pos + parent_.scroll_) / TextShader::font().size;
+}
+
+void ContentView::reset_mod_styles() {
+	std::memcpy(mod_styles_.data(), base_styles_.data(), base_styles_.size() * sizeof(TextShader::CharStyle));
+}
+
+void ContentView::highlight_selection() {
+	auto lo_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.first);
+	auto hi_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.second);
+
+	if (hi_buf_char_idx < lo_buf_char_idx) {
+		std::swap(lo_buf_char_idx, hi_buf_char_idx);
+	}
+
+	for (size_t buf_char_idx = lo_buf_char_idx; buf_char_idx < hi_buf_char_idx; buf_char_idx++) {
+		mod_styles_[buf_char_idx].bg = {200, 200, 200, 100};
+	}
+
+	// TODO highlight blank parts of selected lines
 }
 
 void ContentView::draw() {
 	TextShader::globals.frame_offset_px = pos();
 
 	TextShader::use(buf_);
+
+	reset_mod_styles();
+
+	if (selection_active_) {
+		highlight_selection();
+	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
@@ -352,4 +390,7 @@ void ContentView::draw() {
 	TextShader::globals.is_foreground = true;
 	TextShader::update_uniforms();
 	parent_.draw_lines(render_range_);
+
+	scroll_h_.draw();
+	scroll_v_.draw();
 }

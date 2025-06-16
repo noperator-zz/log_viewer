@@ -7,7 +7,7 @@
 class Loader {
 	File file_;
 	WorkerPool workers_;
-	std::vector<size_t> line_ends_ {};
+	std::vector<size_t> line_starts_ {};
 	// NOTE: This length includes the newline character. It's only used for scroll bar size calculations, so fine for now.
 	size_t longest_line_ {};
 	void worker(const Event &quit);
@@ -20,5 +20,5 @@ public:
 	~Loader();
 
 	std::thread start(const Event &quit);
-	void update(std::vector<size_t> &line_ends, size_t &longest_line, const uint8_t *&data);
+	void update(std::vector<size_t> &line_starts, size_t &longest_line, const uint8_t *&data);
 };

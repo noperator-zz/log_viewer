@@ -5,6 +5,10 @@ using namespace glm;
 Scrollbar::Thumb::Thumb(bool horizontal, std::function<void(int)> scroll_cb)
 	: horizontal_(horizontal), scroll_cb_(std::move(scroll_cb)) {}
 
+bool Scrollbar::Thumb::on_mouse_button(ivec2 mouse, int button, int action, int mods) {
+	return button == GLFW_MOUSE_BUTTON_LEFT;
+}
+
 bool Scrollbar::Thumb::on_drag(ivec2 offset) {
 	scroll_cb_(horizontal_ ? offset.x : offset.y);
 	return true;
@@ -37,8 +41,8 @@ bool Scrollbar::on_cursor_pos(ivec2 mouse) {
 /// If right-clicked, move directly to the pressed position
 bool Scrollbar::on_mouse_button(ivec2 mouse, int button, int action, int mods) {
 	// Ignore clicks on the thumb
-	if (thumb_.hovered()) {
-		return false;
+	if (thumb_.hovered() && pressed(GLFW_MOUSE_BUTTON_LEFT)) {
+		return true;
 	}
 
 	if (pressed(GLFW_MOUSE_BUTTON_LEFT)) {
@@ -46,7 +50,7 @@ bool Scrollbar::on_mouse_button(ivec2 mouse, int button, int action, int mods) {
 	} else if (pressed(GLFW_MOUSE_BUTTON_RIGHT)) {
 		scroll_to_mouse(mouse);
 	}
-	return false;
+	return true;
 }
 
 void Scrollbar::set(size_t position, size_t visible_extents, size_t total_extents) {

@@ -33,16 +33,32 @@ public:
 
 class ContentView : public Widget {
 	friend class FileView;
+
+	static constexpr int SCROLL_W = 20;
+
 	FileView &parent_;
+	Scrollbar scroll_h_ {true, [this](double p){scroll_h_cb(p);}};
+	Scrollbar scroll_v_ {false, [this](double p){scroll_v_cb(p);}};
 	TextShader::Buffer buf_ {};
 	glm::uvec2 render_range_ {};
 
 	dynarray<TextShader::CharStyle> base_styles_ {};
 	dynarray<TextShader::CharStyle> mod_styles_ {};
 
+	std::pair<glm::ivec2, glm::ivec2> selection_abs_char_loc {};
+	bool selection_active_ {false};
+
+	void on_resize() override;
 	bool on_mouse_button(glm::ivec2 mouse, int button, int action, int mods) override;
 	bool on_cursor_pos(glm::ivec2 mouse) override;
-	void get_mouse_char(glm::ivec2 mouse, size_t &buf_mouse_char, glm::ivec2 &mouse_buf_pos) const;
+
+	void scroll_h_cb(double percent);
+	void scroll_v_cb(double percent);
+	void update_scrollbar();
+
+	glm::ivec2 view_pos_to_abs_char_loc(glm::ivec2 view_pos) const;
+	void reset_mod_styles();
+	void highlight_selection();
 public:
 	ContentView(FileView &parent);
 	void draw() override;
@@ -61,51 +77,36 @@ class FileView : public Widget {
 	static_assert(CONTENT_BUFFER_SIZE < 128 * 1024 * 1024, "Content buffer size too large");
 	static_assert(OVERSCAN_LINES >= 1, "Overscan lines must be at least 1");
 
-	static constexpr int SCROLL_W = 20;
-
 	// File file_;
 	Loader loader_;
 	LinenumView linenum_view_ {*this};
 	ContentView content_view_ {*this};
-	Scrollbar scroll_h_ {true, [this](double p){scroll_h_cb(p);}};
-	Scrollbar scroll_v_ {false, [this](double p){scroll_v_cb(p);}};
 
-	// struct RenderParams {
-	// 	std::vector<size_t> line_starts_ {};
-	// 	size_t linenum_chars_ {1};
-	// 	// First and last lines in the buffer
-	// 	glm::ivec2 buf_lines_ {};
-	// 	size_t num_lines_ {0};
-	// 	size_t longest_line_ {0};
-	// buf_offset
-	// };
-	// RenderParams params_ {};
-
-	// std::vector<size_t> line_starts_ {};
 	size_t linenum_chars_ {1};
-	// First and last lines in the buffer
 	glm::ivec2 buf_lines_ {};
 
 	glm::ivec2 scroll_ {};
 
 	Event quit_ {};
 	std::thread loader_thread_ {};
-	std::vector<size_t> line_ends_ {};
-	// size_t num_lines_ {};
+	std::vector<size_t> line_starts_ {};
 	size_t longest_line_ {};
 
 	FileView(const char *path);
 
 	void on_resize() override;
-	void update_scrollbar();
 
 	void really_update_buffers(int start, int end, const uint8_t *data);
 	void update_buffers(glm::uvec2 &content_render_range, glm::uvec2 &linenum_render_range, const uint8_t *data);
 	void draw_lines(glm::uvec2 render_range) const;
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
-	static size_t get_line_start(size_t line_idx, const std::vector<size_t> &line_ends);
-	static size_t get_line_len(size_t line_idx, const std::vector<size_t> &line_ends);
+	// size_t get_line_start(size_t line_idx) const;
+	size_t abs_char_loc_to_abs_char_idx(const glm::ivec2 &abs_loc) const;
+	size_t abs_char_idx_to_buf_char_idx(const size_t abs_idx) const;
+	size_t abs_char_loc_to_buf_char_idx(const glm::ivec2 &abs_loc) const;
+	size_t get_line_len(size_t line_idx) const;
+	size_t num_lines() const;
 public:
 	static std::unique_ptr<FileView> create(const char *path);
 	~FileView();

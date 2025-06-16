@@ -5,6 +5,8 @@
 using namespace glm;
 
 bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, int mods) {
+	// bool has_focus = true;
+
 	if (!state_.hovered && !state_.l_pressed && !state_.r_pressed && !state_.m_pressed) {
 		return false; // Ignore mouse events if not hovered or pressed
 	}
@@ -13,25 +15,48 @@ bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, int mods) {
 		if (child->mouse_button_cb(mouse, button, action, mods)) {
 			return true; // If a child handled the event, stop further processing
 		}
+		// if (child->state_.hovered) {
+		// 	has_focus = false;
+		// }
 	}
 
-	bool pressed = action == GLFW_PRESS;
-	switch (button) {
-		case GLFW_MOUSE_BUTTON_LEFT:
-			state_.l_pressed = pressed;
-			if (state_.l_pressed) {
+	if (action != GLFW_PRESS) {
+		switch (button) {
+			case GLFW_MOUSE_BUTTON_LEFT:
+				state_.l_pressed = false;
+				break;
+			case GLFW_MOUSE_BUTTON_RIGHT:
+				state_.r_pressed = false;
+				break;
+			case GLFW_MOUSE_BUTTON_MIDDLE:
+				state_.m_pressed = false;
+				break;
+			default:
+				break;
+		}
+	}
+
+	// if (!has_focus) {
+	// 	// A child has focus, so we don't handle the event here
+	// 	return false;
+	// }
+
+	if (action == GLFW_PRESS) {
+		switch (button) {
+			case GLFW_MOUSE_BUTTON_LEFT:
+				state_.l_pressed = true;
 				pressed_mouse_pos_ = mouse;
 				pressed_pos_ = pos_;
-			}
-			break;
-		case GLFW_MOUSE_BUTTON_RIGHT:
-			state_.r_pressed = pressed;
-			break;
-		case GLFW_MOUSE_BUTTON_MIDDLE:
-			state_.m_pressed = pressed;
-			break;
-		default:
-			return false; // Unsupported button
+				break;
+			case GLFW_MOUSE_BUTTON_RIGHT:
+				state_.r_pressed = true;
+				break;
+			case GLFW_MOUSE_BUTTON_MIDDLE:
+				state_.m_pressed = true;
+				break;
+			default:
+				return false; // Unsupported button
+		}
 	}
 
 	return on_mouse_button(mouse, button, action, mods);
@@ -129,6 +154,10 @@ ivec2 Widget::pos() const {
 
 ivec2 Widget::size() const {
 	return size_;
+}
+
+ivec2 Widget::rel_pos(ivec2 abs_pos) const {
+	return abs_pos - pos_;
 }
 
 bool Widget::hovered() const {
