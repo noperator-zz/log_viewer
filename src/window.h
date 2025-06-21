@@ -21,6 +21,7 @@ private:
 	Widget *root_;
 	glm::ivec2 mouse_ {};
 	KeyMods key_mods_ {};
+	bool fullscreen_ {};
 
 	static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void char_cb(GLFWwindow* window, unsigned int codepoint);
@@ -35,6 +36,8 @@ private:
 public:
 	Window(GLFWwindow *window, Widget *root);
 	~Window();
+
+	void toggle_fullscreen();
 
 	void destroy();
 	void swap_buffers() const;

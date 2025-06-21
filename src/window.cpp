@@ -84,6 +84,17 @@ bool Window::should_close() const {
 	return glfwWindowShouldClose(window_);
 }
 
+void Window::toggle_fullscreen() {
+	if (fullscreen_) {
+		glfwSetWindowMonitor(window_, nullptr, 0, 0, root_->size_.x, root_->size_.y, GLFW_DONT_CARE);
+	} else {
+		GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+		const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+		glfwSetWindowMonitor(window_, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+	}
+	fullscreen_ = !fullscreen_;
+}
+
 void Window::draw() {
 	// glEnable(GL_SCISSOR_TEST);
 	root_->draw_cb();
