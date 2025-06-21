@@ -66,6 +66,8 @@ add_executable(${PROJECT_NAME}
     src/file.cpp
     src/shader.h
     src/file_view.cpp
+    src/linenum_view.cpp
+    src/content_view.cpp
     src/parser.cpp
     src/widget.cpp
     src/window.cpp
