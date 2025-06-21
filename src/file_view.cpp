@@ -331,6 +331,7 @@ void ContentView::update_scrollbar() {
 
 bool ContentView::on_mouse_button(ivec2 mouse, int button, int action, int mods) {
 	if (pressed()) {
+		// TODO if selection is in blank space, clip to the nearest left character
 		ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));
 		selection_abs_char_loc = {mouse_abs_char_loc, mouse_abs_char_loc};
 		selection_active_ = true;
@@ -347,6 +348,7 @@ bool ContentView::on_cursor_pos(ivec2 mouse) {
 		return false;
 	}
 
+	// TODO if selection is in blank space, clip to the nearest left character
 	ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));
 	selection_abs_char_loc.second = mouse_abs_char_loc;
 
@@ -362,18 +364,54 @@ void ContentView::reset_mod_styles() {
 }
 
 void ContentView::highlight_selection() {
-	auto lo_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.first);
-	auto hi_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.second);
+	//// TODO highlight blank parts of selected lines
+	// auto lo_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.first);
+	// auto hi_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.second);
+	//
+	// if (hi_buf_char_idx < lo_buf_char_idx) {
+	// 	std::swap(lo_buf_char_idx, hi_buf_char_idx);
+	// }
+	//
+	// for (size_t buf_char_idx = lo_buf_char_idx; buf_char_idx < hi_buf_char_idx; buf_char_idx++) {
+	// 	mod_styles_[buf_char_idx].bg = {200, 200, 200, 100};
+	// }
 
-	if (hi_buf_char_idx < lo_buf_char_idx) {
-		std::swap(lo_buf_char_idx, hi_buf_char_idx);
+	auto lo = selection_abs_char_loc.first;
+	auto hi = selection_abs_char_loc.second;
+
+	if (hi.y < lo.y || (hi.y == lo.y && hi.x < lo.x)) {
+		std::swap(lo, hi);
 	}
 
-	for (size_t buf_char_idx = lo_buf_char_idx; buf_char_idx < hi_buf_char_idx; buf_char_idx++) {
-		mod_styles_[buf_char_idx].bg = {200, 200, 200, 100};
-	}
+	for (auto y = lo.y; y <= hi.y; y++) {
+		ivec2 pos, size;
+		if (y == lo.y) {
+			pos = {lo.x, y};
+			if (y == hi.y) {
+				size = {hi.x - lo.x, 1};
+			} else {
+				size = {this->size().x, 1};
+			}
+		} else if (y == hi.y) {
+			if (lo.y == hi.y) {
+				pos = {lo.x, y};
+				size = {hi.x - lo.x, 1};
+			} else {
+				pos = {0, y};
+				size = {hi.x, 1};
+			}
+		} else {
+			pos = {0, y};
+			size = {this->size().x, 1};
+		}
 
-	// TODO highlight blank parts of selected lines
+		pos *= TextShader::font().size;
+		pos += this->pos() - parent_.scroll_;
+		size *= TextShader::font().size;
+
+		GPShader::rect(pos, size, {200, 200, 200, 100}, 253);
+	}
+	GPShader::draw();
 }
 
 void ContentView::draw() {
@@ -388,13 +426,13 @@ void ContentView::draw() {
 	TextShader::globals.scroll_offset_px = parent_.scroll_;
 	TextShader::globals.is_foreground = false;
 
-	TextShader::use(buf_);
-
 	reset_mod_styles();
 
 	if (selection_active_) {
 		highlight_selection();
 	}
+
+	TextShader::use(buf_);
 
 	glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
