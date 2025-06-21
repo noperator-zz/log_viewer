@@ -96,9 +96,9 @@ void Scrollbar::scroll_toward_mouse(ivec2 mouse, uint pages) const {
 void Scrollbar::scroll_to_mouse(ivec2 mouse) const {
 	int offset;
 	if (thumb_.horizontal_) {
-		offset = mouse.x - thumb_.pos().x;
+		offset = mouse.x - thumb_.pos().x - thumb_.size().x / 2; // Center the thumb on the mouse
 	} else {
-		offset = mouse.y - thumb_.pos().y;
+		offset = mouse.y - thumb_.pos().y - thumb_.size().y / 2; // Center the thumb on the mouse
 	}
 	thumb_cb(offset);
 }
