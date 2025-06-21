@@ -27,7 +27,7 @@ void ContentView::update_scrollbar() {
 	scroll_v_.set(parent_.scroll_.y, size().y, parent_.num_lines() * TextShader::font().size.y);
 }
 
-bool ContentView::on_mouse_button(ivec2 mouse, int button, int action, int mods) {
+bool ContentView::on_mouse_button(ivec2 mouse, int button, int action, Window::KeyMods mods) {
 	if (pressed()) {
 		// TODO if selection is in blank space, clip to the nearest left character
 		ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));

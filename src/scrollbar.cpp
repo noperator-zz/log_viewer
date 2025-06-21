@@ -40,7 +40,7 @@ bool Scrollbar::on_cursor_pos(ivec2 mouse) {
 
 /// If pressed below the thumb, move down one page. If pressed above the thumb, move up one page.
 /// If right-clicked, move directly to the pressed position
-bool Scrollbar::on_mouse_button(ivec2 mouse, int button, int action, int mods) {
+bool Scrollbar::on_mouse_button(ivec2 mouse, int button, int action, Window::KeyMods mods) {
 	if (!hovered()) {
 		return false;
 	}

@@ -4,8 +4,7 @@
 #include <vector>
 #include <glm/vec2.hpp>
 #include <GLFW/glfw3.h>
-
-class Window;
+#include "window.h"
 
 class Widget {
 	friend class Window;
@@ -32,9 +31,9 @@ class Widget {
 	glm::ivec2 size_ {};
 
 	bool cursor_pos_cb(glm::ivec2 mouse);
-	bool mouse_button_cb(glm::ivec2 mouse, int button, int action, int mods);
-	bool key_cb(int key, int scancode, int action, int mods);
-	bool scroll_cb(glm::ivec2 offset);
+	bool mouse_button_cb(glm::ivec2 mouse, int button, int action, Window::KeyMods mods);
+	bool key_cb(int key, int scancode, int action, Window::KeyMods mods);
+	bool scroll_cb(glm::ivec2 offset, Window::KeyMods mods);
 	bool drop_cb(int path_count, const char* paths[]);
 	// bool frame_buffer_size_cb(int width, int height);
 	// bool window_size_cb(int width, int height);
@@ -63,13 +62,13 @@ protected:
 	virtual void on_unhover() {}
 
 	// TODO should these default to return true to stop event propagation unless explicitly overridden?
-	virtual bool on_mouse_button(glm::ivec2 mouse, int button, int action, int mods) { return false; }
+	virtual bool on_mouse_button(glm::ivec2 mouse, int button, int action, Window::KeyMods mods) { return false; }
 
 	virtual bool on_cursor_pos(glm::ivec2 pos) { return false; }
 	virtual bool on_drag(glm::ivec2 offset) { return false; }
 
-	virtual bool on_key(int key, int scancode, int action, int mods) { return false; }
-	virtual bool on_scroll(glm::ivec2 offset) { return false; }
+	virtual bool on_key(int key, int scancode, int action, Window::KeyMods mods) { return false; }
+	virtual bool on_scroll(glm::ivec2 offset, Window::KeyMods mods) { return false; }
 	virtual bool on_drop(int path_count, const char* paths[]) { return false; }
 
 	Scissor && scissor();

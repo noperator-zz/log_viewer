@@ -28,7 +28,7 @@ class Scrollbar : public Widget {
 
 	void on_resize() override;
 	bool on_cursor_pos(glm::ivec2 pos) override;
-	bool on_mouse_button(glm::ivec2 mouse, int button, int action, int mods) override;
+	bool on_mouse_button(glm::ivec2 mouse, int button, int action, Window::KeyMods mods) override;
 
 	size_t scroll_range() const;
 	void thumb_cb(int offset) const;

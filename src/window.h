@@ -2,13 +2,25 @@
 #include <GLFW/glfw3.h>
 #include <glm/vec2.hpp>
 
+class Widget;
+
 class Window {
 	friend class Widget;
+public:
+	struct KeyMods {
+		int shift : 1;
+		int control : 1;
+		int alt : 1;
+		int super : 1;
+		int caps_lock : 1;
+		int num_lock : 1;
+	};
 
+private:
 	GLFWwindow *window_;
 	Widget *root_;
 	glm::ivec2 mouse_ {};
-	bool shift_held_ {};
+	KeyMods key_mods_ {};
 
 	static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void cursor_pos_cb(GLFWwindow* window, double xpos, double ypos);
@@ -21,9 +33,8 @@ class Window {
 
 public:
 	Window(GLFWwindow *window, Widget *root);
-	GLFWwindow *glfw_window() const { return window_; }
-	bool shift_held() const { return shift_held_; }
 	~Window();
+
 	void destroy();
 	void swap_buffers() const;
 	bool should_close() const;

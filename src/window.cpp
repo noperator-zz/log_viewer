@@ -23,14 +23,8 @@ Window::~Window() {
 
 void Window::key_cb(GLFWwindow* glfw_window, int key, int scancode, int action, int mods) {
 	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
-		if (action == GLFW_PRESS) {
-			window->shift_held_ = true;
-		} else if (action == GLFW_RELEASE) {
-			window->shift_held_ = false;
-		}
-	}
-	window->root_->key_cb(key, scancode, action, mods);
+	window->key_mods_ = *reinterpret_cast<KeyMods*>(&mods);
+	window->root_->key_cb(key, scancode, action, window->key_mods_);
 }
 
 void Window::cursor_pos_cb(GLFWwindow* glfw_window, double xpos, double ypos) {
@@ -41,12 +35,13 @@ void Window::cursor_pos_cb(GLFWwindow* glfw_window, double xpos, double ypos) {
 
 void Window::mouse_button_cb(GLFWwindow* glfw_window, int button, int action, int mods) {
 	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	window->root_->mouse_button_cb(window->mouse_, button, action, mods);
+	window->key_mods_ = *reinterpret_cast<KeyMods*>(&mods);
+	window->root_->mouse_button_cb(window->mouse_, button, action, window->key_mods_);
 }
 
 void Window::scroll_cb(GLFWwindow* glfw_window, double xoffset, double yoffset) {
 	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	window->root_->scroll_cb({xoffset, yoffset});
+	window->root_->scroll_cb({xoffset, yoffset}, window->key_mods_);
 }
 
 void Window::drop_cb(GLFWwindow* glfw_window, int path_count, const char* paths[]) {

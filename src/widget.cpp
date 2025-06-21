@@ -33,7 +33,7 @@ Widget::Widget() {
 
 Widget::Widget(std::string_view name) : name_(name) {}
 
-bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, int mods) {
+bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, Window::KeyMods mods) {
 	// bool has_focus = true;
 
 	// // TODO if a child is pressed, then parent becomes un-hovered, this will prevent the child from becoming released
@@ -137,7 +137,7 @@ bool Widget::cursor_pos_cb(ivec2 mouse) {
 	return state_.hovered; // Return true if hovered, false otherwise
 }
 
-bool Widget::key_cb(int key, int scancode, int action, int mods) {
+bool Widget::key_cb(int key, int scancode, int action, Window::KeyMods mods) {
 	for (auto child : children_) {
 		if (child->key_cb(key, scancode, action, mods)) {
 			return true; // If a child handled the event, stop further processing
@@ -146,13 +146,13 @@ bool Widget::key_cb(int key, int scancode, int action, int mods) {
 	return on_key(key, scancode, action, mods);
 }
 
-bool Widget::scroll_cb(ivec2 offset) {
+bool Widget::scroll_cb(ivec2 offset, Window::KeyMods mods) {
 	for (auto child : children_) {
-		if (child->scroll_cb(offset)) {
+		if (child->scroll_cb(offset, mods)) {
 			return true; // If a child handled the event, stop further processing
 		}
 	}
-	return on_scroll(offset);
+	return on_scroll(offset, mods);
 }
 
 bool Widget::drop_cb(int path_count, const char* paths[]) {
