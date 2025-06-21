@@ -15,6 +15,12 @@ Window::Window(GLFWwindow *window, Widget *root) : window_(window), root_(root) 
 	// glfwSetMonitorCallback(                   [](GLFWmonitor* monitor, int event) { std::cout << "Monitor\n" << std::endl; });
 }
 
+Window::~Window() {
+	if (window_) {
+		destroy();
+	}
+}
+
 void Window::key_cb(GLFWwindow* glfw_window, int key, int scancode, int action, int mods) {
 	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
 	if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
@@ -62,6 +68,19 @@ void Window::window_refresh_cb(GLFWwindow* glfw_window) {
 	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
 	window->draw();
 	glFinish();
+}
+
+void Window::destroy() {
+	glfwDestroyWindow(window_);
+	window_ = nullptr;
+}
+
+void Window::swap_buffers() const {
+	glfwSwapBuffers(window_);
+}
+
+bool Window::should_close() const {
+	return glfwWindowShouldClose(window_);
 }
 
 void Window::draw() {

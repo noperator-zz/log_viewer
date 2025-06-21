@@ -23,5 +23,10 @@ public:
 	Window(GLFWwindow *window, Widget *root);
 	GLFWwindow *glfw_window() const { return window_; }
 	bool shift_held() const { return shift_held_; }
+	~Window();
+	void destroy();
+	void swap_buffers() const;
+	bool should_close() const;
+
 	void draw();
 };

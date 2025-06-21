@@ -22,7 +22,7 @@ App::App() : Widget("App") {
 }
 
 App::~App() {
-    glfwDestroyWindow(window_->glfw_window());
+    window_->destroy();
 }
 
 void App::create(int argc, char *argv[]) {
@@ -196,7 +196,7 @@ void App::draw() {
 
     GPShader::draw();
 
-    glfwSwapBuffers(window_->glfw_window());
+    window_->swap_buffers();
 }
 
 int App::run() {
@@ -210,7 +210,7 @@ int App::run() {
     size_t fps = 0;
     // TODO limit framerate
     // TODO separate processing from rendering
-    while (!glfwWindowShouldClose(window_->glfw_window())) {
+    while (!window_->should_close()) {
         auto frame_start = high_resolution_clock::now();
         // Timeit frame("Frame");
         draw();
