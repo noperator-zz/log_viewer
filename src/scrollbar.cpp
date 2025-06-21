@@ -3,7 +3,7 @@
 using namespace glm;
 
 Scrollbar::Thumb::Thumb(bool horizontal, std::function<void(int)> scroll_cb)
-	: horizontal_(horizontal), scroll_cb_(std::move(scroll_cb)) {}
+	: Widget("T"), horizontal_(horizontal), scroll_cb_(std::move(scroll_cb)) {}
 
 // bool Scrollbar::Thumb::on_mouse_button(ivec2 mouse, int button, int action, int mods) {
 // 	return false;//hovered() && button == GLFW_MOUSE_BUTTON_LEFT;
@@ -21,7 +21,7 @@ void Scrollbar::Thumb::draw() {
 
 
 Scrollbar::Scrollbar(bool horizontal, std::function<void(double)> scroll_cb)
-	: scroll_cb_(std::move(scroll_cb)), thumb_(horizontal, [this](int o){thumb_cb(o);}) {
+	: Widget("S"), scroll_cb_(std::move(scroll_cb)), thumb_(horizontal, [this](int o){thumb_cb(o);}) {
 	add_child(&thumb_);
 }
 

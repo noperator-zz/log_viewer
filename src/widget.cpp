@@ -1,3 +1,5 @@
+#include <typeinfo>
+#include <iostream>
 #include <GLFW/glfw3.h>
 #include "widget.h"
 #include "window.h"
@@ -22,6 +24,14 @@ Widget::Scissor::~Scissor() {
 		glDisable(GL_SCISSOR_TEST);
 	}
 }
+
+Widget::Widget() {
+	char buf[128];
+	sprintf(buf, "%s<%p>", typeid(*this).name(), this);
+	name_ = std::string(buf);
+}
+
+Widget::Widget(std::string_view name) : name_(name) {}
 
 bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, int mods) {
 	// bool has_focus = true;
@@ -111,11 +121,13 @@ bool Widget::cursor_pos_cb(ivec2 mouse) {
 	if (hovered) {
 		if (!state_.hovered) {
 			state_.hovered = true;
+			std::cout << "H " << path() << std::endl;
 			on_hover();
 		}
 	} else {
 		if (state_.hovered) {
 			state_.hovered = false;
+			std::cout << "U " << path() << std::endl;
 			on_unhover();
 		}
 	}
@@ -212,6 +224,21 @@ void Widget::remove_child(Widget *child) {
 	child->parent_ = nullptr;
 	// child->window_ = nullptr;
 	std::erase(children_, child);
+}
+
+// std::string_view Widget::type() const {
+// 	return typeid(*this).name();
+// }
+
+std::string_view Widget::name() const {
+	return name_;
+}
+
+std::string Widget::path() const {
+	if (parent_) {
+		return parent_->path() + "/" + std::string{name_};
+	}
+	return std::string{name_};
 }
 
 void Widget::resize(ivec2 pos, ivec2 size) {

@@ -1,4 +1,6 @@
 #pragma once
+#include <string>
+#include <string_view>
 #include <vector>
 #include <glm/vec2.hpp>
 #include <GLFW/glfw3.h>
@@ -19,6 +21,7 @@ class Widget {
 		// bool clicked: 1;
 	};
 
+	std::string name_;
 	Widget *parent_ {};
 	// Window *window_ {};
 	std::vector<Widget*> children_ {};
@@ -72,7 +75,8 @@ protected:
 	Scissor && scissor();
 
 public:
-	Widget() = default;
+	Widget();
+	Widget(std::string_view name);
 	virtual ~Widget() = default;
 
 	[[nodiscard]] Widget *parent() const;
@@ -83,6 +87,10 @@ public:
 	[[nodiscard]] glm::ivec2 rel_pos(glm::ivec2 abs_pos) const;
 	[[nodiscard]] bool hovered() const;
 	[[nodiscard]] bool pressed(int button = GLFW_MOUSE_BUTTON_LEFT) const;
+
+	// [[nodiscard]] std::string_view type() const;
+	[[nodiscard]] std::string_view name() const;
+	[[nodiscard]] std::string path() const;
 
 	void resize(glm::ivec2 pos, glm::ivec2 size);
 	virtual void draw() {};

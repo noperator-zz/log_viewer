@@ -17,7 +17,7 @@ std::unique_ptr<FileView> FileView::create(const char *path) {
 }
 
 FileView::FileView(const char *path)
-	: loader_(File{path}, 8) {
+	: Widget("FV"), loader_(File{path}, 8) {
 
 	add_child(&linenum_view_);
 	add_child(&content_view_);
@@ -284,7 +284,7 @@ void FileView::draw() {
 	// draw.stop();
 }
 
-LinenumView::LinenumView(FileView &parent) : Widget(), parent_(parent) {}
+LinenumView::LinenumView(FileView &parent) : Widget("L"), parent_(parent) {}
 
 void LinenumView::draw() {
 	Scissor s {this};
@@ -305,7 +305,7 @@ void LinenumView::draw() {
 	parent_.draw_lines(render_range_);
 }
 
-ContentView::ContentView(FileView &parent) : Widget(), parent_(parent) {
+ContentView::ContentView(FileView &parent) : Widget("C"), parent_(parent) {
 	add_child(&scroll_h_);
 	add_child(&scroll_v_);
 }

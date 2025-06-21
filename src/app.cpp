@@ -18,7 +18,7 @@
 
 using namespace std::chrono;
 
-App::App() {
+App::App() : Widget("App") {
 }
 
 App::~App() {
