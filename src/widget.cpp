@@ -26,14 +26,16 @@ Widget::Scissor::~Scissor() {
 bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, int mods) {
 	// bool has_focus = true;
 
-	// TODO if a child is pressed, then parent becomes un-hovered, this will prevent the child from becoming released
-	if (!state_.hovered && !state_.l_pressed && !state_.r_pressed && !state_.m_pressed) {
-		return false; // Ignore mouse events if not hovered or pressed
-	}
+	// // TODO if a child is pressed, then parent becomes un-hovered, this will prevent the child from becoming released
+	// if (!state_.hovered && !state_.l_pressed && !state_.r_pressed && !state_.m_pressed) {
+	// 	return false; // Ignore mouse events if not hovered or pressed
+	// }
+
+	bool handled_by_child = false;
 
 	for (auto child : children_) {
 		if (child->mouse_button_cb(mouse, button, action, mods)) {
-			return true; // If a child handled the event, stop further processing
+			handled_by_child = true;
 		}
 		// if (child->state_.hovered) {
 		// 	has_focus = false;
@@ -56,12 +58,16 @@ bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, int mods) {
 		}
 	}
 
+	if (handled_by_child) {
+		return true; // If a child handled the event, stop further processing
+	}
+
 	// if (!has_focus) {
 	// 	// A child has focus, so we don't handle the event here
 	// 	return false;
 	// }
 
-	if (action == GLFW_PRESS) {
+	if (action == GLFW_PRESS && state_.hovered) {
 		switch (button) {
 			case GLFW_MOUSE_BUTTON_LEFT:
 				state_.l_pressed = true;
