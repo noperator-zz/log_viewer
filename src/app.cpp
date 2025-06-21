@@ -158,8 +158,18 @@ FileView& App::active_file_view() {
     return *file_views_.front();
 }
 
-bool App::on_scroll(glm::ivec2 offset) {
-    if (window_->shift_held()) {
+bool App::on_key(int key, int scancode, int action, Window::KeyMods mods) {
+    if (action == GLFW_RELEASE) {
+        return false; // Ignore key release events
+    }
+
+    if (key == GLFW_KEY_F11) {
+        window_->toggle_fullscreen();
+        return true;
+    }
+    return false;
+}
+
 bool App::on_scroll(glm::ivec2 offset, Window::KeyMods mods) {
     if (mods.shift) {
         offset.x = offset.y;
