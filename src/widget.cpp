@@ -146,6 +146,15 @@ bool Widget::key_cb(int key, int scancode, int action, Window::KeyMods mods) {
 	return on_key(key, scancode, action, mods);
 }
 
+bool Widget::char_cb(unsigned int codepoint, Window::KeyMods mods) {
+	for (auto child : children_) {
+		if (child->char_cb(codepoint, mods)) {
+			return true; // If a child handled the event, stop further processing
+		}
+	}
+	return on_char(codepoint, mods);
+}
+
 bool Widget::scroll_cb(ivec2 offset, Window::KeyMods mods) {
 	for (auto child : children_) {
 		if (child->scroll_cb(offset, mods)) {

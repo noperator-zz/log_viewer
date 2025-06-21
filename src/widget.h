@@ -33,6 +33,7 @@ class Widget {
 	bool cursor_pos_cb(glm::ivec2 mouse);
 	bool mouse_button_cb(glm::ivec2 mouse, int button, int action, Window::KeyMods mods);
 	bool key_cb(int key, int scancode, int action, Window::KeyMods mods);
+	bool char_cb(unsigned int codepoint, Window::KeyMods mods);
 	bool scroll_cb(glm::ivec2 offset, Window::KeyMods mods);
 	bool drop_cb(int path_count, const char* paths[]);
 	// bool frame_buffer_size_cb(int width, int height);
@@ -68,6 +69,7 @@ protected:
 	virtual bool on_drag(glm::ivec2 offset) { return false; }
 
 	virtual bool on_key(int key, int scancode, int action, Window::KeyMods mods) { return false; }
+	virtual bool on_char(unsigned int codepoint, Window::KeyMods mods) { return false; }
 	virtual bool on_scroll(glm::ivec2 offset, Window::KeyMods mods) { return false; }
 	virtual bool on_drop(int path_count, const char* paths[]) { return false; }
 

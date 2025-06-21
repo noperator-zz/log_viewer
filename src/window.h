@@ -23,6 +23,7 @@ private:
 	KeyMods key_mods_ {};
 
 	static void key_cb(GLFWwindow* window, int key, int scancode, int action, int mods);
+	static void char_cb(GLFWwindow* window, unsigned int codepoint);
 	static void cursor_pos_cb(GLFWwindow* window, double xpos, double ypos);
 	static void mouse_button_cb(GLFWwindow* window, int button, int action, int mods);
 	static void scroll_cb(GLFWwindow* window, double xoffset, double yoffset);

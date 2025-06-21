@@ -5,6 +5,7 @@ Window::Window(GLFWwindow *window, Widget *root) : window_(window), root_(root) 
 	glfwSetWindowUserPointer(window_, this);
 
 	glfwSetKeyCallback(window_,              key_cb);
+	glfwSetCharCallback(window_,             char_cb);
 	glfwSetCursorPosCallback(window_,        cursor_pos_cb);
 	glfwSetMouseButtonCallback(window_,      mouse_button_cb);
 	glfwSetScrollCallback(window_,           scroll_cb);
@@ -25,6 +26,11 @@ void Window::key_cb(GLFWwindow* glfw_window, int key, int scancode, int action, 
 	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
 	window->key_mods_ = *reinterpret_cast<KeyMods*>(&mods);
 	window->root_->key_cb(key, scancode, action, window->key_mods_);
+}
+
+void Window::char_cb(GLFWwindow* glfw_window, unsigned int codepoint) {
+	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+	window->root_->char_cb(codepoint, window->key_mods_);
 }
 
 void Window::cursor_pos_cb(GLFWwindow* glfw_window, double xpos, double ypos) {
