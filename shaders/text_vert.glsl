@@ -35,7 +35,7 @@ void main() {
     vec2 pos_px = (vec2(char_pos.x, 0) + corner_quant) * glyph_size_px + frame_offset_px + line_offset_px;
     v_bg = bg;
     if (!is_foreground) {
-        gl_Position = u_proj * vec4(pos_px, 0.0, 1.0);
+        gl_Position = u_proj * vec4(pos_px, 0.5001, 1.0);
         return;
     }
 
@@ -47,5 +47,5 @@ void main() {
     v_uv = (vec2(glyph_idx, style_idx) + corner_quant) / vec2(atlas_cols, 4U);
     v_fg = fg;
 
-    gl_Position = u_proj * vec4(pos_px, 0.0, 1.0);
+    gl_Position = u_proj * vec4(pos_px, 0.5, 1.0);
 }

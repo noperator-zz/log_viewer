@@ -159,14 +159,15 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 		size_t line_len = get_line_len(line_idx);
 		for (size_t i = 0; i < line_len; i++) {
 			bool is_match = false;//next_match != matches.end() && current_char >= next_match->start && current_char < next_match->end;
-			uint8_t r = is_match ? 200 : 100;
+			uint8_t r = is_match ? 100 : 200;
 			uint8_t g = 200;
 			uint8_t b = 200;
 			content_view_.base_styles_[c] = {
 				{},
 				uvec2{i, line_idx},
 				vec4{r, g, b, 255},
-				vec4{100, 100, 100, 100}
+				vec4{}
+				// vec4{100, 0, 0, 100}
 			};
 			c++;
 			current_char++;
@@ -192,8 +193,8 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 			linenum_styles[c] = {
 				{},
 				uvec2{i, line_idx},
-				vec4{200, 200, 200, 255},
-				vec4{100, 100, 100, 100}
+				vec4{0xA0, 0xA0, 0xA0, 255},
+				vec4{}
 			};
 			c++;
 		}
@@ -274,8 +275,6 @@ void FileView::draw() {
 	// std::cout << content_render_range.x << " " << content_render_range.y << "\n";
 
 	// TextShader::globals.frame_offset_px = pos();
-	TextShader::globals.scroll_offset_px = scroll_;
-	TextShader::globals.is_foreground = false;
 
 	// Timeit draw("Draw");
 	//
@@ -288,7 +287,14 @@ void FileView::draw() {
 LinenumView::LinenumView(FileView &parent) : Widget(), parent_(parent) {}
 
 void LinenumView::draw() {
+	Scissor s {this};
+	GPShader::rect(pos() + ivec2{size().x - 2, 0}, ivec2{2, size().y}, {0x37, 0x37, 0x37, 0xFF}, 254);
+	GPShader::rect(pos(), size(), {0x2B, 0x2B, 0x2B, 0xFF}, 254);
+	GPShader::draw();
+
 	TextShader::globals.frame_offset_px = pos();
+	TextShader::globals.scroll_offset_px = {0, parent_.scroll_.y};
+	TextShader::globals.is_foreground = false;
 
 	TextShader::use(buf_);
 	TextShader::update_uniforms();
@@ -371,7 +377,16 @@ void ContentView::highlight_selection() {
 }
 
 void ContentView::draw() {
+	Scissor s {this};
+
+	GPShader::rect(pos(), size(), {0x2B, 0x2B, 0x2B, 0xFF}, 254);
+	GPShader::draw();
+	// GPShader::rect({0, 0}, {200, 200}, {0, 255, 0, 100});
+	// GPShader::rect({100, 100}, {200, 200}, {255, 0, 0, 100});
+
 	TextShader::globals.frame_offset_px = pos();
+	TextShader::globals.scroll_offset_px = parent_.scroll_;
+	TextShader::globals.is_foreground = false;
 
 	TextShader::use(buf_);
 

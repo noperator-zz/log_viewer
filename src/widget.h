@@ -42,6 +42,13 @@ class Widget {
 	void _on_resize();
 
 protected:
+	class Scissor {
+		int nesting_ {};
+	public:
+		Scissor(Widget *widget);
+		~Scissor();
+	};
+
 	State state_ {};
 
 	void add_child(Widget *child);
@@ -61,6 +68,8 @@ protected:
 	virtual bool on_key(int key, int scancode, int action, int mods) { return false; }
 	virtual bool on_scroll(glm::ivec2 offset) { return false; }
 	virtual bool on_drop(int path_count, const char* paths[]) { return false; }
+
+	Scissor && scissor();
 
 public:
 	Widget() = default;

@@ -31,7 +31,7 @@ public:
 		glm::uint atlas_cols;
 		alignas(4) bool is_foreground;
 
-		void set_viewport(glm::ivec2 pos, glm::ivec2 size);
+		void set_viewport(glm::ivec2 size);
 	};
 
 	struct Buffer {

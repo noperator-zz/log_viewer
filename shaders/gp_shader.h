@@ -8,7 +8,7 @@
 
 class GPShader {
 	struct __attribute__((packed)) GPVertex {
-		glm::ivec2 pos;
+		glm::ivec3 pos;
 		glm::u8vec4 color;
 	};
 
@@ -26,7 +26,7 @@ class GPShader {
 public:
 	static int init();
 	static void clear();
-	static void rect(glm::ivec2 pos, glm::ivec2 size, glm::u8vec4 color);
+	static void rect(glm::ivec2 pos, glm::ivec2 size, glm::u8vec4 color, uint8_t z = 0);
 	static void draw();
-	static void set_viewport(glm::ivec2 pos, glm::ivec2 size);
+	static void set_viewport(glm::ivec2 size);
 };

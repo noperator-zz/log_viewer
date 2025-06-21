@@ -15,7 +15,8 @@ bool Scrollbar::Thumb::on_drag(ivec2 offset) {
 }
 
 void Scrollbar::Thumb::draw() {
-	GPShader::rect(pos(), size(),{100, hovered() * 255, pressed() * 255, 255});
+	Scissor s {this};
+	GPShader::rect(pos(), size(), {100, hovered() * 255, pressed() * 255, 255}, 1);
 }
 
 
@@ -105,9 +106,11 @@ void Scrollbar::thumb_cb(int offset) const {
 }
 
 void Scrollbar::draw() {
+	Scissor s {this};
 	if (visible_percent_ >= 1.0f) {
 		return; // No need to draw the thumb if it covers the whole scrollbar
 	}
-	GPShader::rect(pos(), size(), {100, 100, 100, 50});
 	thumb_.draw();
+	GPShader::rect(pos(), size(), {100, 100, 100, 50});
+	GPShader::draw();
 }

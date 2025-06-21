@@ -85,6 +85,13 @@ int App::start() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+    glEnable(GL_DEPTH_TEST);
+    // glDepthFunc(GL_LESS);
+    glDepthMask(GL_TRUE);
+
+    // glEnable(GL_ALPHA_TEST);
+    // glAlphaFunc(GL_GREATER, 0.1f);
+
     if (Font::init()) {
         std::cerr << "Failed to initialize FreeType\n";
         return -1;
@@ -169,8 +176,8 @@ bool App::on_drop(int path_count, const char* paths[]) {
 
 void App::on_resize() {
     fb_size_ = size();
-    GPShader::set_viewport({}, fb_size_);
-	TextShader::globals.set_viewport({}, fb_size_);
+    GPShader::set_viewport(fb_size_);
+	TextShader::globals.set_viewport(fb_size_);
     if (file_views_.empty()) {
         return; // No file views to resize
     }
@@ -179,7 +186,7 @@ void App::on_resize() {
 }
 
 void App::draw() {
-    glClear(GL_COLOR_BUFFER_BIT);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     GPShader::clear();
 

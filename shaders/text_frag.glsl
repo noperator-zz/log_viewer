@@ -22,6 +22,13 @@ void main() {
     }
 
     float a = texture(atlas, v_uv).r;
+    if (a == 0.0) {
+        // Skip transparent foreground pixels. Due to the bearing_y offset, the transparent bottom of a glyph
+        //  may overlap the line below it. Due to depth testing, this would cause the top of the next line's glyph
+        //  to not be drawn. By discarding transparent pixels, the depth buffer is not updated, and the next line's glyph
+        //  passes the depth test.
+        discard;
+    }
     color = mix(vec4(0, 0, 0, 0), v_fg, a);
 //    color = vec4((v_style_mask & 0xFFU), 0, 0, 1);
 //    color = vec4(0, v_uv.r, 0, 1);

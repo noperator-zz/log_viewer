@@ -115,12 +115,8 @@ void TextShader::use(const Buffer &buf) {
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, buf.ubo_globals);
 }
 
-void TextShader::UniformGlobals::set_viewport(ivec2 pos, ivec2 size) {
-	u_proj = ortho<float>(
-		pos.x, pos.x + size.x,
-		pos.y + size.y, pos.y,
-		-1.0f, 1.0f
-	);
+void TextShader::UniformGlobals::set_viewport(ivec2 size) {
+	u_proj = ortho<float>(0, size.x, size.y, 0, 0, -1);
 }
 
 const Font &TextShader::font() {

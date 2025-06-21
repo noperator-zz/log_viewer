@@ -4,9 +4,29 @@
 
 using namespace glm;
 
+
+Widget::Scissor::Scissor(Widget *widget) {
+	if (!nesting_) {
+		glEnable(GL_SCISSOR_TEST);
+	}
+	nesting_++;
+	auto pos = widget->pos();
+	auto size = widget->size();
+	glScissor(pos.x, pos.y, size.x, size.y);
+}
+
+Widget::Scissor::~Scissor() {
+	nesting_--;
+	assert(nesting_ >= 0);
+	if (nesting_ == 0) {
+		glDisable(GL_SCISSOR_TEST);
+	}
+}
+
 bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, int mods) {
 	// bool has_focus = true;
 
+	// TODO if a child is pressed, then parent becomes un-hovered, this will prevent the child from becoming released
 	if (!state_.hovered && !state_.l_pressed && !state_.r_pressed && !state_.m_pressed) {
 		return false; // Ignore mouse events if not hovered or pressed
 	}
