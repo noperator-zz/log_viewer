@@ -14,6 +14,10 @@ public:
 		int super : 1;
 		int caps_lock : 1;
 		int num_lock : 1;
+
+		bool special() const {
+			return control || alt || super;
+		}
 	};
 
 private:

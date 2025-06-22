@@ -9,7 +9,7 @@
 class Scrollbar : public Widget {
 	class Thumb : public Widget {
 		friend class Scrollbar;
-		glm::u8vec4 color_ {100, 0, 0, 255};
+		color color_ {100, 0, 0, 255};
 		bool horizontal_;
 		std::function<void(int)> scroll_cb_;
 

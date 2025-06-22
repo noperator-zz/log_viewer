@@ -2,7 +2,8 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <glm/vec2.hpp>
+#include <glm/glm.hpp>
+#include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include "window.h"
 
@@ -54,8 +55,8 @@ protected:
 
 	State state_ {};
 
-	void add_child(Widget *child);
-	void remove_child(Widget *child);
+	void add_child(Widget &child);
+	void remove_child(Widget &child);
 
 	virtual void on_resize() {}
 
@@ -93,6 +94,6 @@ public:
 	[[nodiscard]] std::string_view name() const;
 	[[nodiscard]] std::string path() const;
 
-	void resize(glm::ivec2 pos, glm::ivec2 size);
+	std::tuple<int, int, int, int> resize(glm::ivec2 pos, glm::ivec2 size);
 	virtual void draw() {};
 };

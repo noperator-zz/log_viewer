@@ -19,8 +19,11 @@ std::unique_ptr<FileView> FileView::create(const char *path) {
 FileView::FileView(const char *path)
 	: Widget("FV"), loader_(File{path}, 8) {
 
-	add_child(&linenum_view_);
-	add_child(&content_view_);
+	add_child(linenum_view_);
+	add_child(content_view_);
+
+	find_views_.emplace_back(std::make_unique<FindView>([this](const FindView &find_view) {}));
+	add_child(*find_views_.back().get());
 }
 
 FileView::~FileView() {
@@ -46,6 +49,11 @@ void FileView::on_resize() {
 	auto linenum_width = linenum_chars_ * TextShader::font().size.x + 20;
 	linenum_view_.resize(pos(), {linenum_width, size().y});
 	content_view_.resize({pos().x + linenum_width, pos().y}, {size().x - linenum_width, size().y});
+	auto p = content_view_.pos();
+	for (auto &find_view : find_views_) {
+		find_view->resize(p, {content_view_.size().x - content_view_.scroll_v_.size().x, 30});
+		p.y += 30;
+	}
 }
 
 void FileView::scroll_h_cb(double percent) {
@@ -244,10 +252,6 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 	linenum_render_range = (uvec2{visible_lines.x, visible_lines.y} - (uint)buf_lines_.x) * (uint)linenum_chars_;
 }
 
-void FileView::draw_lines(const uvec2 render_range) const {
-	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, render_range.y - render_range.x, render_range.x);
-}
-
 void FileView::draw() {
 	const uint8_t *data;
 	auto prev_linenum_chars = linenum_chars_;
@@ -280,6 +284,10 @@ void FileView::draw() {
 	//
 	content_view_.draw();
 	linenum_view_.draw();
+
+	for (auto &find_view : find_views_) {
+		find_view->draw();
+	}
 
 	// draw.stop();
 }

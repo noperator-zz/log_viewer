@@ -4,6 +4,8 @@
 
 #include "gp_vert.glsl.h"
 #include "gp_frag.glsl.h"
+#include "types.h"
+#include "widget.h"
 
 using namespace glm;
 
@@ -50,11 +52,25 @@ int GPShader::init() {
 	return ret;
 }
 
-void GPShader::clear() {
-	inst_->vertices_.clear();
+// void GPShader::clear() {
+// 	inst_->vertices_.clear();
+// }
+
+std::tuple<int, int, int, int> GPShader::rect(const Widget &w, ivec2 pos_, ivec2 size_, color color, uint8_t z) {
+	auto max_size = w.size() - (pos_ - w.pos());
+	if (size_.x <= 0) {
+		size_.x = w.size().x + size_.x;
+	}
+	size_.x = std::min(size_.x, max_size.x);
+
+	if (size_.y <= 0) {
+		size_.y = w.size().y + size_.y;
+	}
+	size_.y = std::min(size_.y, max_size.y);
+	return rect(pos_, size_, color, z);
 }
 
-void GPShader::rect(ivec2 pos_, ivec2 size_, u8vec4 color, uint8_t z) {
+std::tuple<int, int, int, int> GPShader::rect(ivec2 pos_, ivec2 size_, color color, uint8_t z) {
 	// Add a rectangle to the vertex buffer
 	ivec3 pos = {pos_.x, pos_.y, z};
 	ivec3 size = {size_.x, size_.y, 0};
@@ -64,6 +80,7 @@ void GPShader::rect(ivec2 pos_, ivec2 size_, u8vec4 color, uint8_t z) {
 	inst_->vertices_.push_back({pos, color});
 	inst_->vertices_.push_back({pos + size, color});
 	inst_->vertices_.push_back({pos + ivec3{0, size.y, 0}, color});
+	return {pos.x, pos.y, size.x, size.y};
 }
 
 void GPShader::draw() {

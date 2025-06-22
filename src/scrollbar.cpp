@@ -16,13 +16,13 @@ bool Scrollbar::Thumb::on_drag(ivec2 offset) {
 
 void Scrollbar::Thumb::draw() {
 	Scissor s {this};
-	GPShader::rect(pos(), size(), {100, hovered() * 255, pressed() * 255, 255}, 1);
+	GPShader::rect(pos(), size(), {100, hovered() * 255, pressed() * 255, 255}, Z_UI_FG);
 }
 
 
 Scrollbar::Scrollbar(bool horizontal, std::function<void(double)> scroll_cb)
 	: Widget("S"), scroll_cb_(std::move(scroll_cb)), thumb_(horizontal, [this](int o){thumb_cb(o);}) {
-	add_child(&thumb_);
+	add_child(thumb_);
 }
 
 void Scrollbar::on_resize() {
@@ -114,6 +114,6 @@ void Scrollbar::draw() {
 		return; // No need to draw the thumb if it covers the whole scrollbar
 	}
 	thumb_.draw();
-	GPShader::rect(pos(), size(), {100, 100, 100, 50});
-	GPShader::draw();
+	GPShader::rect(pos(), size(), {100, 100, 100, 50}, Z_UI_FG);
+	GPShader::draw(); // TODO remove this, but scissoring messes it up since the scissor region is different by the time its drawn
 }

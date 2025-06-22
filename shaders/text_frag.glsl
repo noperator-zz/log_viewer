@@ -10,6 +10,7 @@ layout(std140) uniform Globals {
     ivec2 scroll_offset_px;
     ivec2 frame_offset_px;
     uint atlas_cols;
+    uint z_order;
     bool is_foreground;
 };
 

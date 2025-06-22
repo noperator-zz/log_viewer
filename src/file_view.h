@@ -14,6 +14,7 @@
 #include "loader.h"
 #include "linenum_view.h"
 #include "content_view.h"
+#include "find_view.h"
 
 class FileView : public Widget {
 	friend class LinenumView;
@@ -32,6 +33,7 @@ class FileView : public Widget {
 	Loader loader_;
 	LinenumView linenum_view_ {*this};
 	ContentView content_view_ {*this};
+	std::vector<std::unique_ptr<FindView>> find_views_ {};
 
 	size_t linenum_chars_ {1};
 	glm::ivec2 buf_lines_ {};
@@ -49,7 +51,6 @@ class FileView : public Widget {
 
 	void really_update_buffers(int start, int end, const uint8_t *data);
 	void update_buffers(glm::uvec2 &content_render_range, glm::uvec2 &linenum_render_range, const uint8_t *data);
-	void draw_lines(glm::uvec2 render_range) const;
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
 	// size_t get_line_start(size_t line_idx) const;

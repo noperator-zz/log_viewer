@@ -3,6 +3,7 @@
 #include <memory>
 #include <glm/glm.hpp>
 
+#include "types.h"
 #include "../src/font.h"
 #include "../src/shader.h"
 
@@ -19,8 +20,8 @@ public:
 			uint8_t style {};
 		};
 		glm::uvec2 char_pos {};
-		glm::u8vec4 fg {};
-		glm::u8vec4 bg {};
+		color fg {};
+		color bg {};
 	};
 
 	struct UniformGlobals {
@@ -29,6 +30,7 @@ public:
 		glm::ivec2 scroll_offset_px;
 		glm::ivec2 frame_offset_px;
 		glm::uint atlas_cols;
+		alignas(4) uint8_t z_order;
 		alignas(4) bool is_foreground;
 
 		void set_viewport(glm::ivec2 size);
@@ -60,5 +62,7 @@ public:
 
 	static void update_uniforms();
 	static void use(const Buffer &buf);
+	static void render(const Buffer &buf, std::string_view text, const CharStyle &style);
+	static void draw(glm::ivec2 frame_offset, glm::ivec2 scroll_offset, size_t start, size_t count, uint8_t z_bg, uint8_t z_fg);
 	static const Font &font();
 };

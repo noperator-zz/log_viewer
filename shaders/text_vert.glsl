@@ -11,6 +11,7 @@ layout(std140) uniform Globals {
     ivec2 scroll_offset_px;
     ivec2 frame_offset_px;
     uint atlas_cols;
+    uint z_order;
     bool is_foreground;
 };
 
@@ -28,6 +29,8 @@ void main() {
         vec2(0, 1), vec2(1, 1)
     );
 
+    float z = float(z_order) / 255.f;
+
 //    char_idx = uint(gl_InstanceID);  // Which glyph in the line
     vec2 corner_quant = quad_offsets[corner];
     // Pre-calculate the line offset using integer arithmetic to acheive a greater scroll range compared to float (31-bit vs 24-bit mantissa).
@@ -35,7 +38,7 @@ void main() {
     vec2 pos_px = (vec2(char_pos.x, 0) + corner_quant) * glyph_size_px + frame_offset_px + line_offset_px;
     v_bg = bg;
     if (!is_foreground) {
-        gl_Position = u_proj * vec4(pos_px, 0.5001, 1.0);
+        gl_Position = u_proj * vec4(pos_px, z, 1.0);
         return;
     }
 
@@ -47,5 +50,5 @@ void main() {
     v_uv = (vec2(glyph_idx, style_idx) + corner_quant) / vec2(atlas_cols, 4U);
     v_fg = fg;
 
-    gl_Position = u_proj * vec4(pos_px, 0.5, 1.0);
+    gl_Position = u_proj * vec4(pos_px, z, 1.0);
 }

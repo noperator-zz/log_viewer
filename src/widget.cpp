@@ -1,7 +1,7 @@
 #include <typeinfo>
 #include <iostream>
-#include <GLFW/glfw3.h>
 #include "widget.h"
+#include <GLFW/glfw3.h>
 #include "window.h"
 
 using namespace glm;
@@ -224,15 +224,15 @@ bool Widget::pressed(int button) const {
 	}
 }
 
-void Widget::add_child(Widget *child) {
-	child->parent_ = this;
+void Widget::add_child(Widget &child) {
+	child.parent_ = this;
 	// child->window_ = window_;
-	children_.push_back(child);
+	children_.push_back(&child);
 }
-void Widget::remove_child(Widget *child) {
-	child->parent_ = nullptr;
+void Widget::remove_child(Widget &child) {
+	child.parent_ = nullptr;
 	// child->window_ = nullptr;
-	std::erase(children_, child);
+	std::erase(children_, &child);
 }
 
 // std::string_view Widget::type() const {
@@ -250,20 +250,26 @@ std::string Widget::path() const {
 	return std::string{name_};
 }
 
-void Widget::resize(ivec2 pos, ivec2 size) {
+std::tuple<int, int, int, int> Widget::resize(ivec2 pos, ivec2 size) {
+	if (parent_) {
+		auto max_size = parent_->size() - (pos - parent_->pos());
+		if (size.x <= 0) {
+			size.x = parent_->size().x + size.x;
+		}
+		size.x = std::min(size.x, max_size.x);
+
+		if (size.y <= 0) {
+			size.y = parent_->size().y + size.y;
+		}
+		size.y = std::min(size.y, max_size.y);
+	}
 	pos_ = pos;
 	size_ = size;
 	_on_resize();
+	return {pos.x, pos.y, size.x, size.y};
 }
 
 void Widget::_on_resize() {
-	if (parent_) {
-		// pos_.x = std::max(pos_.x, parent_->pos().x);
-		// pos_.y = std::max(pos_.y, parent_->pos().y);
-		//
-		// pos_.x = std::min(pos_.x, parent_->pos().x + parent_->size().x - size_.x);
-		// pos_.y = std::min(pos_.y, parent_->pos().y + parent_->size().y - size_.y);
-	}
 	on_resize();
 	for (auto child : children_) {
 		child->_on_resize();

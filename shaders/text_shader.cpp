@@ -40,6 +40,7 @@ int TextShader::setup() {
 		.scroll_offset_px={},
 		.frame_offset_px={},
 		.atlas_cols=inst_->font_.num_glyphs,
+		.z_order={},
 		.is_foreground={},
 	};
 
@@ -113,6 +114,42 @@ void TextShader::use(const Buffer &buf) {
 	glBindBuffer(GL_UNIFORM_BUFFER, buf.ubo_globals);
 
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, buf.ubo_globals);
+}
+
+void TextShader::render(const Buffer &buf, const std::string_view text, const CharStyle &style) {
+	auto styles = std::make_unique<CharStyle[]>(text.size());
+
+	uvec2 pos {};
+	for (size_t i = 0; i < text.size(); ++i) {
+		if (text[i] == '\n') {
+			pos.x = 0;
+			pos.y ++;
+		}
+
+		styles[i] = style;
+		styles[i].char_pos = pos;
+		pos.x++;
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_text);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, text.size(), text.data());
+
+	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, text.size() * sizeof(CharStyle), styles.get());
+}
+
+void TextShader::draw(ivec2 frame_offset, ivec2 scroll_offset, size_t start, size_t count, uint8_t z_bg, uint8_t z_fg) {
+	globals.frame_offset_px = frame_offset;
+	globals.scroll_offset_px = scroll_offset;
+	globals.is_foreground = false;
+	globals.z_order = z_bg;
+	update_uniforms();
+	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, count, start);
+
+	globals.is_foreground = true;
+	globals.z_order = z_fg;
+	update_uniforms();
+	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, count, start);
 }
 
 void TextShader::UniformGlobals::set_viewport(ivec2 size) {
