@@ -21,9 +21,22 @@ bool Event::wait(const std::chrono::milliseconds timeout) const {
 bool Event::is_set() const {
 	return triggered_;
 }
+//
+// WorkerPool::Worker::Worker(WorkerPool &pool) : thread_{&WorkerPool::worker, &pool}, mtx_(pool.mtx_), cv_(pool.cv_) {
+//
+// }
+//
+// void WorkerPool::Worker::join() {
+// 	if (thread_.joinable()) {
+// 		thread_.join();
+// 	}
+// }
 
-WorkerPool::WorkerPool(size_t num_workers) {
+WorkerPool::WorkerPool(size_t num_workers)
+// : workers_ (num_workers, *this) // TODO get this to work
+{
 	for (size_t i = 0; i < num_workers; ++i) {
+		// workers_.emplace_back(*this);
 		workers_.emplace_back(&WorkerPool::worker, this);
 	}
 }
@@ -32,7 +45,7 @@ WorkerPool::~WorkerPool() {
 	close();
 }
 
-void WorkerPool::push(std::function<void(const Event &)> job) {
+void WorkerPool::push(job_t job) {
 	{
 		std::lock_guard lock(mtx_);
 		++active_jobs_;
@@ -42,7 +55,10 @@ void WorkerPool::push(std::function<void(const Event &)> job) {
 }
 
 void WorkerPool::close() {
-	quit_.set();
+	{
+		std::lock_guard lock(mtx_);
+		quit_ = true;
+	}
 	cv_.notify_all(); // Wake up all workers to exit
 	for (auto& worker : workers_) {
 		if (worker.joinable()) {
@@ -62,9 +78,9 @@ void WorkerPool::worker() {
 	while (true) {
 		{
 			std::unique_lock lock(mtx_);
-			cv_.wait(lock, [this] { return quit_.is_set() || !queue_.empty(); });
+			cv_.wait(lock, [this] { return quit_ || !queue_.empty(); });
 
-			if (quit_.is_set() && queue_.empty()) {
+			if (quit_ && queue_.empty()) {
 				return; // Exit if quit flag is set and queue is empty
 			}
 
@@ -72,7 +88,7 @@ void WorkerPool::worker() {
 			queue_.pop();
 		}
 
-		job(quit_);
+		job(mtx_, cv_, quit_);
 
 		{
 			std::lock_guard lock(mtx_);

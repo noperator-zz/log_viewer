@@ -95,7 +95,7 @@ void Loader::load_initial() {
 
 	for (i = 0; i < num_chunks; ++i) {
 		file_.touch_pages(units[i].data, units[i].size);
-		workers_.push([this, &units, i](const Event &q) {
+		workers_.push([this, &units, i](auto &, auto &, auto &) {
 			find_newlines_avx2(units[i]);
 		});
 	}

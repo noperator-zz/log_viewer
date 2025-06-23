@@ -21,15 +21,29 @@ public:
 };
 
 class WorkerPool {
-public:
-	using job_t = std::function<void(const Event &)>;
+	// friend class Worker;
+	// class Worker {
+	// 	std::mutex &mtx_;
+	// 	std::condition_variable &cv_;
+	// 	std::thread thread_;
+	//
+	// public:
+	// 	Worker() = delete;
+	// 	Worker(WorkerPool &pool);
+	// 	void join();
+	// };
 
-private:
-	std::queue<job_t> queue_ {};
+public:
+	using job_t = std::function<void(const std::mutex &pool_mtx, const std::condition_variable &pool_cv, const bool &pool_quit)>;
 	std::mutex mtx_ {};
 	std::condition_variable cv_ {};
-	std::vector<std::thread> workers_ {};
-	Event quit_ {mtx_, cv_};
+
+private:
+	// std::vector<Worker> workers_;
+	std::vector<std::thread> workers_;
+	std::queue<job_t> queue_ {};
+	bool quit_ {};
+	// Event quit_ {mtx_, cv_};
 	std::atomic<size_t> active_jobs_ {};
 
 	void worker();
