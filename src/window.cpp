@@ -24,7 +24,7 @@ Window::~Window() {
 
 void Window::key_cb(GLFWwindow* glfw_window, int key, int scancode, int action, int mods) {
 	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	window->key_mods_ = *reinterpret_cast<KeyMods*>(&mods);
+	window->key_mods_ = {mods};
 	window->root_->key_cb(key, scancode, action, window->key_mods_);
 }
 
@@ -41,7 +41,7 @@ void Window::cursor_pos_cb(GLFWwindow* glfw_window, double xpos, double ypos) {
 
 void Window::mouse_button_cb(GLFWwindow* glfw_window, int button, int action, int mods) {
 	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	window->key_mods_ = *reinterpret_cast<KeyMods*>(&mods);
+	window->key_mods_ = {mods};
 	window->root_->mouse_button_cb(window->mouse_, button, action, window->key_mods_);
 }
 

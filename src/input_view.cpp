@@ -4,18 +4,33 @@
 
 using namespace glm;
 
-InputView::InputView(const std::function<void(std::string_view)> &&on_update) : on_update_(on_update) {
+InputView::InputView(const std::function<void(std::string_view)> &&on_update) : on_update_(std::move(on_update)) {
 	TextShader::create_buffers(buf_, BUFFER_SIZE);
 }
 
 bool InputView::on_key(int key, int scancode, int action, Window::KeyMods mods) {
-	if (action != GLFW_PRESS) {
+	if (action == GLFW_RELEASE) {
 		return false;
 	}
 
-	if (scancode == GLFW_KEY_BACKSPACE) {
-		if (!text_.empty()) {
-			text_.pop_back();
+	if (key == GLFW_KEY_LEFT) {
+		if (cursor_ > 0) {
+			cursor_--;
+		}
+		return true;
+	}
+
+	if (key == GLFW_KEY_RIGHT) {
+		if (cursor_ < text_.size()) {
+			cursor_++;
+		}
+		return true;
+	}
+
+	if (key == GLFW_KEY_BACKSPACE) {
+		if (!text_.empty() && cursor_ > 0) {
+			text_.erase(cursor_ - 1, 1);
+			cursor_--;
 			if (on_update_) {
 				on_update_(text_);
 			}
@@ -23,8 +38,19 @@ bool InputView::on_key(int key, int scancode, int action, Window::KeyMods mods) 
 		return true;
 	}
 
-	if (scancode == GLFW_KEY_ENTER && mods.control) {
-		text_.push_back('\n');
+	if (key == GLFW_KEY_DELETE) {
+		if (!text_.empty() && cursor_ < text_.size()) {
+			text_.erase(cursor_, 1);
+			if (on_update_) {
+				on_update_(text_);
+			}
+		}
+		return true;
+	}
+
+	if ((key == GLFW_KEY_ENTER || key == GLFW_KEY_KP_ENTER) && mods.control) {
+		text_.insert(cursor_, "\n");
+		cursor_++;
 		if (on_update_) {
 			on_update_(text_);
 		}
@@ -37,11 +63,16 @@ bool InputView::on_char(unsigned int codepoint, Window::KeyMods mods) {
 	if (mods.special()) {
 		return false;
 	}
-	text_.push_back(codepoint);
+	text_.insert(cursor_, 1, static_cast<char>(codepoint));
+	cursor_++;
 	if (on_update_) {
 		on_update_(text_);
 	}
 	return true;
+}
+
+std::string_view InputView::text() const {
+	return text_;
 }
 
 void InputView::on_resize() {
@@ -49,11 +80,19 @@ void InputView::on_resize() {
 }
 
 void InputView::draw() {
-	GPShader::rect(*this, pos() + ivec2{2}, ivec2{-4}, {}, Z_UI_FG); // transparent text box inside
-	GPShader::rect(*this, pos(), {}, {0xFF, 0xFF, 0xFF, 0xFF}, Z_UI_FG); // text box border
+	auto [x, y, w, h] = GPShader::rect(*this, pos() + ivec2{2}, ivec2{-4}, {}, Z_UI_BG_1); // transparent text box inside
+	GPShader::rect(*this, pos(), {}, {0xFF, 0xFF, 0xFF, 0xFF}, Z_UI_BG_2); // text box border
+	// Since inside is transparent, must DPShader draw() before text so that the background (from parent) is drawn first
+	//  and text is correctly blended over it
 
+
+	GPShader::draw();
+
+	std::vector<ivec2> coords {};
 	TextShader::use(buf_);
-	TextShader::render(buf_, text_, {{}, {}, {0xFF, 0xFF, 0xFF, 0xFF}, {}});
-	TextShader::draw(pos(), {}, 0, text_.size(), Z_UI_FG, Z_UI_BG);
+	TextShader::render(buf_, text_, {{}, {}, {0xFF, 0xFF, 0xFF, 0xFF}, {}}, {cursor_}, coords);
+	TextShader::draw({x, y}, {}, 0, text_.size(), Z_UI_FG, Z_UI_BG_1);
+
+	GPShader::rect(ivec2{x, y} + coords[0] * TextShader::font().size, ivec2{2, TextShader::font().size.y}, {0xFF, 0xFF, 0xFF, 0xFF}, Z_UI_FG); // cursor
 }
 

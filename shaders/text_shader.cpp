@@ -117,19 +117,37 @@ void TextShader::use(const Buffer &buf) {
 }
 
 void TextShader::render(const Buffer &buf, const std::string_view text, const CharStyle &style) {
+	std::vector<size_t> indices;
+	std::vector<ivec2> coords;
+	render(buf, text, style, indices, coords);
+}
+
+void TextShader::render(const Buffer &buf, const std::string_view text, const CharStyle &style, const std::vector<size_t> &indices, std::vector<ivec2> &coords) {
 	auto styles = std::make_unique<CharStyle[]>(text.size());
 
 	uvec2 pos {};
-	for (size_t i = 0; i < text.size(); ++i) {
-		if (text[i] == '\n') {
-			pos.x = 0;
-			pos.y ++;
+	auto it = indices.begin();
+	for (size_t i = 0; true; ++i) {
+		if (it != indices.end() && *it == i) {
+			coords.push_back(pos);
+			++it;
+		}
+
+		if (i == text.size()) {
+			break;
 		}
 
 		styles[i] = style;
 		styles[i].char_pos = pos;
-		pos.x++;
+		++pos.x;
+
+		if (text[i] == '\n') {
+			pos.x = 0;
+			++pos.y;
+		}
 	}
+
+	assert(indices.size() == coords.size());
 
 	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_text);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, text.size(), text.data());
@@ -138,7 +156,7 @@ void TextShader::render(const Buffer &buf, const std::string_view text, const Ch
 	glBufferSubData(GL_ARRAY_BUFFER, 0, text.size() * sizeof(CharStyle), styles.get());
 }
 
-void TextShader::draw(ivec2 frame_offset, ivec2 scroll_offset, size_t start, size_t count, uint8_t z_bg, uint8_t z_fg) {
+void TextShader::draw(ivec2 frame_offset, ivec2 scroll_offset, size_t start, size_t count, uint8_t z_fg, uint8_t z_bg) {
 	globals.frame_offset_px = frame_offset;
 	globals.scroll_offset_px = scroll_offset;
 	globals.is_foreground = false;

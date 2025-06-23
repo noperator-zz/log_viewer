@@ -78,6 +78,7 @@ add_executable(${PROJECT_NAME}
     src/worker.cpp
     src/search.cpp
     src/loader.cpp
+    src/finder.cpp
 )
 add_dependencies(${PROJECT_NAME} compile_shaders)
 

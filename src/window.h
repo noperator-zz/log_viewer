@@ -18,6 +18,16 @@ public:
 		bool special() const {
 			return control || alt || super;
 		}
+
+		KeyMods() = default;
+		KeyMods(int mods)
+			: shift {(mods & GLFW_MOD_SHIFT) != 0}
+			, control {(mods & GLFW_MOD_CONTROL) != 0}
+			, alt {(mods & GLFW_MOD_ALT) != 0}
+			, super {(mods & GLFW_MOD_SUPER) != 0}
+			, caps_lock {(mods & GLFW_MOD_CAPS_LOCK) != 0}
+			, num_lock {(mods & GLFW_MOD_NUM_LOCK) != 0}
+		{}
 	};
 
 private:

@@ -1,25 +1,12 @@
 #include "loader.h"
 
 #include "parser.h"
-#include "search.h"
 #include "util.h"
 
 using namespace std::chrono;
 
-struct Match {
-	size_t start;
-	size_t end;
-};
-
-static std::vector<Match> matches;
-static int handler (unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void *context) {
-	printf("Match found: id=%u, from=%llu, to=%llu, flags=%u, context=%p\n", id, from, to, flags, context);
-	matches.push_back({from, to});
-	return 0; // Continue matching
-}
-
-Loader::Loader(File &&file, size_t num_workers)
-	: file_(std::move(file)), workers_(num_workers) {
+Loader::Loader(File &&file, size_t num_workers, std::mutex &mtx)
+	: file_(std::move(file)), workers_(num_workers), mtx_(mtx) {
 }
 
 Loader::~Loader() {
@@ -57,14 +44,14 @@ void Loader::worker(const Event &quit) {
 		std::cout << "File mapped: " << file_.mapped_size() << " B\n";
 	}
 
-	load_inital();
+	load_initial();
 
 	while (!quit.wait(100ms)) {
 		load_tail();
 	}
 }
 
-void Loader::load_inital() {
+void Loader::load_initial() {
 	size_t total_size = file_.mapped_size();
 	std::cout << "Loading " << total_size / 1024 / 1024 << " MiB\n";
 	Timeit total_timeit("Load mapped");
@@ -120,7 +107,7 @@ void Loader::load_inital() {
 	Timeit combine_timeit("Combine");
 
 	{
-		std::lock_guard lock(mtx);
+		std::lock_guard lock(mtx_);
 		line_starts_.clear();
 		line_starts_.push_back(0);
 		size_t prev = 0;
@@ -166,19 +153,13 @@ void Loader::load_inital() {
 	// assert(longest_line == 4092);
 	// assert(mapped_lines_ == 27294137);
 	// assert(longest_line == 6567);
-
-	{
-		Timeit handler_timeit("search");
-		search("TkMPPopupHandler", (const char*)file_.mapped_data(), file_.mapped_size(), handler);
-	}
-	printf("Search found %llu matches\n", matches.size());
 }
 
 void Loader::load_tail() {
 	auto prev_size = file_.mapped_size();
 	{
 		// remapping can change the data address, so we need to lock the mutex
-		std::lock_guard lock(mtx);
+		std::lock_guard lock(mtx_);
 
 		// Timeit timeit("File remap");
 		if (file_.mmap() != 0) {

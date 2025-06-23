@@ -15,6 +15,7 @@
 #include "linenum_view.h"
 #include "content_view.h"
 #include "find_view.h"
+#include "finder.h"
 
 class FileView : public Widget {
 	friend class LinenumView;
@@ -29,8 +30,9 @@ class FileView : public Widget {
 	static_assert(CONTENT_BUFFER_SIZE < 128 * 1024 * 1024, "Content buffer size too large");
 	static_assert(OVERSCAN_LINES >= 1, "Overscan lines must be at least 1");
 
-	// File file_;
 	Loader loader_;
+	Finder finder_;
+	std::mutex data_mtx_ {};
 	LinenumView linenum_view_ {*this};
 	ContentView content_view_ {*this};
 	std::vector<std::unique_ptr<FindView>> find_views_ {};
@@ -47,6 +49,7 @@ class FileView : public Widget {
 
 	FileView(const char *path);
 
+	void handle_find(const FindView &find_view);
 	void on_resize() override;
 
 	void really_update_buffers(int start, int end, const uint8_t *data);
@@ -55,7 +58,7 @@ class FileView : public Widget {
 	void scroll_v_cb(double percent);
 	// size_t get_line_start(size_t line_idx) const;
 	size_t abs_char_loc_to_abs_char_idx(const glm::ivec2 &abs_loc) const;
-	size_t abs_char_idx_to_buf_char_idx(const size_t abs_idx) const;
+	size_t abs_char_idx_to_buf_char_idx(size_t abs_idx) const;
 	size_t abs_char_loc_to_buf_char_idx(const glm::ivec2 &abs_loc) const;
 	size_t get_line_len(size_t line_idx) const;
 	size_t num_lines() const;

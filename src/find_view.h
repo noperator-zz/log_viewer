@@ -27,17 +27,20 @@ public:
 	};
 
 private:
+	std::function<void(const FindView &)> on_find_ {};
 	color color_ {};
 	Flags flags_ {};
 	HandleView handle_ {*this};
-	InputView input_ {nullptr};
-	ButtonView but_prev_ {nullptr};
-	ButtonView but_next_ {nullptr};
-	ButtonView but_case_ {nullptr};
-	ButtonView but_word_ {nullptr};
-	ButtonView but_regex_ {nullptr};
+	InputView input_ {[this](auto) { handle_text(); }};
+	ButtonView but_prev_ {};
+	ButtonView but_next_ {};
+	ButtonView but_case_ {};
+	ButtonView but_word_ {};
+	ButtonView but_regex_ {};
 
-	bool on_char(unsigned int codepoint, Window::KeyMods mods) override;
+	void handle_text() const;
+
+	bool on_key(int key, int scancode, int action, Window::KeyMods mods) override;
 	void on_resize() override;
 
 public:
@@ -45,5 +48,6 @@ public:
 
 	Flags flags() const;
 	color color() const;
+	std::string_view text() const;
 	void draw() override;
 };

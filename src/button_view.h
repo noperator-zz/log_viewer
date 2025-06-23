@@ -11,7 +11,7 @@ class ButtonView : public Widget {
 	bool on_mouse_button(glm::ivec2 mouse, int button, int action, Window::KeyMods mods) override;
 
 public:
-	ButtonView(const std::function<void(bool)> &&on_click);
+	ButtonView(const std::function<void(bool)> &&on_click = nullptr);
 
 	void draw() override;
 };

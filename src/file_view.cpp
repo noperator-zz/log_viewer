@@ -4,8 +4,6 @@
 
 #include <mutex>
 
-#include "parser.h"
-#include "search.h"
 #include "../shaders/text_shader.h"
 #include "util.h"
 
@@ -17,12 +15,12 @@ std::unique_ptr<FileView> FileView::create(const char *path) {
 }
 
 FileView::FileView(const char *path)
-	: Widget("FV"), loader_(File{path}, 8) {
+	: Widget("FV"), loader_(File{path}, 8, data_mtx_), finder_(8, data_mtx_) {
 
 	add_child(linenum_view_);
 	add_child(content_view_);
 
-	find_views_.emplace_back(std::make_unique<FindView>([this](const FindView &find_view) {}));
+	find_views_.emplace_back(std::make_unique<FindView>([this](auto find_view) { handle_find(find_view); }));
 	add_child(*find_views_.back().get());
 }
 
@@ -43,17 +41,6 @@ int FileView::open() {
 	loader_thread_ = loader_.start(quit_);
 
 	return 0;
-}
-
-void FileView::on_resize() {
-	auto linenum_width = linenum_chars_ * TextShader::font().size.x + 20;
-	linenum_view_.resize(pos(), {linenum_width, size().y});
-	content_view_.resize({pos().x + linenum_width, pos().y}, {size().x - linenum_width, size().y});
-	auto p = content_view_.pos();
-	for (auto &find_view : find_views_) {
-		find_view->resize(p, {content_view_.size().x - content_view_.scroll_v_.size().x, 30});
-		p.y += 30;
-	}
 }
 
 void FileView::scroll_h_cb(double percent) {
@@ -252,13 +239,45 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 	linenum_render_range = (uvec2{visible_lines.x, visible_lines.y} - (uint)buf_lines_.x) * (uint)linenum_chars_;
 }
 
+void FileView::handle_find(const FindView &find_view) {
+	finder_.submit(&find_view, find_view.text(), 0);//find_view.flags());
+
+	// auto matches = search_file(loader_.file(), find_view->query());
+	// if (matches.empty()) {
+	// 	find_view->set_matches({});
+	// 	return;
+	// }
+	//
+	// std::vector<FindView::Match> find_matches;
+	// for (const auto &match : matches) {
+	// 	find_matches.push_back({
+	// 		match.start,
+	// 		match.end,
+	// 		match.line_start,
+	// 		match.line_end
+	// 	});
+	// }
+	// find_view->set_matches(find_matches);
+}
+
+void FileView::on_resize() {
+	auto linenum_width = linenum_chars_ * TextShader::font().size.x + 20;
+	linenum_view_.resize(pos(), {linenum_width, size().y});
+	content_view_.resize({pos().x + linenum_width, pos().y}, {size().x - linenum_width, size().y});
+	auto p = content_view_.pos();
+	for (auto &find_view : find_views_) {
+		find_view->resize(p, {content_view_.size().x - content_view_.scroll_v_.size().x, 30});
+		p.y += 30;
+	}
+}
+
 void FileView::draw() {
 	const uint8_t *data;
 	auto prev_linenum_chars = linenum_chars_;
 	auto prev_num_lines = num_lines();
 
 	{
-		std::lock_guard lock(loader_.mtx);
+		std::lock_guard lock(data_mtx_);
 		loader_.update(line_starts_, longest_line_, data);
 
 		if (prev_num_lines == 0 && num_lines() > 0) {

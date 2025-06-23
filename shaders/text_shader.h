@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 #include <glm/glm.hpp>
 
 #include "types.h"
@@ -63,6 +64,7 @@ public:
 	static void update_uniforms();
 	static void use(const Buffer &buf);
 	static void render(const Buffer &buf, std::string_view text, const CharStyle &style);
-	static void draw(glm::ivec2 frame_offset, glm::ivec2 scroll_offset, size_t start, size_t count, uint8_t z_bg, uint8_t z_fg);
+	static void render(const Buffer &buf, std::string_view text, const CharStyle &style, const std::vector<size_t> &indices, std::vector<glm::ivec2> &coords);
+	static void draw(glm::ivec2 frame_offset, glm::ivec2 scroll_offset, size_t start, size_t count, uint8_t z_fg, uint8_t z_bg);
 	static const Font &font();
 };

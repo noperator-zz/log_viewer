@@ -114,15 +114,12 @@ void ContentView::highlight_selection() {
 void ContentView::draw() {
 	Scissor s {this};
 
-	// GPShader::rect({0, 0}, {200, 200}, {0, 255, 0, 100});
-	// GPShader::rect({100, 100}, {200, 200}, {255, 0, 0, 100});
-
 	reset_mod_styles();
 
+	GPShader::rect(pos(), size(), {0x2B, 0x2B, 0x2B, 0xFF}, Z_FILEVIEW_BG);
 	if (selection_active_) {
 		highlight_selection();
 	}
-	GPShader::rect(pos(), size(), {0x2B, 0x2B, 0x2B, 0xFF}, Z_FILEVIEW_BG);
 	GPShader::draw();
 
 	TextShader::use(buf_);
@@ -130,7 +127,7 @@ void ContentView::draw() {
 	glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
 
-	TextShader::draw(pos(), parent_.scroll_, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_BG, Z_FILEVIEW_TEXT_FG);
+	TextShader::draw(pos(), parent_.scroll_, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG, Z_FILEVIEW_TEXT_BG);
 
 	scroll_h_.draw();
 	scroll_v_.draw();

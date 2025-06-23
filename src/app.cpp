@@ -86,7 +86,7 @@ int App::start() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     glEnable(GL_DEPTH_TEST);
-    // glDepthFunc(GL_LEQUAL);
+    glDepthFunc(GL_LEQUAL);
     glDepthMask(GL_TRUE);
 
     // glEnable(GL_ALPHA_TEST);
@@ -227,7 +227,7 @@ int App::run() {
         // Timeit frame("Frame");
         draw();
         // frame.stop();
-        glfwPollEvents();
+        glfwWaitEvents();
 
         fps++;
 

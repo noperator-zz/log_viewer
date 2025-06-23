@@ -10,6 +10,7 @@ class InputView : public Widget {
 
 	std::function<void(std::string_view)> on_update_;
 	std::string text_ {};
+	size_t cursor_ {};
 	TextShader::Buffer buf_ {};
 
 	bool on_key(int key, int scancode, int action, Window::KeyMods mods) override;
@@ -17,7 +18,8 @@ class InputView : public Widget {
 	void on_resize() override;
 
 public:
-	InputView(const std::function<void(std::string_view)> &&on_update);
+	InputView(const std::function<void(std::string_view)> &&on_update = nullptr);
 
+	std::string_view text() const;
 	void draw() override;
 };

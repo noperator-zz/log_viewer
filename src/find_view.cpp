@@ -10,12 +10,7 @@ void FindView::HandleView::draw() {
 	GPShader::rect(pos(), size(), parent_.color_, Z_UI_FG);
 }
 
-bool FindView::on_char(unsigned int codepoint, Window::KeyMods mods) {
-
-	return false;
-}
-
-FindView::FindView(std::function<void(const FindView &)> on_find) {
+FindView::FindView(std::function<void(const FindView &)> on_find) : on_find_(std::move(on_find)) {
 	color_ = {0x00, 0xFF, 0x00, 0xFF}; // default color
 	add_child(handle_);
 	add_child(input_);
@@ -26,12 +21,34 @@ FindView::FindView(std::function<void(const FindView &)> on_find) {
 	add_child(but_regex_);
 }
 
+bool FindView::on_key(int key, int scancode, int action, Window::KeyMods mods) {
+	if (action != GLFW_PRESS) {
+		return false;
+	}
+
+	if (key == GLFW_KEY_ENTER) {
+		return true;
+	}
+
+	return false;
+}
+
+void FindView::handle_text() const {
+	if (on_find_) {
+		on_find_(*this);
+	}
+}
+
 FindView::Flags FindView::flags() const {
 	return flags_;
 }
 
 color FindView::color() const {
 	return color_;
+}
+
+std::string_view FindView::text() const {
+	return input_.text();
 }
 
 void FindView::on_resize() {
@@ -49,7 +66,7 @@ void FindView::on_resize() {
 void FindView::draw() {
 	// Scissor s{this};
 
-	GPShader::rect(*this, pos(), {}, {0x80, 0x00, 0x00, 0xFF}, Z_UI_BG); // background
+	GPShader::rect(*this, pos(), {}, {0x80, 0x00, 0x00, 0xFF}, Z_UI_BG_1); // background
 	handle_.draw();
 	input_.draw();
 	but_prev_.draw();
