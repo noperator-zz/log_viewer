@@ -6,61 +6,81 @@
 
 class Finder {
 	class Job {
-		friend class Finder;
-		enum class State {
-			New,
-			Idle,
-			Active,
-			Abort,
+	public:
+		enum class Status {
+			kOK,
+			kQUIT,
+			kERROR,
 		};
 
+	private:
 		struct Result {
 			size_t start;
 			size_t end;
 		};
-		// std::vector<Result> unsafe_results_ {};
+
+		struct QueueItem {
+			const uint8_t *data;
+			size_t length;
+		};
 
 		std::thread thread_;
 		std::string_view pattern_;
 		int flags_;
+		hs_database_t *db_;
+		hs_scratch_t *scratch_;
+		hs_stream_t *stream_;
 
-		hs_database_t *db_ {};
-		hs_scratch_t *scratch_ {};
-		hs_stream_t *stream_ {};
-		State state_ {};
-		std::condition_variable in_cv_ {};
+		std::condition_variable cv_ {};
+		std::queue<QueueItem> queue_ {};
+		std::atomic<bool> quit_ {};
+		size_t stream_pos_ {};
+		std::atomic<Status> status_ {};
+
+		// std::condition_variable in_cv_ {};
 		std::vector<Result> chunk_results_ {};
 
-		void abort(std::mutex &pool_mtx, std::condition_variable &pool_cv);
 		static int event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void *context);
 		int event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags);
-		void search(std::mutex &pool_mtx, std::condition_variable &pool_cv, bool &quit, const uint8_t *data, size_t length, const void* ctx, std::string_view pattern, int flags);
 		void worker();
-	public:
-		std::vector<Result> results_ {};
+		void quit();
 
 		Job() = delete;
-		Job(std::string_view pattern, int flags);
+		Job(std::string_view pattern, int flags, hs_database_t *db_, hs_scratch_t *scratch_, hs_stream_t *stream_);
+		// diable copy and move
+		Job(const Job &) = delete;
+		Job &operator=(const Job &) = delete;
 
-		void reset() {
-			state_ = {};
-			results_.clear();
-		}
+		Job(Job &&) = delete;
+		Job &operator=(Job &&) = delete;
+
+	public:
+		std::mutex mtx_ {};
+		std::vector<Result> results_ {};
+
+		static std::unique_ptr<Job> && create(std::string_view pattern, int flags, int &err);
+		~Job();
+
+		std::mutex &mutex();
+		void update_data(const uint8_t *data, size_t len);
+		Status status() const;
 	};
 
-	// WorkerPool workers_;
-	// std::mutex &mtx_;
+	std::mutex mtx_ {};
 	std::unordered_map<const void*, std::unique_ptr<Job>> jobs_ {};
-	// void worker(const Event &quit);
+	const uint8_t *latest_data_ {};
+	size_t latest_length_ {};
 
 public:
-	Finder(size_t num_workers, std::mutex &mutex);
-
+	Finder() = default;
 	~Finder();
 
-	// std::thread start(const Event &quit);
-	void add_data(const uint8_t *data, size_t len);
-	void submit(const void* ctx, std::string_view pattern, int flags);
+	void stop();
+
+	std::mutex &mutex();
+	const std::unordered_map<const void*, std::unique_ptr<Job>> & jobs() const;
+	void update_data(const uint8_t *data, size_t len);
+	[[nodiscard]] int submit(const void* ctx, std::string_view pattern, int flags);
 	void remove(const void* ctx);
 };
 

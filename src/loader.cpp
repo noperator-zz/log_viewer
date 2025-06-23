@@ -5,26 +5,45 @@
 
 using namespace std::chrono;
 
-Loader::Loader(File &&file, size_t num_workers, std::mutex &mtx)
-	: file_(std::move(file)), workers_(num_workers), mtx_(mtx) {
+Loader::Loader(File &&file, size_t num_workers, std::function<void()> &&on_data, std::function<void()> &&on_remap)
+	: file_(std::move(file)), workers_(num_workers), on_data_(std::move(on_data)), on_remap_(std::move(on_remap)) {
 }
 
 Loader::~Loader() {
 	workers_.close();
 }
 
-std::thread Loader::start(const Event &quit) {
-	return std::thread(&Loader::worker, this, std::ref(quit));
+std::mutex &Loader::mutex() {
+	return mtx_;
 }
 
-void Loader::update(std::vector<size_t> &line_starts, size_t &longest_line, const uint8_t *&data) {
+void Loader::start() {
+	thread_ = std::thread(&Loader::worker, this);
+}
+
+void Loader::stop() {
+	quit_.set();
+	if (thread_.joinable()) {
+		thread_.join();
+	}
+}
+
+const uint8_t *Loader::get_data() const {
+	return file_.mapped_data();
+}
+
+size_t Loader::get_size() const {
+	return file_.mapped_size();
+}
+
+void Loader::get(std::vector<size_t> &line_starts, size_t &longest_line, const uint8_t *&data) {
 	line_starts.insert(line_starts.end(), line_starts_.begin(), line_starts_.end());
 	line_starts_.clear();
 	longest_line = longest_line_;
 	data = file_.mapped_data();
 }
 
-void Loader::worker(const Event &quit) {
+void Loader::worker() {
 	{
 		Timeit timeit("File Open");
 		if (file_.open() != 0) {
@@ -46,7 +65,7 @@ void Loader::worker(const Event &quit) {
 
 	load_initial();
 
-	while (!quit.wait(100ms)) {
+	while (!quit_.wait(100ms)) {
 		load_tail();
 	}
 }
@@ -153,6 +172,9 @@ void Loader::load_initial() {
 	// assert(longest_line == 4092);
 	// assert(mapped_lines_ == 27294137);
 	// assert(longest_line == 6567);
+	if (on_data_) {
+		on_data_();
+	}
 }
 
 void Loader::load_tail() {
@@ -161,6 +183,9 @@ void Loader::load_tail() {
 		// remapping can change the data address, so we need to lock the mutex
 		std::lock_guard lock(mtx_);
 
+		if (on_remap_) {
+			on_remap_();
+		}
 		// Timeit timeit("File remap");
 		if (file_.mmap() != 0) {
 			std::cerr << "Failed to map file_\n";
@@ -169,6 +194,10 @@ void Loader::load_tail() {
 		}
 		// timeit.stop();
 		// std::cout << "File remapped: " << prev_size << " B -> " << file_.mapped_size() << " B\n";
+
+		if (on_data_) {
+			on_data_();
+		}
 	}
 
 	if (prev_size == file_.mapped_size()) {

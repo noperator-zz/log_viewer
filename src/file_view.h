@@ -10,7 +10,6 @@
 #include "scrollbar.h"
 #include "text_shader.h"
 #include "widget.h"
-#include "worker.h"
 #include "loader.h"
 #include "linenum_view.h"
 #include "content_view.h"
@@ -31,8 +30,7 @@ class FileView : public Widget {
 	static_assert(OVERSCAN_LINES >= 1, "Overscan lines must be at least 1");
 
 	Loader loader_;
-	Finder finder_;
-	std::mutex data_mtx_ {};
+	Finder finder_ {};
 	LinenumView linenum_view_ {*this};
 	ContentView content_view_ {*this};
 	std::vector<std::unique_ptr<FindView>> find_views_ {};
@@ -42,12 +40,13 @@ class FileView : public Widget {
 
 	glm::ivec2 scroll_ {};
 
-	Event quit_ {};
-	std::thread loader_thread_ {};
 	std::vector<size_t> line_starts_ {};
 	size_t longest_line_ {};
 
 	FileView(const char *path);
+
+	void on_data();
+	void on_remap();
 
 	void handle_find(const FindView &find_view);
 	void on_resize() override;

@@ -15,7 +15,7 @@ std::unique_ptr<FileView> FileView::create(const char *path) {
 }
 
 FileView::FileView(const char *path)
-	: Widget("FV"), loader_(File{path}, 8, data_mtx_), finder_(8, data_mtx_) {
+	: Widget("FV"), loader_(File{path}, 8, [&]{on_data();}, [&]{on_remap();}) {
 
 	add_child(linenum_view_);
 	add_child(content_view_);
@@ -25,22 +25,28 @@ FileView::FileView(const char *path)
 }
 
 FileView::~FileView() {
-	quit_.set();
-	if (loader_thread_.joinable()) {
-		loader_thread_.join();
-	}
+	loader_.stop();
+	finder_.stop();
 	TextShader::destroy_buffers(content_view_.buf_);
 	TextShader::destroy_buffers(linenum_view_.buf_);
 }
 
 int FileView::open() {
-
 	TextShader::create_buffers(content_view_.buf_, CONTENT_BUFFER_SIZE);
 	TextShader::create_buffers(linenum_view_.buf_, LINENUM_BUFFER_SIZE);
 
-	loader_thread_ = loader_.start(quit_);
+	loader_.start();
 
 	return 0;
+}
+
+void FileView::on_data() {
+	std::lock_guard lock(loader_.mutex());
+	finder_.update_data(loader_.get_data(), loader_.get_size());
+}
+
+void FileView::on_remap() {
+
 }
 
 void FileView::scroll_h_cb(double percent) {
@@ -240,24 +246,10 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 }
 
 void FileView::handle_find(const FindView &find_view) {
-	finder_.submit(&find_view, find_view.text(), 0);//find_view.flags());
-
-	// auto matches = search_file(loader_.file(), find_view->query());
-	// if (matches.empty()) {
-	// 	find_view->set_matches({});
-	// 	return;
-	// }
-	//
-	// std::vector<FindView::Match> find_matches;
-	// for (const auto &match : matches) {
-	// 	find_matches.push_back({
-	// 		match.start,
-	// 		match.end,
-	// 		match.line_start,
-	// 		match.line_end
-	// 	});
-	// }
-	// find_view->set_matches(find_matches);
+	int ret = finder_.submit(&find_view, find_view.text(), 0);//find_view.flags());
+	if (ret != 0) {
+		std::cerr << "Error submitting find request: " << ret << std::endl;
+	}
 }
 
 void FileView::on_resize() {
@@ -277,8 +269,8 @@ void FileView::draw() {
 	auto prev_num_lines = num_lines();
 
 	{
-		std::lock_guard lock(data_mtx_);
-		loader_.update(line_starts_, longest_line_, data);
+		std::lock_guard loader_lock(loader_.mutex());
+		loader_.get(line_starts_, longest_line_, data);
 
 		if (prev_num_lines == 0 && num_lines() > 0) {
 			// jump to the end of the file
@@ -288,6 +280,14 @@ void FileView::draw() {
 		linenum_chars_ = linenum_len(num_lines());
 
 		update_buffers(content_view_.render_range_, linenum_view_.render_range_, data);
+
+		// TODO Finder thread need to send a GLFW event when it finds a match, so a render is triggered
+		std::lock_guard finder_lock(finder_.mutex());
+		for (const auto &[ctx, job] : finder_.jobs()) {
+			auto &find_view = *static_cast<const FindView *>(ctx);
+			std::lock_guard job_lock(job->mutex());
+			std::cout << (int)job->status() << ", " << job->results_.size() << " matches\n";
+		}
 	}
 	if (linenum_chars_ != prev_linenum_chars) {
 		on_resize();

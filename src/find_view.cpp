@@ -10,7 +10,7 @@ void FindView::HandleView::draw() {
 	GPShader::rect(pos(), size(), parent_.color_, Z_UI_FG);
 }
 
-FindView::FindView(std::function<void(const FindView &)> on_find) : on_find_(std::move(on_find)) {
+FindView::FindView(std::function<void(const FindView &)> &&on_find) : on_find_(std::move(on_find)) {
 	color_ = {0x00, 0xFF, 0x00, 0xFF}; // default color
 	add_child(handle_);
 	add_child(input_);

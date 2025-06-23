@@ -44,7 +44,7 @@ private:
 	void on_resize() override;
 
 public:
-	FindView(std::function<void(const FindView &)> on_find);
+	FindView(std::function<void(const FindView &)> &&on_find);
 
 	Flags flags() const;
 	color color() const;

@@ -18,7 +18,7 @@ class Scrollbar : public Widget {
 		void draw() override;
 
 	public:
-		Thumb(bool horizontal, std::function<void(int)> scroll_cb);
+		Thumb(bool horizontal, std::function<void(int)> &&scroll_cb);
 	};
 
 	std::function<void(double)> scroll_cb_;
@@ -37,7 +37,7 @@ class Scrollbar : public Widget {
 	void resize_thumb();
 
 public:
-	Scrollbar(bool horizontal, std::function<void(double)> scroll_cb);
+	Scrollbar(bool horizontal, std::function<void(double)> &&scroll_cb);
 
 	void draw() override;
 	void set(size_t position, size_t visible_extents, size_t total_extents);
