@@ -15,7 +15,7 @@ std::unique_ptr<FileView> FileView::create(const char *path) {
 }
 
 FileView::FileView(const char *path)
-	: Widget("FV"), loader_(File{path}, 8, [&]{on_data();}, [&]{on_remap();}) {
+	: Widget("FV"), loader_(File{path}, [this](auto d, auto s){on_data(d, s);}, [this]{on_unmap();}) {
 
 	add_child(linenum_view_);
 	add_child(content_view_);
@@ -32,43 +32,59 @@ FileView::~FileView() {
 }
 
 int FileView::open() {
+	int err = loader_.start();
+	if (err != 0) {
+		return err;
+	}
+
 	TextShader::create_buffers(content_view_.buf_, CONTENT_BUFFER_SIZE);
 	TextShader::create_buffers(linenum_view_.buf_, LINENUM_BUFFER_SIZE);
-
-	loader_.start();
 
 	return 0;
 }
 
-void FileView::on_data() {
-	std::lock_guard lock(loader_.mutex());
-	finder_.update_data(loader_.get_data(), loader_.get_size());
+void FileView::on_data(const uint8_t *data, size_t size) {
+	finder_.update_data(data, size);
 }
 
-void FileView::on_remap() {
-
+void FileView::on_unmap() {
+	finder_.update_data(nullptr, 0);
 }
 
 void FileView::scroll_h_cb(double percent) {
-	scroll_.x = (int)(percent * longest_line_ * TextShader::font().size.x);
-	scroll_.x = std::max(scroll_.x, 0);
-	scroll_.x = std::min(scroll_.x, (int)longest_line_ * TextShader::font().size.x);
+	auto max = max_scroll();
+
+	scroll_.x = percent * max.x;
+	scroll_.x = std::clamp(scroll_.x, 0, max.x);
 	content_view_.update_scrollbar();
 }
 
 void FileView::scroll_v_cb(double percent) {
-	scroll_.y = (int)(percent * num_lines() * TextShader::font().size.y);
-	scroll_.y = std::max(scroll_.y, 0);
-	scroll_.y = std::min(scroll_.y, (int)num_lines() * TextShader::font().size.y);
+	auto max = max_scroll();
+
+	scroll_.y = percent * max.y;
+	autoscroll_ = scroll_.y >= max_visible_scroll().y;
+
+	scroll_.y = std::clamp(scroll_.y, 0, max.y);
 	content_view_.update_scrollbar();
 }
 
 void FileView::scroll(ivec2 scroll) {
+	auto max = max_scroll();
+
 	scroll *= TextShader::font().size;
 	scroll *= -3;
+	if (scroll.y < 0) {
+		autoscroll_ = false;
+	}
 
-	scroll_.x += std::max(scroll.x, -scroll_.x);
-	scroll_.y += std::max(scroll.y, -scroll_.y);
+	scroll_ += scroll;
+	if (scroll_.y >= max_visible_scroll().y) {
+		autoscroll_ = true;
+	}
+
+	scroll_.x = std::clamp(scroll_.x, 0, max.x);
+	scroll_.y = std::clamp(scroll_.y, 0, max.y);
 
 	content_view_.update_scrollbar();
 }
@@ -84,6 +100,17 @@ size_t FileView::get_line_len(size_t line_idx) const {
 
 size_t FileView::num_lines() const {
 	return line_starts_.empty() ? 0 : line_starts_.size() - 1;
+}
+
+ivec2 FileView::max_scroll() const {
+	return TextShader::font().size * ivec2{longest_line_, num_lines()};
+}
+
+ivec2 FileView::max_visible_scroll() const {
+	auto max = max_scroll() - content_view_.size();
+	max.x = std::max(max.x, 0);
+	max.y = std::max(max.y, 0);
+	return max;
 }
 
 // NOTE Terminology:
@@ -105,7 +132,11 @@ size_t FileView::num_lines() const {
 //  buf_char_loc -> buf_char_idx: abs_char_loc(buf_loc) - line_start[buf_lines_.x]
 //  -
 
-size_t FileView::abs_char_loc_to_abs_char_idx(const ivec2 &abs_loc) const {
+size_t FileView::abs_char_loc_to_abs_char_idx(ivec2 abs_loc) const {
+	if (abs_loc.y < 0) {
+		return 0;
+	}
+	abs_loc.y = std::min(abs_loc.y, (int)line_starts_.size() - 1);
 	return line_starts_[abs_loc.y] + abs_loc.x;
 }
 
@@ -119,7 +150,7 @@ size_t FileView::abs_char_idx_to_buf_char_idx(size_t abs_idx) const {
 	return abs_idx - line_starts_[buf_lines_.x];
 }
 
-size_t FileView::abs_char_loc_to_buf_char_idx(const ivec2 &abs_loc) const {
+size_t FileView::abs_char_loc_to_buf_char_idx(ivec2 abs_loc) const {
 	return abs_char_idx_to_buf_char_idx(abs_char_loc_to_abs_char_idx(abs_loc));
 }
 
@@ -266,28 +297,19 @@ void FileView::on_resize() {
 void FileView::draw() {
 	const uint8_t *data;
 	auto prev_linenum_chars = linenum_chars_;
-	auto prev_num_lines = num_lines();
 
 	{
 		std::lock_guard loader_lock(loader_.mutex());
 		loader_.get(line_starts_, longest_line_, data);
 
-		if (prev_num_lines == 0 && num_lines() > 0) {
+		if (autoscroll_) {
 			// jump to the end of the file
-			scroll_.y = num_lines() * TextShader::font().size.y - size().y;
+			scroll_.y = std::max(scroll_.y, max_visible_scroll().y);
 		}
 
 		linenum_chars_ = linenum_len(num_lines());
 
 		update_buffers(content_view_.render_range_, linenum_view_.render_range_, data);
-
-		// TODO Finder thread need to send a GLFW event when it finds a match, so a render is triggered
-		std::lock_guard finder_lock(finder_.mutex());
-		for (const auto &[ctx, job] : finder_.jobs()) {
-			auto &find_view = *static_cast<const FindView *>(ctx);
-			std::lock_guard job_lock(job->mutex());
-			std::cout << (int)job->status() << ", " << job->results_.size() << " matches\n";
-		}
 	}
 	if (linenum_chars_ != prev_linenum_chars) {
 		on_resize();

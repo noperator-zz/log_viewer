@@ -1,10 +1,14 @@
 #pragma once
 #include <cstring>
 #include <type_traits>
+#include <utility>
 
 template<typename T>
 class dynarray {
 public:
+	typedef T* iterator;
+	typedef const T* const_iterator;
+
 	dynarray() = default;
 
 	void reserve(const size_t n) {
@@ -32,22 +36,56 @@ public:
 	}
 
 	~dynarray() {
-		if constexpr (!std::is_trivially_destructible_v<T>) {
-			for (size_t i = 0; i < size_; ++i) {
-				data_[i].~T();
-			}
-		}
-		::operator delete(data_);
+		release();
 	}
 
 	T* data() { return data_; }
 	const T* data() const { return data_; }
 	size_t size() const { return size_; }
-	T& operator[](size_t index) {
-		// if (index >= size_) {
-			// throw std::out_of_range("Index out of bounds");
-		// }
-		return data_[index];
+	bool empty() const { return size_ == 0; }
+	T& operator[](size_t index) { return data_[index]; }
+	const T& operator[](size_t index) const { return data_[index]; }
+
+	iterator begin() { return data_; }
+	iterator end() { return data_ + size_; }
+	const_iterator begin() const { return data_; }
+	const_iterator end() const { return data_ + size_; }
+
+	void clear() {
+		if constexpr (!std::is_trivially_destructible_v<T>) {
+			for (size_t i = 0; i < size_; ++i) {
+				data_[i].~T();
+			}
+		}
+		size_ = 0;
+	}
+
+	void release() {
+		clear();
+		capacity_ = 0;
+		::operator delete(data_);
+		data_ = nullptr;
+	}
+
+	void push_back(const T value) {
+		if (size_ >= capacity_) {
+			reserve(size_ + 1);
+		}
+		data_[size_++] = value;
+	}
+
+	template<typename... _Args>
+	void emplace_back(_Args&&... __args) {
+		if (size_ >= capacity_) {
+			reserve(size_ + 1);
+		}
+		new (&data_[size_++]) T(std::forward<_Args>(__args)...);
+	}
+
+	void extend(const dynarray& other) {
+		reserve(size_ + other.size_);
+		std::memcpy(data_ + size_, other.data_, sizeof(T) * other.size_);
+		size_ += other.size_;
 	}
 
 private:

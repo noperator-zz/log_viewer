@@ -1,5 +1,6 @@
 #include "content_view.h"
 #include "file_view.h"
+#include "util.h"
 
 using namespace glm;
 
@@ -62,18 +63,20 @@ void ContentView::reset_mod_styles() {
 }
 
 void ContentView::highlight_selection() {
-	//// TODO highlight blank parts of selected lines
-	// auto lo_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.first);
-	// auto hi_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.second);
-	//
-	// if (hi_buf_char_idx < lo_buf_char_idx) {
-	// 	std::swap(lo_buf_char_idx, hi_buf_char_idx);
-	// }
-	//
-	// for (size_t buf_char_idx = lo_buf_char_idx; buf_char_idx < hi_buf_char_idx; buf_char_idx++) {
-	// 	mod_styles_[buf_char_idx].bg = {200, 200, 200, 100};
-	// }
+#if 1
+	// TODO highlight blank parts of selected lines
+	// FIXME messed up when mouse starts outside the text area
+	auto lo_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.first);
+	auto hi_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.second);
 
+	if (hi_buf_char_idx < lo_buf_char_idx) {
+		std::swap(lo_buf_char_idx, hi_buf_char_idx);
+	}
+
+	for (size_t buf_char_idx = lo_buf_char_idx; buf_char_idx < hi_buf_char_idx; buf_char_idx++) {
+		mod_styles_[buf_char_idx].bg = {200, 200, 200, 100};
+	}
+#else
 	auto lo = selection_abs_char_loc.first;
 	auto hi = selection_abs_char_loc.second;
 
@@ -109,6 +112,41 @@ void ContentView::highlight_selection() {
 
 		GPShader::rect(pos, size, {200, 200, 200, 100}, Z_FILEVIEW_BG);
 	}
+#endif
+}
+
+void ContentView::highlight_findings() {
+	auto lo_abs_char_idx = parent_.abs_char_loc_to_abs_char_idx(parent_.scroll_ / TextShader::font().size);
+	auto hi_abs_char_idx = parent_.abs_char_loc_to_abs_char_idx((parent_.scroll_ + size()) / TextShader::font().size);
+
+	// auto lo_buf_char_idx = parent_.abs_char_idx_to_buf_char_idx(lo_abs_char_idx);
+	// auto hi_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx((parent_.scroll_ + size()) / TextShader::font().size);
+
+	// TODO Finder thread need to send a GLFW event when it finds a match, so a render is triggered
+	std::lock_guard finder_lock(parent_.finder_.mutex());
+	for (const auto &[ctx, job] : parent_.finder_.jobs()) {
+		auto &find_view = *static_cast<const FindView *>(ctx);
+		std::lock_guard job_lock(job->result_mtx());
+
+		Timeit t("search");
+		// binary search for the first result that starts at >= lo_buf_char_idx
+		auto it = std::lower_bound(job->results_.begin(), job->results_.end(), lo_abs_char_idx,
+		                           [](const auto &a, const auto &b) { return a.start < b; });
+		t.stop();
+
+
+		// iterate through all results that start at >= lo_buf_char_idx and <= hi_buf_char_idx
+		for (; it != job->results_.end() && it->start <= hi_abs_char_idx; ++it) {
+			auto start = parent_.abs_char_idx_to_buf_char_idx(it->start);
+			auto end = parent_.abs_char_idx_to_buf_char_idx(it->end);
+
+			// highlight the result
+			for (size_t buf_char_idx = start; buf_char_idx < end; buf_char_idx++) {
+				assert (buf_char_idx < mod_styles_.size());
+				mod_styles_[buf_char_idx].bg = find_view.color();
+			}
+		}
+	}
 }
 
 void ContentView::draw() {
@@ -120,6 +158,7 @@ void ContentView::draw() {
 	if (selection_active_) {
 		highlight_selection();
 	}
+	highlight_findings();
 	GPShader::draw();
 
 	TextShader::use(buf_);

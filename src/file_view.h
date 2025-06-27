@@ -40,13 +40,15 @@ class FileView : public Widget {
 
 	glm::ivec2 scroll_ {};
 
-	std::vector<size_t> line_starts_ {};
+	dynarray<size_t> line_starts_ {};
 	size_t longest_line_ {};
+
+	bool autoscroll_ {true};
 
 	FileView(const char *path);
 
-	void on_data();
-	void on_remap();
+	void on_data(const uint8_t *data, size_t size);
+	void on_unmap();
 
 	void handle_find(const FindView &find_view);
 	void on_resize() override;
@@ -56,11 +58,14 @@ class FileView : public Widget {
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
 	// size_t get_line_start(size_t line_idx) const;
-	size_t abs_char_loc_to_abs_char_idx(const glm::ivec2 &abs_loc) const;
+	size_t abs_char_loc_to_abs_char_idx(glm::ivec2 abs_loc) const;
 	size_t abs_char_idx_to_buf_char_idx(size_t abs_idx) const;
-	size_t abs_char_loc_to_buf_char_idx(const glm::ivec2 &abs_loc) const;
+	size_t abs_char_loc_to_buf_char_idx(glm::ivec2 abs_loc) const;
 	size_t get_line_len(size_t line_idx) const;
 	size_t num_lines() const;
+	glm::ivec2 max_scroll() const;
+	glm::ivec2 max_visible_scroll() const;
+
 public:
 	static std::unique_ptr<FileView> create(const char *path);
 	~FileView();

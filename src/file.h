@@ -22,6 +22,7 @@ public:
 	explicit File(const char *path);
 
 	int open();
+	size_t size() const;
 	int mmap();
 	void close();
 

@@ -7,7 +7,7 @@ include(CheckCXXCompilerFlag)
 
 check_cxx_compiler_flag("-mavx2" HAS_AVX2)
 check_cxx_compiler_flag("-mavx512f" HAS_AVX512)
-
+#set(CMAKE_EXE_LINKER_FLAGS "-static -static-libstdc++ -static-libgcc")
 #find_program(CCACHE ccache)
 #if (CCACHE)
 #    set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
@@ -98,7 +98,6 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 #target_compile_options(${PROJECT_NAME} PRIVATE -mavx512bw)
 target_compile_options(${PROJECT_NAME} PRIVATE -march=native)# -static -static-libgcc -static-libstdc++)
-
 
 #if (HAS_AVX512)
 #    target_compile_definitions(your_target PRIVATE USE_AVX512)

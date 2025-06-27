@@ -44,19 +44,34 @@ int File::open() {
 	return 0;
 }
 
-int File::mmap() {
+size_t File::size() const {
 #ifdef WIN32
 	LARGE_INTEGER fileSize;
 	if (!GetFileSizeEx(hFile_, &fileSize)) {
 		return -1;
 	}
 
-	if (fileSize.QuadPart == mapped_size_) {
+	return fileSize.QuadPart;
+#else
+	struct stat sb;
+	if (fstat(fd_, &sb) == -1) {
+		return -2;
+	}
+
+	return sb.st_size;
+#endif
+}
+
+int File::mmap() {
+	size_t current_size = size();
+
+	if (current_size == mapped_size_) {
 		return 0; // Already mapped
 	}
 
-	mapped_size_ = fileSize.QuadPart;
+	mapped_size_ = current_size;
 
+#ifdef WIN32
 	if (hMap_ != INVALID_HANDLE_VALUE) {
 		UnmapViewOfFile(hMap_);
 		CloseHandle(hMap_);
@@ -88,17 +103,6 @@ int File::mmap() {
 		return -2;
 	}
 #else
-	struct stat sb;
-	if (fstat(fd_, &sb) == -1) {
-		return -2;
-	}
-
-	if (sb.st_size == mapped_size_) {
-		return 0; // Already mapped
-	}
-
-	mapped_size_ = sb.st_size;
-
 	if (mapped_data_ && mapped_data_ != MAP_FAILED) {
 		::munmap((void*)mapped_data_, mapped_size_);
 		mapped_data_ = nullptr;

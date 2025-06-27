@@ -1,24 +1,58 @@
 #include "loader.h"
 
+#include <cassert>
+
 #include "parser.h"
 #include "util.h"
+#include <hs/hs.h>
 
 using namespace std::chrono;
 
-Loader::Loader(File &&file, size_t num_workers, std::function<void()> &&on_data, std::function<void()> &&on_remap)
-	: file_(std::move(file)), workers_(num_workers), on_data_(std::move(on_data)), on_remap_(std::move(on_remap)) {
+Loader::Loader(File &&file, std::function<void(const uint8_t *data, size_t size)> &&on_data,
+	std::function<void()> &&on_unmap)
+	: file_(std::move(file)), on_data_(std::move(on_data)), on_unmap_(std::move(on_unmap)) {
 }
 
 Loader::~Loader() {
-	workers_.close();
+	{
+		Timeit t("Loader::~Loader()");
+		quit();
+	}
+
+	if (stream_) hs_close_stream(stream_, nullptr, nullptr, nullptr);
+	if (scratch_) hs_free_scratch(scratch_);
+	if (db_) hs_free_database(db_);
 }
 
 std::mutex &Loader::mutex() {
 	return mtx_;
 }
 
-void Loader::start() {
+int Loader::start() {
+	hs_compile_error_t *compile_err;
+	hs_error_t err;
+
+	err = hs_compile_lit("\n", 0, 1, HS_MODE_STREAM, NULL, &db_, &compile_err);
+	if (err != HS_SUCCESS) {
+		fprintf(stderr, "ERROR: Unable to compile pattern: %s\n", compile_err->message);
+		hs_free_compile_error(compile_err);
+		return -1;
+	}
+
+	err = hs_alloc_scratch(db_, &scratch_);
+	if (err != HS_SUCCESS) {
+		fprintf(stderr, "ERROR: Unable to allocate scratch space. Exiting.\n");
+		return -2;
+	}
+
+	err = hs_open_stream(db_, 0, &stream_);
+	if (err != HS_SUCCESS) {
+		fprintf(stderr, "ERROR: Unable to open stream. Exiting.\n");
+		return -3;
+	}
+
 	thread_ = std::thread(&Loader::worker, this);
+	return 0;
 }
 
 void Loader::stop() {
@@ -28,19 +62,18 @@ void Loader::stop() {
 	}
 }
 
-const uint8_t *Loader::get_data() const {
-	return file_.mapped_data();
-}
-
-size_t Loader::get_size() const {
-	return file_.mapped_size();
-}
-
-void Loader::get(std::vector<size_t> &line_starts, size_t &longest_line, const uint8_t *&data) {
-	line_starts.insert(line_starts.end(), line_starts_.begin(), line_starts_.end());
+void Loader::get(dynarray<size_t> &line_starts, size_t &longest_line, const uint8_t *&data) {
+	line_starts.extend(line_starts_);
 	line_starts_.clear();
 	longest_line = longest_line_;
 	data = file_.mapped_data();
+}
+
+void Loader::quit() {
+	quit_.set();
+	if (thread_.joinable()) {
+		thread_.join();
+	}
 }
 
 void Loader::worker() {
@@ -52,140 +85,49 @@ void Loader::worker() {
 			return;
 		}
 	}
-	{
-		Timeit timeit("File Initial Mapping");
-		if (file_.mmap() != 0) {
-			std::cerr << "Failed to map file_\n";
-			// TODO better error handling
-			return;
-		}
-		timeit.stop();
-		std::cout << "File mapped: " << file_.mapped_size() << " B\n";
-	}
 
-	load_initial();
-
-	while (!quit_.wait(100ms)) {
+	while (1) {
 		load_tail();
+		if (quit_.wait(1000ms)) {
+			break;
+		}
 	}
 }
 
-void Loader::load_initial() {
-	size_t total_size = file_.mapped_size();
-	std::cout << "Loading " << total_size / 1024 / 1024 << " MiB\n";
-	Timeit total_timeit("Load mapped");
-	Timeit load_timeit("Load");
-	// Timeit first_timeit("First chunk");
+int Loader::event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void *context) {
+	return static_cast<Loader *>(context)->event_handler(id, from, to, flags);
+}
 
-	size_t chunk_size = 10ULL * 1024 * 1024;
-	// size_t chunk_size = 1024;
-	size_t num_chunks = (total_size + chunk_size - 1) / chunk_size;
-	// size_t num_chunks = 8;
-	// size_t chunk_size = total_size / num_chunks;
+int Loader::event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags) {
+	// This is faster and uses less memory than enabling the HS_FLAG_SOM_LEFTMOST flag
+	from = to - 1;
 
-	std::vector<WorkUnit> units;
-	units.reserve(num_chunks);
-
-	size_t i = 0;
-	for (i = 0; i < num_chunks; ++i) {
-		auto offset = i * chunk_size;
-		size_t actual_size = (i == num_chunks - 1) ? (total_size - offset) : chunk_size;
-		units.emplace_back(std::vector<size_t>{}, file_.mapped_data() + offset, actual_size, offset);
-	}
-
-	// std::this_thread::sleep_for(1s);
-
-	// // Load the last chunk first
-	// i = num_chunks - 1;
-	// file_.touch_pages(units[i].data, units[i].size);
-	// workers_.push([this, &units, i](const Event &q) {
-	// 	find_newlines_avx2(units[i]);
-	// });
-	//
-	// // std::this_thread::sleep_for(1s);
-	// workers_.wait_free(8); // Wait for the last job to finish
-	// {
-	// 	std::lock_guard lock(mtx);
-	// 	line_ends = units[i].output;
-	// 	longest_line = units[i].longest_line;
-	// 	mapped_lines_ = units[i].output.size();
-	// }
-	// first_timeit.stop();
-
-	for (i = 0; i < num_chunks; ++i) {
-		file_.touch_pages(units[i].data, units[i].size);
-		workers_.push([this, &units, i](auto &, auto &, auto &) {
-			find_newlines_avx2(units[i]);
-		});
-	}
-
-	// std::this_thread::sleep_for(1s);
-	workers_.wait_free(8); // Wait for the last job to finish
-
-	load_timeit.stop();
-	Timeit combine_timeit("Combine");
-
-	{
-		std::lock_guard lock(mtx_);
-		line_starts_.clear();
-		line_starts_.push_back(0);
-		size_t prev = 0;
-		for (const auto& unit : units) {
-			if (unit.output.empty()) {
-				continue; // Skip empty units
-			}
-			size_t line_len = unit.output.front() - prev;
-			prev = unit.output.back();
-			line_len = std::max(line_len, unit.longest_line);
-			longest_line_ = std::max(longest_line_, line_len);
-			line_starts_.insert(line_starts_.end(), unit.output.begin(), unit.output.end());
-		}
-		if (!line_starts_.empty() && line_starts_.back() < (total_size - 1)) {
-			// NOTE Mapped data is truncated to the last newline. The tailed_data will contain the rest.
-			printf("Ignoring %zu bytes at the end of the mapped data\n", total_size - line_starts_.back());
-			// // Ensure the last line ends at the end of the file
-			// longest_line = std::max(longest_line, total_size - line_ends.back());
-			// line_ends.push_back(total_size);
-			// mapped_lines_++;
-		}
-		// file_.seek(line_ends.empty() ? 0 : line_ends.back());
-		std::cout << "Found " << line_starts_.size() << " newlines\n";
-	}
-
-	combine_timeit.stop();
-	total_timeit.stop();
-
-	i = 0;
-	for (const auto& unit : units) {
-		printf("Unit %3zu (0x%08zx - 0x%08zx): First line 0x%08zx, Last line 0x%08zx, # lines %9zu\n",
-			i, unit.offset, unit.offset + unit.size,
-			unit.output.empty() ? 0 : unit.output.front(),
-			unit.output.empty() ? 0 : unit.output.back(),
-			unit.output.size());
-		i++;
-		fflush(stdout);
-	}
-
-	std::cout << "Longest line: " << longest_line_ << "\n";
-	fflush(stdout);
-	// assert(mapped_lines_ == 1000);
-	// assert(longest_line == 4092);
-	// assert(mapped_lines_ == 27294137);
-	// assert(longest_line == 6567);
-	if (on_data_) {
-		on_data_();
-	}
+	chunk_results_.push_back(from);
+	size_t line_len = from - prev_start_;
+	prev_start_ = from;
+	longest_line_ = std::max(longest_line_, line_len);
+	return 0; // Continue matching
 }
 
 void Loader::load_tail() {
+	static constexpr size_t CHUNK_SIZE = 1ULL * 1024 * 1024;
+
 	auto prev_size = file_.mapped_size();
+	auto new_size = file_.size();
+
+	if (new_size <= prev_size) {
+		// No new data to load
+		return;
+	}
+
+	if (on_unmap_) {
+		on_unmap_();
+	}
+
 	{
 		// remapping can change the data address, so we need to lock the mutex
 		std::lock_guard lock(mtx_);
 
-		if (on_remap_) {
-			on_remap_();
-		}
 		// Timeit timeit("File remap");
 		if (file_.mmap() != 0) {
 			std::cerr << "Failed to map file_\n";
@@ -196,11 +138,37 @@ void Loader::load_tail() {
 		// std::cout << "File remapped: " << prev_size << " B -> " << file_.mapped_size() << " B\n";
 
 		if (on_data_) {
-			on_data_();
+			on_data_(file_.mapped_data(), file_.mapped_size());
 		}
 	}
 
-	if (prev_size == file_.mapped_size()) {
-		return;
+	size_t total_size = new_size - prev_size;
+	std::cout << "Loading " << total_size << " B\n";
+	Timeit load_timeit("Load");
+
+	chunk_results_.clear();
+	if (prev_size == 0) {
+		// If this is the first time we are loading the file, we need to add a starting point
+		prev_start_ = 0;
+		chunk_results_.push_back(0);
+	}
+
+	for (size_t offset = 0; offset < total_size; offset += CHUNK_SIZE) {
+		size_t chunk_size = std::min(total_size - offset, CHUNK_SIZE);
+		hs_error_t err = hs_scan_stream(stream_, (const char*)file_.mapped_data() + prev_size + offset, chunk_size, 0,
+			scratch_, event_handler, this);
+
+		assert(err == HS_SUCCESS);
+
+		{
+			std::lock_guard lock(mtx_);
+			line_starts_.extend(chunk_results_);
+		}
+		chunk_results_.clear();
+	}
+	load_timeit.stop();
+
+	if (on_data_) {
+		on_data_(file_.mapped_data(), file_.mapped_size());
 	}
 }

@@ -35,6 +35,7 @@ class ContentView : public Widget {
 	glm::ivec2 view_pos_to_abs_char_loc(glm::ivec2 view_pos) const;
 	void reset_mod_styles();
 	void highlight_selection();
+	void highlight_findings();
 public:
 	ContentView(FileView &parent);
 	void draw() override;
