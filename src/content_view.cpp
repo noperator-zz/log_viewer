@@ -125,14 +125,16 @@ void ContentView::highlight_findings() {
 	// TODO Finder thread need to send a GLFW event when it finds a match, so a render is triggered
 	std::lock_guard finder_lock(parent_.finder_.mutex());
 	for (const auto &[ctx, job] : parent_.finder_.jobs()) {
-		auto &find_view = *static_cast<const FindView *>(ctx);
+		const auto find_view = static_cast<const FindView *>(ctx);
+
+		// const auto &job = parent_.finder_.jobs().at(&find_view);
 		std::lock_guard job_lock(job->result_mtx());
 
-		Timeit t("search");
+		// Timeit t("search");
 		// binary search for the first result that starts at >= lo_buf_char_idx
 		auto it = std::lower_bound(job->results_.begin(), job->results_.end(), lo_abs_char_idx,
 		                           [](const auto &a, const auto &b) { return a.start < b; });
-		t.stop();
+		// t.stop();
 
 
 		// iterate through all results that start at >= lo_buf_char_idx and <= hi_buf_char_idx
@@ -143,7 +145,7 @@ void ContentView::highlight_findings() {
 			// highlight the result
 			for (size_t buf_char_idx = start; buf_char_idx < end; buf_char_idx++) {
 				assert (buf_char_idx < mod_styles_.size());
-				mod_styles_[buf_char_idx].bg = find_view.color();
+				mod_styles_[buf_char_idx].bg = find_view->color();
 			}
 		}
 	}

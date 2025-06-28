@@ -15,8 +15,23 @@
 #include "../shaders/text_shader.h"
 #include "util.h"
 #include "window.h"
+#include "log.h"
 
 using namespace std::chrono;
+
+static void log_cb(const char *data, size_t length) {
+    static auto const start = system_clock::now();
+    // <timestamp> <thread_id> <file>:<line> <function_name> <message>
+    auto now = system_clock::now();
+    auto now_s = duration_cast<seconds>(now - start);
+    auto now_ms = duration_cast<milliseconds>(now - start) % 1000;
+    auto thread_id = std::this_thread::get_id();
+    std::cout << "[" << now_s.count() << "." << now_ms.count() << "] "
+              << "[" << thread_id << "] "
+              << data << std::endl;
+}
+
+LogStream logger {log_cb};
 
 App::App() : Widget("App") {
 }
@@ -227,8 +242,6 @@ int App::run() {
         // Timeit frame("Frame");
         draw();
         // frame.stop();
-        glfwWaitEvents();
-
         fps++;
 
         // auto frame_remain = 1000ms - duration_cast<milliseconds>(high_resolution_clock::now() - frame_start);
@@ -238,11 +251,14 @@ int App::run() {
 
         auto stat_elapsed = duration_cast<milliseconds>(frame_start - last_stat);
         if (stat_elapsed.count() > 1000) {
-            // std::cout << "FPS: " << fps << "\n";
+            // logger << "FPS: " << fps << "\n";
             last_stat = frame_start;
             fps = 0;
         }
-		fflush(stdout);
+
+        // logger << "Wait event" << std::endl;
+        fflush(stdout);
+        glfwWaitEvents();
     }
 
     glfwTerminate();

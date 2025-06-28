@@ -5,14 +5,14 @@
 #include <thread>
 #include <hs/hs.h>
 
+#include "dataset.h"
 #include "dynarray.h"
 #include "file.h"
 #include "worker.h"
 
 class Loader {
 	File file_;
-	std::function<void(const uint8_t *data, size_t size)> on_data_;
-	std::function<void()> on_unmap_;
+	Dataset &dataset_;
 	hs_database_t * db_ {};
 	hs_scratch_t * scratch_ {};
 	hs_stream_t * stream_ {};
@@ -41,13 +41,12 @@ class Loader {
 	Loader &operator=(Loader &&) = delete;
 
 public:
-	Loader(File &&file, std::function<void(const uint8_t *data, size_t size)> &&on_data,
-		std::function<void()> &&on_unmap);
+	Loader(File &&file, Dataset &dataset);
 	~Loader();
 
-	std::mutex &mutex();
+	// std::mutex &mutex();
 	int start();
 	void stop();
 
-	void get(dynarray<size_t> &line_starts, size_t &longest_line, const uint8_t *&data);
+	void get(dynarray<size_t> &line_starts, size_t &longest_line);
 };

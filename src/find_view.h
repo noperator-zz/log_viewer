@@ -43,6 +43,13 @@ private:
 	bool on_key(int key, int scancode, int action, Window::KeyMods mods) override;
 	void on_resize() override;
 
+	// diable copy and move
+	FindView(const FindView &) = delete;
+	FindView &operator=(const FindView &) = delete;
+
+	FindView(FindView &&) = delete;
+	FindView &operator=(FindView &&) = delete;
+
 public:
 	FindView(std::function<void(const FindView &)> &&on_find);
 

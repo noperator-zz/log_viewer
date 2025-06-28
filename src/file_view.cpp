@@ -4,6 +4,7 @@
 
 #include <mutex>
 
+#include "event.h"
 #include "../shaders/text_shader.h"
 #include "util.h"
 
@@ -15,12 +16,12 @@ std::unique_ptr<FileView> FileView::create(const char *path) {
 }
 
 FileView::FileView(const char *path)
-	: Widget("FV"), loader_(File{path}, [this](auto d, auto s){on_data(d, s);}, [this]{on_unmap();}) {
+	: Widget("FV"), loader_(File{path}, dataset_) {
 
 	add_child(linenum_view_);
 	add_child(content_view_);
 
-	find_views_.emplace_back(std::make_unique<FindView>([this](auto find_view) { handle_find(find_view); }));
+	find_views_.emplace_back(std::make_unique<FindView>([this](const auto &find_view) { handle_find(find_view); }));
 	add_child(*find_views_.back().get());
 }
 
@@ -43,12 +44,18 @@ int FileView::open() {
 	return 0;
 }
 
-void FileView::on_data(const uint8_t *data, size_t size) {
-	finder_.update_data(data, size);
+void FileView::on_data() {
+	send_event();
 }
 
 void FileView::on_unmap() {
-	finder_.update_data(nullptr, 0);
+}
+
+void FileView::handle_find(const FindView &find_view) {
+	int ret = finder_.submit(&find_view, find_view.text(), 0);//find_view.flags());
+	if (ret != 0) {
+		std::cerr << "Error submitting find request: " << ret << std::endl;
+	}
 }
 
 void FileView::scroll_h_cb(double percent) {
@@ -242,7 +249,7 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 	// printf("Linenum buffer size: %zu\n", total_linenum_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
 }
 
-void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render_range, const uint8_t *data) {
+void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render_range, const Dataset::User &user) {
 	content_render_range = {};
 	linenum_render_range = {};
 
@@ -263,7 +270,7 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 			// first (inclusive) and last (exclusive) lines to buffer
 			std::max(0LL, visible_lines.x - OVERSCAN_LINES),
 			std::min((ssize_t)num_lines(), visible_lines.y + OVERSCAN_LINES),
-			data
+			user.data()
 		);
 	}
 
@@ -274,13 +281,6 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 	} - buf_start_char;
 
 	linenum_render_range = (uvec2{visible_lines.x, visible_lines.y} - (uint)buf_lines_.x) * (uint)linenum_chars_;
-}
-
-void FileView::handle_find(const FindView &find_view) {
-	int ret = finder_.submit(&find_view, find_view.text(), 0);//find_view.flags());
-	if (ret != 0) {
-		std::cerr << "Error submitting find request: " << ret << std::endl;
-	}
 }
 
 void FileView::on_resize() {
@@ -295,22 +295,22 @@ void FileView::on_resize() {
 }
 
 void FileView::draw() {
-	const uint8_t *data;
 	auto prev_linenum_chars = linenum_chars_;
 
-	{
-		std::lock_guard loader_lock(loader_.mutex());
-		loader_.get(line_starts_, longest_line_, data);
+	loader_.get(line_starts_, longest_line_);
 
-		if (autoscroll_) {
-			// jump to the end of the file
-			scroll_.y = std::max(scroll_.y, max_visible_scroll().y);
-		}
-
-		linenum_chars_ = linenum_len(num_lines());
-
-		update_buffers(content_view_.render_range_, linenum_view_.render_range_, data);
+	if (autoscroll_) {
+		// jump to the end of the file
+		scroll_.y = std::max(scroll_.y, max_visible_scroll().y);
 	}
+
+	linenum_chars_ = linenum_len(num_lines());
+
+	{
+		auto user = dataset_.user();
+		update_buffers(content_view_.render_range_, linenum_view_.render_range_, user);
+	}
+
 	if (linenum_chars_ != prev_linenum_chars) {
 		on_resize();
 	}

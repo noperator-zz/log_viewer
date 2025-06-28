@@ -29,8 +29,9 @@ class FileView : public Widget {
 	static_assert(CONTENT_BUFFER_SIZE < 128 * 1024 * 1024, "Content buffer size too large");
 	static_assert(OVERSCAN_LINES >= 1, "Overscan lines must be at least 1");
 
+	Dataset dataset_ {[this]{on_data();}, [this]{on_unmap();}};
 	Loader loader_;
-	Finder finder_ {};
+	Finder finder_ {dataset_};
 	LinenumView linenum_view_ {*this};
 	ContentView content_view_ {*this};
 	std::vector<std::unique_ptr<FindView>> find_views_ {};
@@ -47,14 +48,14 @@ class FileView : public Widget {
 
 	FileView(const char *path);
 
-	void on_data(const uint8_t *data, size_t size);
+	void on_data();
 	void on_unmap();
 
 	void handle_find(const FindView &find_view);
 	void on_resize() override;
 
 	void really_update_buffers(int start, int end, const uint8_t *data);
-	void update_buffers(glm::uvec2 &content_render_range, glm::uvec2 &linenum_render_range, const uint8_t *data);
+	void update_buffers(glm::uvec2 &content_render_range, glm::uvec2 &linenum_render_range, const Dataset::User &user);
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
 	// size_t get_line_start(size_t line_idx) const;

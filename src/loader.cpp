@@ -6,11 +6,12 @@
 #include "util.h"
 #include <hs/hs.h>
 
+#include "event.h"
+
 using namespace std::chrono;
 
-Loader::Loader(File &&file, std::function<void(const uint8_t *data, size_t size)> &&on_data,
-	std::function<void()> &&on_unmap)
-	: file_(std::move(file)), on_data_(std::move(on_data)), on_unmap_(std::move(on_unmap)) {
+Loader::Loader(File &&file, Dataset &dataset)
+	: file_(std::move(file)), dataset_(dataset) {
 }
 
 Loader::~Loader() {
@@ -24,9 +25,9 @@ Loader::~Loader() {
 	if (db_) hs_free_database(db_);
 }
 
-std::mutex &Loader::mutex() {
-	return mtx_;
-}
+// std::mutex &Loader::mutex() {
+// 	return mtx_;
+// }
 
 int Loader::start() {
 	hs_compile_error_t *compile_err;
@@ -62,11 +63,12 @@ void Loader::stop() {
 	}
 }
 
-void Loader::get(dynarray<size_t> &line_starts, size_t &longest_line, const uint8_t *&data) {
+void Loader::get(dynarray<size_t> &line_starts, size_t &longest_line) {
+	std::lock_guard lock(mtx_);
+
 	line_starts.extend(line_starts_);
 	line_starts_.clear();
 	longest_line = longest_line_;
-	data = file_.mapped_data();
 }
 
 void Loader::quit() {
@@ -120,13 +122,8 @@ void Loader::load_tail() {
 		return;
 	}
 
-	if (on_unmap_) {
-		on_unmap_();
-	}
-
 	{
-		// remapping can change the data address, so we need to lock the mutex
-		std::lock_guard lock(mtx_);
+		auto updater = dataset_.updater();
 
 		// Timeit timeit("File remap");
 		if (file_.mmap() != 0) {
@@ -137,9 +134,7 @@ void Loader::load_tail() {
 		// timeit.stop();
 		// std::cout << "File remapped: " << prev_size << " B -> " << file_.mapped_size() << " B\n";
 
-		if (on_data_) {
-			on_data_(file_.mapped_data(), file_.mapped_size());
-		}
+		updater.set(file_.mapped_data(), file_.mapped_size());
 	}
 
 	size_t total_size = new_size - prev_size;
@@ -164,11 +159,9 @@ void Loader::load_tail() {
 			std::lock_guard lock(mtx_);
 			line_starts_.extend(chunk_results_);
 		}
+		FIXME use callback instead
+		send_event();
 		chunk_results_.clear();
 	}
 	load_timeit.stop();
-
-	if (on_data_) {
-		on_data_(file_.mapped_data(), file_.mapped_size());
-	}
 }

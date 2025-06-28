@@ -1,11 +1,13 @@
-#include "finder.h"
-
 #include <cassert>
 
+#include "finder.h"
 #include <hs/hs.h>
 #include "util.h"
+#include "event.h"
 
 using namespace std::chrono;
+
+Finder::Finder(Dataset &dataset) : dataset_(dataset) {}
 
 Finder::~Finder() {
 	stop();
@@ -16,8 +18,7 @@ void Finder::stop() {
 	jobs_.clear();
 }
 
-std::unique_ptr<Finder::Job> Finder::Job::create(std::condition_variable_any &update_cv,
-	Dataset &dataset, std::string_view pattern, int flags, int &error) {
+std::unique_ptr<Finder::Job> Finder::Job::create(Dataset &dataset, std::string_view pattern, int flags, int &error) {
 	Timeit t("Finder::Job::create()");
 	hs_compile_error_t *compile_err;
 	hs_error_t err;
@@ -57,12 +58,12 @@ std::unique_ptr<Finder::Job> Finder::Job::create(std::condition_variable_any &up
 	}
 
 	error = 0;
-	return std::unique_ptr<Job>(new Job(update_cv, dataset, pattern, flags, db, scratch, stream));
+	return std::unique_ptr<Job>(new Job(dataset, pattern, flags, db, scratch, stream));
 }
 
-Finder::Job::Job(std::condition_variable_any &update_cv, Dataset &dataset, std::string_view pattern, int flags,
+Finder::Job::Job(Dataset &dataset, std::string_view pattern, int flags,
 	hs_database_t *db_, hs_scratch_t *scratch_, hs_stream_t *stream_)
-	: update_cv_(update_cv), thread_(&worker, this), dataset_(dataset), pattern_(pattern), flags_(flags), db_(db_)
+	: thread_(&worker, this), dataset_(dataset), pattern_(pattern), flags_(flags), db_(db_)
 	, scratch_(scratch_), stream_(stream_) {
 }
 
@@ -82,7 +83,7 @@ Finder::Job::~Job() {
 void Finder::Job::quit()  {
 	std::cout << "Job quitting..." << std::endl;
 	quit_.test_and_set();
-	update_cv_.notify_all();
+	dataset_.notify();
 
 	if (thread_.joinable()) {
 		thread_.join();
@@ -99,41 +100,47 @@ int Finder::Job::event_handler(unsigned int id, unsigned long long from, unsigne
 	// fflush(stdout);
 	// std::this_thread::sleep_for(milliseconds(1));
 	chunk_results_.emplace_back(from, to);
-	if (quit_.test()) {
+	if (dataset_.is_update_pending() || quit_.test()) {
 		return 1; // Stop matching
 	}
 	return 0; // Continue matching
 }
 
 void Finder::Job::worker() {
-	static constexpr size_t CHUNK_SIZE = 1ULL * 1024 * 1024;
+	static constexpr size_t CHUNK_SIZE = 0xFFFFFFFF;
+	// static constexpr size_t CHUNK_SIZE = 1ULL * 1024 * 1024;
 
 	while (true) {
-		{
-			std::shared_lock lock(dataset_.mtx);
-			update_cv_.wait(lock, [this]{;
-				return quit_.test() || (dataset_.data != nullptr && dataset_.length > stream_pos_);
-			});
-		}
-		if (quit_.test()) {
-			std::cout << "Quit event" << std::endl;
-			status_ = Status::kQUIT;
-			break;
-		}
+		// {
+		// 	std::shared_lock lock(dataset_.mtx);
+		// 	update_cv_.wait(lock, [this]{;
+		// 		return quit_.test() || (dataset_.data != nullptr && dataset_.length > stream_pos_);
+		// 	});
+		// }
 
 		std::cout << "Job acquire..." << std::endl;
 		{
-			std::shared_lock ds_lock(dataset_.mtx);
-			Timeit t("Scan");
-			std::cout << "Job acquired." << std::endl;
-			if (dataset_.data == nullptr) {
-				continue;
+			auto user {dataset_.wait([this](auto length) {
+				return quit_.test() || length > stream_pos_;
+			})};
+
+			if (quit_.test()) {
+				std::cout << "Quit event" << std::endl;
+				status_ = Status::kQUIT;
+				break;
 			}
 
-			assert(dataset_.length >= stream_pos_);
+			Timeit t("Scan");
+			std::cout << "Job acquired." << std::endl;
+			assert(user.data());
+			// if (dataset_.data == nullptr) {
+			// 	continue;
+			// }
 
-			const uint8_t *data = dataset_.data + stream_pos_;
-			const size_t length = dataset_.length - stream_pos_;
+			assert(user.length() >= stream_pos_);
+
+			const uint8_t *data = user.data() + stream_pos_;
+			const size_t length = user.length() - stream_pos_;
 
 			hs_error_t err = HS_SUCCESS;
 		    for (size_t offset = 0; offset < length; offset += CHUNK_SIZE) {
@@ -144,32 +151,35 @@ void Finder::Job::worker() {
 		    	// std::this_thread::sleep_for(milliseconds(100));
 		    	// std::cout << "Job scan = " << err << ". " << chunk_results_.size() << " results." << std::endl;
 
-				if (err != HS_SUCCESS) {
-					break;
-		        }
 			    if (quit_.test()) {
 		    		// Will be handled above
 					std::cout << "Quit during scan" << std::endl;
-				    break;
 			    }
+				if (err != HS_SUCCESS) {
+					break;
+		        }
+
 	    		stream_pos_ += chunk_size;
+
 			    {
 	        		std::lock_guard lock(result_mtx_);
 				    results_.extend(chunk_results_);
+		        	// std::swap(results_, chunk_results_);
 			    }
+				FIXME use callback instead
+		    	send_event();
 	    		chunk_results_.clear();
 
-		    	if (dataset_.update_pending_.test()) {
-		    		// Finder wants to update the dataset. Break out of the loop to release the lock earlier.
-		    		break;
-		    	}
+		    	// if (dataset_.update_pending_.test()) {
+		    	// 	// Finder wants to update the dataset. Break out of the loop to release the lock earlier.
+		    	// 	break;
+		    	// }
 		    }
 
 			if (err == HS_SUCCESS) {
 
 			} else if (err == HS_SCAN_TERMINATED) {
 				// Will be handled above
-				assert(quit_.test());
 			} else {
 				status_ = Status::kERROR;
 				fprintf(stderr, "ERROR: Unable to scan input buffer. Exiting.\n");
@@ -198,20 +208,6 @@ const std::unordered_map<const void*, std::unique_ptr<Finder::Job>> & Finder::jo
 	return jobs_;
 }
 
-void Finder::update_data(const uint8_t *data, size_t len) {
-	// NOTE: This tells active jobs to release the dataset lock ASAP.
-	//  Otherwise, we would have to wait for all jobs to finish scanning the entire dataset before they would release the lock.
-	//  That would only block the loader thread, so not a huge deal, but new tailed data does not show up in the FileView until this is done.
-	dataset_.update_pending_.test_and_set();
-	{
-		std::lock_guard lock(dataset_.mtx);
-		dataset_.update_pending_.clear();
-
-		dataset_.data = data;
-		dataset_.length = len;
-	}
-	update_cv_.notify_all();
-}
 
 int Finder::submit(const void* ctx, std::string_view pattern, int flags) {
 	// NOTE This is called by the main thread (during search input box event handling) and should not block.
@@ -232,7 +228,7 @@ int Finder::submit(const void* ctx, std::string_view pattern, int flags) {
 
 	if (!jobs_.contains(ctx)) {
 		std::cout << "Create" << std::endl;
-		auto job = Job::create(update_cv_, dataset_, pattern, flags, err);
+		auto job = Job::create(dataset_, pattern, flags, err);
 		if (err) {
 			fprintf(stderr, "ERROR: Unable to create job for pattern \"%s\".\n", pattern.data());
 			return err;
@@ -243,7 +239,7 @@ int Finder::submit(const void* ctx, std::string_view pattern, int flags) {
 	}
 
 	// Notify the job to start processing the dataset.
-	update_cv_.notify_all();
+	dataset_.notify();
 
 	return 0;
 }

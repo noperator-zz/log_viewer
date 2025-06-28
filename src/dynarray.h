@@ -5,11 +5,39 @@
 
 template<typename T>
 class dynarray {
+	T* data_ = nullptr;
+	size_t size_ = 0;
+	size_t capacity_ = 0;
+
+	// diable copy
+	dynarray(const dynarray &) = delete;
+	dynarray &operator=(const dynarray &) = delete;
+
+
 public:
 	typedef T* iterator;
 	typedef const T* const_iterator;
 
 	dynarray() = default;
+
+	dynarray(dynarray && o) noexcept
+		: data_(o.data_), size_(o.size_), capacity_(o.capacity_) {
+		o.data_ = nullptr;
+		o.size_ = 0;
+		o.capacity_ = 0;
+	}
+	dynarray &operator=(dynarray && o) noexcept {
+		if (this != &o) {
+			release();
+			data_ = o.data_;
+			size_ = o.size_;
+			capacity_ = o.capacity_;
+			o.data_ = nullptr;
+			o.size_ = 0;
+			o.capacity_ = 0;
+		}
+		return *this;
+	}
 
 	void reserve(const size_t n) {
 		size_t new_capacity = capacity_;
@@ -87,9 +115,4 @@ public:
 		std::memcpy(data_ + size_, other.data_, sizeof(T) * other.size_);
 		size_ += other.size_;
 	}
-
-private:
-	T* data_ = nullptr;
-	size_t size_ = 0;
-	size_t capacity_ = 0;
 };
