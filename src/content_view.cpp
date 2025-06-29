@@ -122,23 +122,22 @@ void ContentView::highlight_findings() {
 	// auto lo_buf_char_idx = parent_.abs_char_idx_to_buf_char_idx(lo_abs_char_idx);
 	// auto hi_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx((parent_.scroll_ + size()) / TextShader::font().size);
 
-	// TODO Finder thread need to send a GLFW event when it finds a match, so a render is triggered
-	std::lock_guard finder_lock(parent_.finder_.mutex());
-	for (const auto &[ctx, job] : parent_.finder_.jobs()) {
+	auto user = parent_.finder_.user();
+	for (const auto &[ctx, job] : user.jobs()) {
 		const auto find_view = static_cast<const FindView *>(ctx);
+		const auto &results = job->results();
 
 		// const auto &job = parent_.finder_.jobs().at(&find_view);
-		std::lock_guard job_lock(job->result_mtx());
 
 		// Timeit t("search");
 		// binary search for the first result that starts at >= lo_buf_char_idx
-		auto it = std::lower_bound(job->results_.begin(), job->results_.end(), lo_abs_char_idx,
+		auto it = std::lower_bound(results.begin(), results.end(), lo_abs_char_idx,
 		                           [](const auto &a, const auto &b) { return a.start < b; });
 		// t.stop();
 
 
 		// iterate through all results that start at >= lo_buf_char_idx and <= hi_buf_char_idx
-		for (; it != job->results_.end() && it->start <= hi_abs_char_idx; ++it) {
+		for (; it != results.end() && it->start <= hi_abs_char_idx; ++it) {
 			auto start = parent_.abs_char_idx_to_buf_char_idx(it->start);
 			auto end = parent_.abs_char_idx_to_buf_char_idx(it->end);
 

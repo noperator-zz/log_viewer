@@ -29,8 +29,8 @@ class FileView : public Widget {
 	static_assert(CONTENT_BUFFER_SIZE < 128 * 1024 * 1024, "Content buffer size too large");
 	static_assert(OVERSCAN_LINES >= 1, "Overscan lines must be at least 1");
 
-	Dataset dataset_ {[this]{on_data();}, [this]{on_unmap();}};
 	Loader loader_;
+	Dataset dataset_ {nullptr, nullptr};
 	Finder finder_ {dataset_};
 	LinenumView linenum_view_ {*this};
 	ContentView content_view_ {*this};
@@ -48,10 +48,10 @@ class FileView : public Widget {
 
 	FileView(const char *path);
 
-	void on_data();
-	void on_unmap();
+	void on_new_lines();
+	void on_find(const void *ctx);
 
-	void handle_find(const FindView &find_view);
+	void handle_findview(const FindView &find_view);
 	void on_resize() override;
 
 	void really_update_buffers(int start, int end, const uint8_t *data);

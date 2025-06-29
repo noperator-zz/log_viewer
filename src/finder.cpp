@@ -3,7 +3,6 @@
 #include "finder.h"
 #include <hs/hs.h>
 #include "util.h"
-#include "event.h"
 
 using namespace std::chrono;
 
@@ -18,7 +17,8 @@ void Finder::stop() {
 	jobs_.clear();
 }
 
-std::unique_ptr<Finder::Job> Finder::Job::create(Dataset &dataset, std::string_view pattern, int flags, int &error) {
+std::unique_ptr<Finder::Job> Finder::Job::create(std::mutex &results_mtx, Dataset &dataset, std::function<void(const void*)> &&on_result,
+	const void* ctx, std::string_view pattern, int flags, int &error) {
 	Timeit t("Finder::Job::create()");
 	hs_compile_error_t *compile_err;
 	hs_error_t err;
@@ -58,13 +58,13 @@ std::unique_ptr<Finder::Job> Finder::Job::create(Dataset &dataset, std::string_v
 	}
 
 	error = 0;
-	return std::unique_ptr<Job>(new Job(dataset, pattern, flags, db, scratch, stream));
+	return std::unique_ptr<Job>(new Job(results_mtx, dataset, std::move(on_result), ctx, pattern, flags, db, scratch, stream));
 }
 
-Finder::Job::Job(Dataset &dataset, std::string_view pattern, int flags,
-	hs_database_t *db_, hs_scratch_t *scratch_, hs_stream_t *stream_)
-	: thread_(&worker, this), dataset_(dataset), pattern_(pattern), flags_(flags), db_(db_)
-	, scratch_(scratch_), stream_(stream_) {
+Finder::Job::Job(std::mutex &result_mtx, Dataset &dataset, std::function<void(const void*)> &&on_result,
+	const void* ctx, std::string_view pattern, int flags, hs_database_t *db, hs_scratch_t *scratch, hs_stream_t *stream)
+	: thread_(&worker, this), result_mtx_(result_mtx), dataset_(dataset), on_result_(std::move(on_result)), ctx_(ctx)
+	, pattern_(pattern), flags_(flags), db_(db) , scratch_(scratch), stream_(stream) {
 }
 
 Finder::Job::~Job() {
@@ -107,17 +107,10 @@ int Finder::Job::event_handler(unsigned int id, unsigned long long from, unsigne
 }
 
 void Finder::Job::worker() {
-	static constexpr size_t CHUNK_SIZE = 0xFFFFFFFF;
-	// static constexpr size_t CHUNK_SIZE = 1ULL * 1024 * 1024;
+	// Chunk size needs to be relatively small because it sets the latency of the quit event being handled
+	static constexpr size_t CHUNK_SIZE = 1ULL * 1024 * 1024;
 
 	while (true) {
-		// {
-		// 	std::shared_lock lock(dataset_.mtx);
-		// 	update_cv_.wait(lock, [this]{;
-		// 		return quit_.test() || (dataset_.data != nullptr && dataset_.length > stream_pos_);
-		// 	});
-		// }
-
 		std::cout << "Job acquire..." << std::endl;
 		{
 			auto user {dataset_.wait([this](auto length) {
@@ -133,11 +126,7 @@ void Finder::Job::worker() {
 			Timeit t("Scan");
 			std::cout << "Job acquired." << std::endl;
 			assert(user.data());
-			// if (dataset_.data == nullptr) {
-			// 	continue;
-			// }
-
-			assert(user.length() >= stream_pos_);
+			assert(user.length() > stream_pos_);
 
 			const uint8_t *data = user.data() + stream_pos_;
 			const size_t length = user.length() - stream_pos_;
@@ -166,8 +155,9 @@ void Finder::Job::worker() {
 				    results_.extend(chunk_results_);
 		        	// std::swap(results_, chunk_results_);
 			    }
-				FIXME use callback instead
-		    	send_event();
+		    	if (on_result_) {
+		    		on_result_(ctx_);
+		    	}
 	    		chunk_results_.clear();
 
 		    	// if (dataset_.update_pending_.test()) {
@@ -191,25 +181,12 @@ void Finder::Job::worker() {
 	}
 }
 
-std::mutex &Finder::Job::result_mtx() {
-	return result_mtx_;
-}
-
 Finder::Job::Status Finder::Job::status() const {
 	return status_;
 }
 
 
-std::mutex &Finder::mutex() {
-	return jobs_mtx_;
-}
-
-const std::unordered_map<const void*, std::unique_ptr<Finder::Job>> & Finder::jobs() const {
-	return jobs_;
-}
-
-
-int Finder::submit(const void* ctx, std::string_view pattern, int flags) {
+int Finder::submit(const void* ctx, std::function<void(const void*)> &&on_result, std::string_view pattern, int flags) {
 	// NOTE This is called by the main thread (during search input box event handling) and should not block.
 	//  The only blocker here is erasing an existing job. Given how we have the quit flag set up, this will block until
 	//  the next match is found or the chunk is processed, whichever comes first.
@@ -221,14 +198,12 @@ int Finder::submit(const void* ctx, std::string_view pattern, int flags) {
 
 	if (jobs_.contains(ctx)) {
 		std::cout << "Erase" << std::endl;
-		// if (pattern != jobs_[ctx]->pattern()) {
-			jobs_.erase(ctx);
-		// }
+		jobs_.erase(ctx);
 	}
 
 	if (!jobs_.contains(ctx)) {
 		std::cout << "Create" << std::endl;
-		auto job = Job::create(dataset_, pattern, flags, err);
+		auto job = Job::create(results_mtx_, dataset_, std::move(on_result), ctx, pattern, flags, err);
 		if (err) {
 			fprintf(stderr, "ERROR: Unable to create job for pattern \"%s\".\n", pattern.data());
 			return err;

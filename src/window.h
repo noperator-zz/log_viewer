@@ -58,4 +58,6 @@ public:
 	bool should_close() const;
 
 	void draw();
+
+	static void send_event();
 };

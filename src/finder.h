@@ -16,7 +16,6 @@ class Finder {
 			kERROR,
 		};
 
-
 	private:
 		struct Result {
 			size_t start;
@@ -24,19 +23,22 @@ class Finder {
 		};
 
 		std::thread thread_;
+		std::mutex &result_mtx_;
 		Dataset &dataset_;
+		std::function<void(const void*)> on_result_;
+		const void *ctx_;
 		const std::string_view pattern_;
 		const int flags_;
 		hs_database_t * const db_;
 		hs_scratch_t * const scratch_;
 		hs_stream_t * const stream_;
 
-		std::mutex result_mtx_ {};
 		std::atomic_flag quit_ {};
 		size_t stream_pos_ {};
 		std::atomic<Status> status_ {};
 
 		dynarray<Result> chunk_results_ {};
+		dynarray<Result> results_ {};
 
 		static int event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void *context);
 		int event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags);
@@ -44,8 +46,8 @@ class Finder {
 		void quit();
 
 		Job() = delete;
-		Job(Dataset &dataset, std::string_view pattern, int flags,
-			hs_database_t *db_, hs_scratch_t *scratch_, hs_stream_t *stream_);
+		Job(std::mutex &result_mtx, Dataset &dataset, std::function<void(const void*)> &&on_result, const void* ctx,
+			std::string_view pattern, int flags, hs_database_t *db, hs_scratch_t *scratch, hs_stream_t *stream);
 		// diable copy and move
 		Job(const Job &) = delete;
 		Job &operator=(const Job &) = delete;
@@ -54,18 +56,37 @@ class Finder {
 		Job &operator=(Job &&) = delete;
 
 	public:
-		dynarray<Result> results_ {};
-
-		static std::unique_ptr<Job> create(Dataset &dataset, std::string_view pattern, int flags, int &err);
 		~Job();
+		static std::unique_ptr<Job> create(std::mutex &results_mtx, Dataset &dataset, std::function<void(const void*)> &&on_result,
+			const void* ctx, std::string_view pattern, int flags, int &err);
 
-		std::mutex &result_mtx();
+		const dynarray<Result> &results() const { return results_; }
 		Status status() const;
+	};
+
+	class User {
+		friend class Finder;
+
+		const Finder &finder_;
+		std::scoped_lock<std::mutex, std::mutex> lock_;
+
+		User(const Finder &finder) : finder_(finder), lock_(finder.jobs_mtx_, finder.results_mtx_) {}
+
+		User() = delete;
+		User(const User &) = delete;
+		User &operator=(const User &) = delete;
+		User(User &&) = delete;
+		User &operator=(User &&) = delete;
+
+	public:
+		~User() = default;
+		const std::unordered_map<const void*, std::unique_ptr<Job>> & jobs() const { return finder_.jobs_; }
 	};
 
 	Dataset &dataset_;
 
-	std::mutex jobs_mtx_ {};
+	mutable std::mutex jobs_mtx_ {};
+	mutable std::mutex results_mtx_ {};
 	std::unordered_map<const void*, std::unique_ptr<Job>> jobs_ {};
 
 public:
@@ -74,9 +95,8 @@ public:
 
 	void stop();
 
-	std::mutex &mutex();
-	const std::unordered_map<const void*, std::unique_ptr<Job>> & jobs() const;
-	[[nodiscard]] int submit(const void* ctx, std::string_view pattern, int flags);
+	[[nodiscard]] int submit(const void* ctx, std::function<void(const void*)> &&on_result, std::string_view pattern, int flags);
 	void remove(const void* ctx);
+	User user() const {	return User(*this);	}
 };
 

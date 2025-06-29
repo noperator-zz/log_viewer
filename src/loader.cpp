@@ -6,12 +6,10 @@
 #include "util.h"
 #include <hs/hs.h>
 
-#include "event.h"
-
 using namespace std::chrono;
 
-Loader::Loader(File &&file, Dataset &dataset)
-	: file_(std::move(file)), dataset_(dataset) {
+Loader::Loader(File &&file, Dataset &dataset, std::function<void()> &&on_data)
+	: file_(std::move(file)), dataset_(dataset), on_data_(std::move(on_data)) {
 }
 
 Loader::~Loader() {
@@ -24,10 +22,6 @@ Loader::~Loader() {
 	if (scratch_) hs_free_scratch(scratch_);
 	if (db_) hs_free_database(db_);
 }
-
-// std::mutex &Loader::mutex() {
-// 	return mtx_;
-// }
 
 int Loader::start() {
 	hs_compile_error_t *compile_err;
@@ -159,8 +153,9 @@ void Loader::load_tail() {
 			std::lock_guard lock(mtx_);
 			line_starts_.extend(chunk_results_);
 		}
-		FIXME use callback instead
-		send_event();
+		if (on_data_) {
+			on_data_();
+		}
 		chunk_results_.clear();
 	}
 	load_timeit.stop();

@@ -13,6 +13,7 @@
 class Loader {
 	File file_;
 	Dataset &dataset_;
+	std::function<void()> on_data_;
 	hs_database_t * db_ {};
 	hs_scratch_t * scratch_ {};
 	hs_stream_t * stream_ {};
@@ -41,10 +42,9 @@ class Loader {
 	Loader &operator=(Loader &&) = delete;
 
 public:
-	Loader(File &&file, Dataset &dataset);
+	Loader(File &&file, Dataset &dataset, std::function<void()> &&on_data);
 	~Loader();
 
-	// std::mutex &mutex();
 	int start();
 	void stop();
 

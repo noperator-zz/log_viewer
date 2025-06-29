@@ -4,7 +4,6 @@
 
 #include <mutex>
 
-#include "event.h"
 #include "../shaders/text_shader.h"
 #include "util.h"
 
@@ -16,12 +15,12 @@ std::unique_ptr<FileView> FileView::create(const char *path) {
 }
 
 FileView::FileView(const char *path)
-	: Widget("FV"), loader_(File{path}, dataset_) {
+	: Widget("FV"), loader_(File{path}, dataset_, [this]{on_new_lines();}) {
 
 	add_child(linenum_view_);
 	add_child(content_view_);
 
-	find_views_.emplace_back(std::make_unique<FindView>([this](const auto &find_view) { handle_find(find_view); }));
+	find_views_.emplace_back(std::make_unique<FindView>([this](const auto &find_view) { handle_findview(find_view); }));
 	add_child(*find_views_.back().get());
 }
 
@@ -44,18 +43,19 @@ int FileView::open() {
 	return 0;
 }
 
-void FileView::on_data() {
-	send_event();
-}
-
-void FileView::on_unmap() {
-}
-
-void FileView::handle_find(const FindView &find_view) {
-	int ret = finder_.submit(&find_view, find_view.text(), 0);//find_view.flags());
+void FileView::handle_findview(const FindView &find_view) {
+	int ret = finder_.submit(&find_view, [this](auto ctx){on_find(ctx);}, find_view.text(), 0);//find_view.flags());
 	if (ret != 0) {
 		std::cerr << "Error submitting find request: " << ret << std::endl;
 	}
+}
+
+void FileView::on_find(const void *ctx) {
+
+}
+
+void FileView::on_new_lines() {
+	Window::send_event();
 }
 
 void FileView::scroll_h_cb(double percent) {

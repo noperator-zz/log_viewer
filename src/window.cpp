@@ -100,3 +100,7 @@ void Window::draw() {
 	root_->draw_cb();
 	// glDisable(GL_SCISSOR_TEST);
 }
+
+void Window::send_event() {
+	glfwPostEmptyEvent();
+}
