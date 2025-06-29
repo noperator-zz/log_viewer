@@ -11,28 +11,26 @@ layout(std140) uniform Globals {
     ivec2 frame_offset_px;
     uint atlas_cols;
     uint z_order;
-    bool is_foreground;
 };
 
 uniform sampler2D atlas;
 
-void main() {
-    if (!is_foreground) {
-        color = v_bg;
-    } else {
-        float a = texture(atlas, v_uv).r;
-        color = mix(vec4(0, 0, 0, 0), v_fg, a);
-    //    color = vec4((v_style_mask & 0xFFU), 0, 0, 1);
-    //    color = vec4(0, v_uv.r, 0, 1);
-    //    color = vec4(float(char_idx) / 3., 0.5, 0, 1);
-    //    color = vec4(float(quad) / 6., 0, 0, 1);
-    }
+vec4 blendOver(vec4 top, vec4 bottom) {
+    float alpha = top.a + bottom.a * (1.0 - top.a);
+    vec3 color = (top.rgb * top.a + bottom.rgb * bottom.a * (1.0 - top.a)) / max(alpha, 0.0001);
+    return vec4(color, alpha);
+}
 
-    if (color.a == 0.0) {
-        // Skip transparent foreground (and bg) pixels. Due to the bearing_y offset, the transparent bottom of a glyph
-        //  may overlap the line below it. Due to depth testing, this would cause the top of the next line's glyph
-        //  to not be drawn. By discarding transparent pixels, the depth buffer is not updated, and the next line's glyph
-        //  passes the depth test.
-        discard;
-    }
+void main() {
+    // TODO convert SRGB to linear before blending, then convert back to SRGB.
+    //  There may be a way to get OpenGL to do this automatically by specifying th correct texture format.
+
+    float a = texture(atlas, v_uv).r;
+    vec4 fg = mix(v_bg, v_fg, a);
+//    color = vec4((v_style_mask & 0xFFU), 0, 0, 1);
+//    color = vec4(0, v_uv.r, 0, 1);
+//    color = vec4(float(char_idx) / 3., 0.5, 0, 1);
+//    color = vec4(float(quad) / 6., 0, 0, 1);
+
+    color = blendOver(fg, v_bg);
 }

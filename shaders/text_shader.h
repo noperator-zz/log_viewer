@@ -32,7 +32,6 @@ public:
 		glm::ivec2 frame_offset_px;
 		glm::uint atlas_cols;
 		alignas(4) uint8_t z_order;
-		alignas(4) bool is_foreground;
 
 		void set_viewport(glm::ivec2 size);
 	};
@@ -65,6 +64,6 @@ public:
 	static void use(const Buffer &buf);
 	static void render(const Buffer &buf, std::string_view text, const CharStyle &style);
 	static void render(const Buffer &buf, std::string_view text, const CharStyle &style, const std::vector<size_t> &indices, std::vector<glm::ivec2> &coords);
-	static void draw(glm::ivec2 frame_offset, glm::ivec2 scroll_offset, size_t start, size_t count, uint8_t z_fg, uint8_t z_bg);
+	static void draw(glm::ivec2 frame_offset, glm::ivec2 scroll_offset, size_t start, size_t count, uint8_t z);
 	static const Font &font();
 };

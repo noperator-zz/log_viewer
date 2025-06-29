@@ -167,7 +167,7 @@ void ContentView::draw() {
 	glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
 
-	TextShader::draw(pos(), parent_.scroll_, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG, Z_FILEVIEW_TEXT_BG);
+	TextShader::draw(pos(), parent_.scroll_, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG);
 
 	scroll_h_.draw();
 	scroll_v_.draw();

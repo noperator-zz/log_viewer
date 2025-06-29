@@ -41,7 +41,6 @@ int TextShader::setup() {
 		.frame_offset_px={},
 		.atlas_cols=inst_->font_.num_glyphs,
 		.z_order={},
-		.is_foreground={},
 	};
 
 	return 0;
@@ -105,8 +104,6 @@ void TextShader::use(const Buffer &buf) {
 	// TODO can remove these?
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, inst_->font_.tex_atlas());
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, inst_->font_.tex_bearing());
 
 	glBindVertexArray(buf.vao);
 	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_text);
@@ -156,16 +153,11 @@ void TextShader::render(const Buffer &buf, const std::string_view text, const Ch
 	glBufferSubData(GL_ARRAY_BUFFER, 0, text.size() * sizeof(CharStyle), styles.get());
 }
 
-void TextShader::draw(ivec2 frame_offset, ivec2 scroll_offset, size_t start, size_t count, uint8_t z_fg, uint8_t z_bg) {
+void TextShader::draw(ivec2 frame_offset, ivec2 scroll_offset, size_t start, size_t count, uint8_t z) {
 	globals.frame_offset_px = frame_offset;
 	globals.scroll_offset_px = scroll_offset;
-	globals.is_foreground = false;
-	globals.z_order = z_bg;
-	update_uniforms();
-	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, count, start);
 
-	globals.is_foreground = true;
-	globals.z_order = z_fg;
+	globals.z_order = z;
 	update_uniforms();
 	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, count, start);
 }

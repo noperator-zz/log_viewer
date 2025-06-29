@@ -22,6 +22,9 @@ Font::Font(int size,
 int Font::render(FT_Face face, size_t style_idx) {
 	FT_Error err;
 	int x = 0;
+
+	int max_descent = FT_MulFix(abs(face->descender), face->size->metrics.y_scale) >> 6;
+
 	for (int c = 0; c < num_glyphs; ++c) {
 		err = FT_Load_Char(face, c, FT_LOAD_RENDER);
 		if (err) {
@@ -39,15 +42,10 @@ int Font::render(FT_Face face, size_t style_idx) {
 		glBindTexture(GL_TEXTURE_2D, tex_atlas_);
 		glTexSubImage2D(GL_TEXTURE_2D, 0,
 			x + g->bitmap_left,
-			style_idx * size.y,
+			style_idx * size.y + (size.y - g->bitmap_top - max_descent),
 			g->bitmap.width,
 			g->bitmap.rows,
             GL_RED, GL_UNSIGNED_BYTE, g->bitmap.buffer);
-
-		float bearing_top = size.y - g->bitmap_top;
-		glBindTexture(GL_TEXTURE_2D, tex_bearing_);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, c, style_idx,1, 1,
-			GL_RED, GL_FLOAT, &bearing_top);
 
 		x += size.x;
 	}
@@ -78,29 +76,14 @@ int Font::load() {
 		if (!tex_created) {
 			tex_created = true;
 			// TODO
-			size.x = 16;//face->max_advance_width >> 6;
+			size.x = face->size->metrics.max_advance >> 6;
+			size.y = face->size->metrics.height >> 6;
 
 			glGenTextures(1, &tex_atlas_);
 			glBindTexture(GL_TEXTURE_2D, tex_atlas_);
 			glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, num_glyphs * size.x, num_faces * size.y, 0, GL_RED, GL_UNSIGNED_BYTE, nullptr);
 			GLubyte zero = 0.0f;
 			glClearTexImage(tex_atlas_, 0, GL_RED, GL_UNSIGNED_BYTE, &zero);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-			// TODO Use an SSBO instead of a texture for bearing
-			//  layout(std430, binding = 1) buffer GlyphInfoBuffer {
-			//  	float bearingY[]; // or struct if needed
-			//  };
-			//  GLuint ssbo;
-			//  glGenBuffers(1, &ssbo);
-			//  glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-			//  glBufferData(GL_SHADER_STORAGE_BUFFER, count * sizeof(float), data_ptr, GL_STATIC_DRAW);
-			//  glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo); // binding = 1 must match shader
-
-			glGenTextures(1, &tex_bearing_);
-			glBindTexture(GL_TEXTURE_2D, tex_bearing_);
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, num_glyphs * 1, num_faces, 0, GL_RED, GL_FLOAT, nullptr);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		}

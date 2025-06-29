@@ -16,7 +16,6 @@ public:
 private:
 	const char *paths[4];
 	GLuint tex_atlas_ {};
-	GLuint tex_bearing_ {};
 
 	int render(FT_Face face, size_t style_idx);
 
@@ -34,8 +33,5 @@ public:
 
 	GLuint tex_atlas() const {
 		return tex_atlas_;
-	}
-	GLuint tex_bearing() const {
-		return tex_bearing_;
 	}
 };

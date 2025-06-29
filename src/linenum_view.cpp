@@ -13,5 +13,5 @@ void LinenumView::draw() {
 	GPShader::draw();
 
 	TextShader::use(buf_);
-	TextShader::draw(pos(), {0, parent_.scroll_.y}, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG, Z_FILEVIEW_TEXT_BG);
+	TextShader::draw(pos(), {0, parent_.scroll_.y}, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG);
 }
