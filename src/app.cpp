@@ -16,6 +16,7 @@
 #include "util.h"
 #include "window.h"
 #include "log.h"
+#include "stripe_shader.h"
 
 using namespace std::chrono;
 
@@ -114,7 +115,7 @@ int App::start() {
 
     init_timeit.~Timeit();
 
-    font_ = std::make_unique<Font>(26,
+    font_ = std::make_unique<Font>(22,
         "C:/Windows/Fonts/Consola.ttf",
         "C:/Windows/Fonts/Consolab.ttf",
         "C:/Windows/Fonts/Consolai.ttf",
@@ -136,6 +137,11 @@ int App::start() {
 
     if (GPShader::init() != 0) {
         std::cerr << "Failed to compile GP shader\n";
+        return -1;
+    }
+
+    if (StripeShader::init() != 0) {
+        std::cerr << "Failed to compile Stripe shader\n";
         return -1;
     }
 
@@ -205,6 +211,7 @@ void App::on_resize() {
     fb_size_ = size();
     GPShader::set_viewport(fb_size_);
 	TextShader::globals.set_viewport(fb_size_);
+    StripeShader::globals.set_viewport(fb_size_);
     if (file_views_.empty()) {
         return; // No file views to resize
     }

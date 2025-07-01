@@ -25,8 +25,8 @@ class Finder {
 		std::thread thread_;
 		std::mutex &result_mtx_;
 		Dataset &dataset_;
-		std::function<void(const void*)> on_result_;
-		const void *ctx_;
+		std::function<void(void*, size_t)> on_result_;
+		void *ctx_;
 		const std::string_view pattern_;
 		const int flags_;
 		hs_database_t * const db_;
@@ -39,6 +39,7 @@ class Finder {
 
 		dynarray<Result> chunk_results_ {};
 		dynarray<Result> results_ {};
+		size_t last_report_ {};
 
 		static int event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void *context);
 		int event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags);
@@ -46,7 +47,7 @@ class Finder {
 		void quit();
 
 		Job() = delete;
-		Job(std::mutex &result_mtx, Dataset &dataset, std::function<void(const void*)> &&on_result, const void* ctx,
+		Job(std::mutex &result_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result, void* ctx,
 			std::string_view pattern, int flags, hs_database_t *db, hs_scratch_t *scratch, hs_stream_t *stream);
 		// diable copy and move
 		Job(const Job &) = delete;
@@ -57,8 +58,8 @@ class Finder {
 
 	public:
 		~Job();
-		static std::unique_ptr<Job> create(std::mutex &results_mtx, Dataset &dataset, std::function<void(const void*)> &&on_result,
-			const void* ctx, std::string_view pattern, int flags, int &err);
+		static std::unique_ptr<Job> create(std::mutex &results_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result,
+			void* ctx, std::string_view pattern, int flags, int &err);
 
 		const dynarray<Result> &results() const { return results_; }
 		Status status() const;
@@ -80,14 +81,14 @@ class Finder {
 
 	public:
 		~User() = default;
-		const std::unordered_map<const void*, std::unique_ptr<Job>> & jobs() const { return finder_.jobs_; }
+		const std::unordered_map<void*, std::unique_ptr<Job>> & jobs() const { return finder_.jobs_; }
 	};
 
 	Dataset &dataset_;
 
 	mutable std::mutex jobs_mtx_ {};
 	mutable std::mutex results_mtx_ {};
-	std::unordered_map<const void*, std::unique_ptr<Job>> jobs_ {};
+	std::unordered_map<void*, std::unique_ptr<Job>> jobs_ {};
 
 public:
 	Finder(Dataset &dataset);
@@ -95,8 +96,8 @@ public:
 
 	void stop();
 
-	[[nodiscard]] int submit(const void* ctx, std::function<void(const void*)> &&on_result, std::string_view pattern, int flags);
-	void remove(const void* ctx);
+	[[nodiscard]] int submit(void* ctx, std::function<void(void*, size_t)> &&on_result, std::string_view pattern, int flags);
+	void remove(void* ctx);
 	User user() const {	return User(*this);	}
 };
 

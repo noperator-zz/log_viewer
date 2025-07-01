@@ -47,7 +47,7 @@ private:
 	static inline std::unique_ptr<TextShader> inst_;
 	Shader shader_;
 	const Font &font_;
-	GLint globals_idx_ {};
+	GLuint globals_idx_ {};
 	// Buffer *active_buf_ {};
 
 	TextShader(const Font &font);

@@ -19,9 +19,10 @@ FileView::FileView(const char *path)
 
 	add_child(linenum_view_);
 	add_child(content_view_);
+	add_child(stripe_view_);
 
-	find_views_.emplace_back(std::make_unique<FindView>([this](const auto &find_view) { handle_findview(find_view); }));
-	add_child(*find_views_.back().get());
+	find_ctxs_.emplace_back(std::make_unique<FindContext>([this](auto &find_view) { handle_findview(find_view); }));
+	add_child(find_ctxs_.back()->view_);
 }
 
 FileView::~FileView() {
@@ -43,15 +44,48 @@ int FileView::open() {
 	return 0;
 }
 
-void FileView::handle_findview(const FindView &find_view) {
-	int ret = finder_.submit(&find_view, [this](auto ctx){on_find(ctx);}, find_view.text(), 0);//find_view.flags());
+void FileView::handle_findview(FindView &find_view) {
+	int ret = finder_.submit(&find_view, [this](auto ctx, auto idx){on_find(ctx, idx);}, find_view.text(), 0);//find_view.flags());
 	if (ret != 0) {
 		std::cerr << "Error submitting find request: " << ret << std::endl;
 	}
 }
 
-void FileView::on_find(const void *ctx) {
+void FileView::on_find(const void *ctx, size_t idx) {
+	Timeit timeit("FileView::on_find");
 
+	std::lock_guard lock(line_mtx_);
+
+	assert(!line_starts_.empty());
+
+	auto user = finder_.user();
+	for (const auto &[ctx_, job] : user.jobs()) {
+		auto ctx = static_cast<FindContext *>(ctx_);
+		const auto &results = job->results();
+		const auto color = ctx->view_.color();
+
+		if (idx == 0 || idx < ctx->last_report_) {
+			ctx->last_line_ = 0;
+			stripe_view_.reset();
+		}
+		ctx->last_report_ = idx;
+
+		for (size_t i = idx; i < results.size(); i++) {
+			const auto &result = results[i];
+			assert(result.end < line_starts_[line_starts_.size() - 1]);
+			assert(ctx->last_line_ < line_starts_.size());
+			while (result.start >= line_starts_[ctx->last_line_]) {
+				ctx->last_line_++;
+				if (ctx->last_line_ >= line_starts_.size()) {
+					break;
+				}
+			}
+			float y = (float)(ctx->last_line_ - 1) / (float)(num_lines() - 1);
+			stripe_view_.add_point(y, color);
+		}
+	}
+	// fflush(stdout);
+	Window::send_event();
 }
 
 void FileView::on_new_lines() {
@@ -206,6 +240,9 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 				uvec2{i, line_idx},
 				vec4{r, g, b, 255},
 				vec4{}
+				// vec4{0, 0, 0, 255}
+				// vec4{100, 0, 0, 255}
+				// vec4{255, 255, 255, 255}
 				// vec4{100, 0, 0, 100}
 			};
 			c++;
@@ -284,20 +321,22 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 }
 
 void FileView::on_resize() {
-	auto linenum_width = linenum_chars_ * TextShader::font().size.x + 20;
-	linenum_view_.resize(pos(), {linenum_width, size().y});
-	content_view_.resize({pos().x + linenum_width, pos().y}, {size().x - linenum_width, size().y});
-	auto p = content_view_.pos();
-	for (auto &find_view : find_views_) {
-		find_view->resize(p, {content_view_.size().x - content_view_.scroll_v_.size().x, 30});
-		p.y += 30;
+	auto [x, y, w, h] = linenum_view_.resize(pos(), {linenum_chars_ * TextShader::font().size.x + 20, size().y});
+	std::tie(x, y, w, h) = content_view_.resize({x + w, y}, {size().x - w, h});
+	stripe_view_.resize({x + w - 30, y}, {30, h});
+	for (auto &ctx : find_ctxs_) {
+		ctx->view_.resize({x, y}, {content_view_.size().x - content_view_.scroll_v_.size().x, 30});
+		y += 30;
 	}
 }
 
 void FileView::draw() {
 	auto prev_linenum_chars = linenum_chars_;
 
-	loader_.get(line_starts_, longest_line_);
+	{
+		std::lock_guard lock(line_mtx_);
+		loader_.get(line_starts_, longest_line_);
+	}
 
 	if (autoscroll_) {
 		// jump to the end of the file
@@ -325,9 +364,10 @@ void FileView::draw() {
 	//
 	content_view_.draw();
 	linenum_view_.draw();
+	stripe_view_.draw();
 
-	for (auto &find_view : find_views_) {
-		find_view->draw();
+	for (auto &ctx : find_ctxs_) {
+		ctx->view_.draw();
 	}
 
 	// draw.stop();

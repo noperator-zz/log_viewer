@@ -27,7 +27,7 @@ public:
 	};
 
 private:
-	std::function<void(const FindView &)> on_find_ {};
+	std::function<void(FindView &)> on_find_ {};
 	color color_ {};
 	Flags flags_ {};
 	HandleView handle_ {*this};
@@ -38,7 +38,7 @@ private:
 	ButtonView but_word_ {};
 	ButtonView but_regex_ {};
 
-	void handle_text() const;
+	void handle_text();
 
 	bool on_key(int key, int scancode, int action, Window::KeyMods mods) override;
 	void on_resize() override;
@@ -51,7 +51,7 @@ private:
 	FindView &operator=(FindView &&) = delete;
 
 public:
-	FindView(std::function<void(const FindView &)> &&on_find);
+	FindView(std::function<void(FindView &)> &&on_find);
 
 	Flags flags() const;
 	color color() const;

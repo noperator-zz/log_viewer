@@ -28,8 +28,7 @@ void GPShader::create_buffers() {
 	glBindVertexArray(vao_);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-	glBufferData(GL_ARRAY_BUFFER, 10 *  sizeof(GPVertex), nullptr, GL_DYNAMIC_DRAW);
-	glClearBufferData(GL_SHADER_STORAGE_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+	glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
 
 	glVertexAttribIPointer(0, 3, GL_UNSIGNED_INT, sizeof(GPVertex), (void*)offsetof(GPVertex, pos));
 	glEnableVertexAttribArray(0);

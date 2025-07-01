@@ -94,13 +94,13 @@ void Scrollbar::scroll_toward_mouse(ivec2 mouse, uint pages) const {
 }
 
 void Scrollbar::scroll_to_mouse(ivec2 mouse) const {
-	int offset;
+	double percent;
 	if (thumb_.horizontal_) {
-		offset = mouse.x - thumb_.pos().x - thumb_.size().x / 2; // Center the thumb on the mouse
+		percent = (double)(mouse.x - pos().x) / (double)size().x;
 	} else {
-		offset = mouse.y - thumb_.pos().y - thumb_.size().y / 2; // Center the thumb on the mouse
+		percent = (double)(mouse.y - pos().y) / (double)size().y;
 	}
-	thumb_cb(offset);
+	scroll_cb_(std::clamp(percent, 0.0, 1.0));
 }
 
 void Scrollbar::thumb_cb(int offset) const {

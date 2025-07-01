@@ -15,6 +15,7 @@
 #include "content_view.h"
 #include "find_view.h"
 #include "finder.h"
+#include "stripe_view.h"
 
 class FileView : public Widget {
 	friend class LinenumView;
@@ -29,18 +30,29 @@ class FileView : public Widget {
 	static_assert(CONTENT_BUFFER_SIZE < 128 * 1024 * 1024, "Content buffer size too large");
 	static_assert(OVERSCAN_LINES >= 1, "Overscan lines must be at least 1");
 
+	struct FindContext {
+		FindView view_;
+		size_t last_report_ {};
+		size_t last_line_ {};
+
+		FindContext(auto&& cb)
+		: view_{std::forward<decltype(cb)>(cb)} {}
+	};
+
 	Loader loader_;
 	Dataset dataset_ {nullptr, nullptr};
 	Finder finder_ {dataset_};
 	LinenumView linenum_view_ {*this};
 	ContentView content_view_ {*this};
-	std::vector<std::unique_ptr<FindView>> find_views_ {};
+	std::vector<std::unique_ptr<FindContext>> find_ctxs_ {};
+	StripeView stripe_view_ {1000, 3};
 
 	size_t linenum_chars_ {1};
 	glm::ivec2 buf_lines_ {};
 
 	glm::ivec2 scroll_ {};
 
+	std::mutex line_mtx_ {};
 	dynarray<size_t> line_starts_ {};
 	size_t longest_line_ {};
 
@@ -49,9 +61,9 @@ class FileView : public Widget {
 	FileView(const char *path);
 
 	void on_new_lines();
-	void on_find(const void *ctx);
+	void on_find(const void *ctx, size_t idx);
 
-	void handle_findview(const FindView &find_view);
+	void handle_findview(FindView &find_view);
 	void on_resize() override;
 
 	void really_update_buffers(int start, int end, const uint8_t *data);

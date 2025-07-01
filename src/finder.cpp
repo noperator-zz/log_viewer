@@ -17,8 +17,8 @@ void Finder::stop() {
 	jobs_.clear();
 }
 
-std::unique_ptr<Finder::Job> Finder::Job::create(std::mutex &results_mtx, Dataset &dataset, std::function<void(const void*)> &&on_result,
-	const void* ctx, std::string_view pattern, int flags, int &error) {
+std::unique_ptr<Finder::Job> Finder::Job::create(std::mutex &results_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result,
+	void* ctx, std::string_view pattern, int flags, int &error) {
 	Timeit t("Finder::Job::create()");
 	hs_compile_error_t *compile_err;
 	hs_error_t err;
@@ -61,8 +61,8 @@ std::unique_ptr<Finder::Job> Finder::Job::create(std::mutex &results_mtx, Datase
 	return std::unique_ptr<Job>(new Job(results_mtx, dataset, std::move(on_result), ctx, pattern, flags, db, scratch, stream));
 }
 
-Finder::Job::Job(std::mutex &result_mtx, Dataset &dataset, std::function<void(const void*)> &&on_result,
-	const void* ctx, std::string_view pattern, int flags, hs_database_t *db, hs_scratch_t *scratch, hs_stream_t *stream)
+Finder::Job::Job(std::mutex &result_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result,
+	void* ctx, std::string_view pattern, int flags, hs_database_t *db, hs_scratch_t *scratch, hs_stream_t *stream)
 	: thread_(&worker, this), result_mtx_(result_mtx), dataset_(dataset), on_result_(std::move(on_result)), ctx_(ctx)
 	, pattern_(pattern), flags_(flags), db_(db) , scratch_(scratch), stream_(stream) {
 }
@@ -107,7 +107,7 @@ int Finder::Job::event_handler(unsigned int id, unsigned long long from, unsigne
 }
 
 void Finder::Job::worker() {
-	// Chunk size needs to be relatively small because it sets the latency of the quit event being handled
+	// NOTE Chunk size needs to be relatively small because it sets the latency of the quit event being handled
 	static constexpr size_t CHUNK_SIZE = 1ULL * 1024 * 1024;
 
 	while (true) {
@@ -156,8 +156,9 @@ void Finder::Job::worker() {
 		        	// std::swap(results_, chunk_results_);
 			    }
 		    	if (on_result_) {
-		    		on_result_(ctx_);
+		    		on_result_(ctx_, last_report_);
 		    	}
+		    	last_report_ = results_.size();
 	    		chunk_results_.clear();
 
 		    	// if (dataset_.update_pending_.test()) {
@@ -186,7 +187,7 @@ Finder::Job::Status Finder::Job::status() const {
 }
 
 
-int Finder::submit(const void* ctx, std::function<void(const void*)> &&on_result, std::string_view pattern, int flags) {
+int Finder::submit(void* ctx, std::function<void(void*, size_t)> &&on_result, std::string_view pattern, int flags) {
 	// NOTE This is called by the main thread (during search input box event handling) and should not block.
 	//  The only blocker here is erasing an existing job. Given how we have the quit flag set up, this will block until
 	//  the next match is found or the chunk is processed, whichever comes first.
@@ -219,7 +220,7 @@ int Finder::submit(const void* ctx, std::function<void(const void*)> &&on_result
 	return 0;
 }
 
-void Finder::remove(const void* ctx) {
+void Finder::remove(void* ctx) {
 	std::lock_guard lock(jobs_mtx_);
 	assert(jobs_.contains(ctx));
 	// TODO This will block until the next match is found. Probably milliseconds, but it's indeterminate.

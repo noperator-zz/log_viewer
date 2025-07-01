@@ -60,6 +60,7 @@ add_executable(${PROJECT_NAME}
     ${GENERATED_SHADER_HEADERS}
     shaders/text_shader.cpp
     shaders/gp_shader.cpp
+    shaders/stripe_shader.cpp
     src/main.cpp
     src/app.cpp
     src/font.cpp
@@ -81,7 +82,9 @@ add_executable(${PROJECT_NAME}
     src/finder.cpp
     src/log.h
     src/dataset.h
+    src/stripe_view.cpp
 )
+
 add_dependencies(${PROJECT_NAME} compile_shaders)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
