@@ -173,13 +173,27 @@ bool Widget::drop_cb(int path_count, const char* paths[]) {
 	return on_drop(path_count, paths);
 }
 
-void Widget::draw_cb() {
-	// glScissor(pos().x, pos().y, size().x, size().y);
-	draw();
-	//
-	// for (auto child : children_) {
-	// 	child->draw_cb();
-	// }
+void Widget::soil() {
+	dirty_ = true;
+	Window::send_event();
+}
+
+bool Widget::do_update() {
+	bool tree_dirty = dirty_;
+	if (dirty_) {
+		update();
+	}
+	for (auto child : children_) {
+		tree_dirty |= child->do_update();
+	}
+	return tree_dirty;
+}
+
+void Widget::clean_tree() {
+	dirty_ = false;
+	for (auto child : children_) {
+		child->clean_tree();
+	}
 }
 
 Widget *Widget::parent() const {
@@ -265,6 +279,7 @@ std::tuple<int, int, int, int> Widget::resize(ivec2 pos, ivec2 size) {
 	}
 	pos_ = pos;
 	size_ = size;
+	dirty_ = true;
 	_on_resize();
 	return {pos.x, pos.y, size.x, size.y};
 }

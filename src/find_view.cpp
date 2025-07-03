@@ -6,6 +6,9 @@ using namespace glm;
 
 FindView::HandleView::HandleView(const FindView &parent) : parent_(parent) {}
 
+void FindView::HandleView::update() {
+}
+
 void FindView::HandleView::draw() {
 	GPShader::rect(pos(), size(), parent_.color_, Z_UI_FG);
 }
@@ -61,6 +64,9 @@ void FindView::on_resize() {
 	std::tie(x, y, w, h) = but_case_.resize({x+w, y}, {BUTTON_W, h});
 	std::tie(x, y, w, h) = but_word_.resize({x+w, y}, {BUTTON_W, h});
 	std::tie(x, y, w, h) = but_regex_.resize({x+w, y}, {BUTTON_W, h});
+}
+
+void FindView::update() {
 }
 
 void FindView::draw() {

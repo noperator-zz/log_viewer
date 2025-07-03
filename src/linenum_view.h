@@ -10,6 +10,9 @@ class LinenumView : public Widget {
 	FileView &parent_;
 	TextShader::Buffer buf_ {};
 	glm::uvec2 render_range_ {};
+
+	void update() override;
+
 public:
 	LinenumView(FileView &parent);
 	void draw() override;

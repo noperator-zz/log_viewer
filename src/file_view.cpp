@@ -51,45 +51,16 @@ void FileView::handle_findview(FindView &find_view) {
 	}
 }
 
-void FileView::on_find(const void *ctx, size_t idx) {
-	Timeit timeit("FileView::on_find");
-
+void FileView::on_find(void *ctx, size_t idx) {
+	// TODO dedicated find_ctx mutex
 	std::lock_guard lock(line_mtx_);
-
-	assert(!line_starts_.empty());
-
-	auto user = finder_.user();
-	for (const auto &[ctx_, job] : user.jobs()) {
-		auto ctx = static_cast<FindContext *>(ctx_);
-		const auto &results = job->results();
-		const auto color = ctx->view_.color();
-
-		if (idx == 0 || idx < ctx->last_report_) {
-			ctx->last_line_ = 0;
-			stripe_view_.reset();
-		}
-		ctx->last_report_ = idx;
-
-		for (size_t i = idx; i < results.size(); i++) {
-			const auto &result = results[i];
-			assert(result.end < line_starts_[line_starts_.size() - 1]);
-			assert(ctx->last_line_ < line_starts_.size());
-			while (result.start >= line_starts_[ctx->last_line_]) {
-				ctx->last_line_++;
-				if (ctx->last_line_ >= line_starts_.size()) {
-					break;
-				}
-			}
-			float y = (float)(ctx->last_line_ - 1) / (float)(num_lines() - 1);
-			stripe_view_.add_point(y, color);
-		}
-	}
-	// fflush(stdout);
-	Window::send_event();
+	static_cast<FindContext *>(ctx)->next_report_ = idx;
+	soil();
 }
 
 void FileView::on_new_lines() {
-	Window::send_event();
+	soil();
+	// Window::send_event();
 }
 
 void FileView::scroll_h_cb(double percent) {
@@ -128,6 +99,7 @@ void FileView::scroll(ivec2 scroll) {
 	scroll_.y = std::clamp(scroll_.y, 0, max.y);
 
 	content_view_.update_scrollbar();
+	soil();
 }
 
 static size_t linenum_len(size_t line) {
@@ -328,6 +300,54 @@ void FileView::on_resize() {
 		ctx->view_.resize({x, y}, {content_view_.size().x - content_view_.scroll_v_.size().x, 30});
 		y += 30;
 	}
+}
+
+void FileView::update() {
+	// Timeit timeit("FileView::update");
+
+	std::lock_guard lock(line_mtx_);
+
+	if (line_starts_.empty()) {
+		return;
+	}
+
+	assert(!line_starts_.empty());
+
+	auto user = finder_.user();
+	for (const auto &[ctx_, job] : user.jobs()) {
+		auto ctx = static_cast<FindContext *>(ctx_);
+		const auto &results = job->results();
+		const auto color = ctx->view_.color();
+
+		if (ctx->next_report_ == 0 || ctx->next_report_ < ctx->last_report_) {
+			ctx->last_line_ = 0;
+			stripe_view_.reset();
+		}
+
+		std::cout << results.size() - ctx->last_report_ << std::endl;
+
+		for (size_t i = ctx->last_report_; i < results.size(); i++) {
+			const auto &result = results[i];
+			assert(result.end < line_starts_[line_starts_.size() - 1]);
+			assert(ctx->last_line_ < line_starts_.size());
+
+			auto it = std::lower_bound(line_starts_.begin() + ctx->last_line_, line_starts_.end(), result.start);
+			// while (result.start >= line_starts_[ctx->last_line_]) {
+				// ctx->last_line_++;
+				// if (ctx->last_line_ >= line_starts_.size()) {
+					// break;
+				// }
+			// }
+			ctx->last_line_ = it - line_starts_.begin();
+
+			float y = (float)(ctx->last_line_ - 1) / (float)(num_lines() - 1);
+			stripe_view_.add_point(y, color);
+		}
+		// stripe_view_.soil();
+		ctx->last_report_ = ctx->next_report_;
+	}
+	// fflush(stdout);
+	// Window::send_event();
 }
 
 void FileView::draw() {

@@ -36,6 +36,9 @@ class ContentView : public Widget {
 	void reset_mod_styles();
 	void highlight_selection();
 	void highlight_findings();
+
+	void update() override;
+
 public:
 	ContentView(FileView &parent);
 	void draw() override;

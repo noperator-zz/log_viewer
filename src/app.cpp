@@ -219,6 +219,9 @@ void App::on_resize() {
     active_file_view().resize({0, 0}, fb_size_ - glm::ivec2{0, 0});
 }
 
+void App::update() {
+}
+
 void App::draw() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -246,10 +249,8 @@ int App::run() {
     // TODO separate processing from rendering
     while (!window_->should_close()) {
         auto frame_start = high_resolution_clock::now();
-        // Timeit frame("Frame");
-        draw();
-        // frame.stop();
-        fps++;
+
+        fps += window_->draw();
 
         // auto frame_remain = 1000ms - duration_cast<milliseconds>(high_resolution_clock::now() - frame_start);
         // if (frame_remain > 0ms) {
@@ -258,14 +259,20 @@ int App::run() {
 
         auto stat_elapsed = duration_cast<milliseconds>(frame_start - last_stat);
         if (stat_elapsed.count() > 1000) {
-            // logger << "FPS: " << fps << "\n";
+            fflush(stdout);
+            logger << "FPS: " << fps << "\n";
             last_stat = frame_start;
             fps = 0;
         }
 
         // logger << "Wait event" << std::endl;
         fflush(stdout);
-        glfwWaitEvents();
+        // Window::wait_events();
+        // TODO instead of glfwWaitEvents() and Window::send_event() to trigger an update,
+        // hva e cv
+        // glfwWaitEvents();
+        // TODO limit to 60 FPS
+        glfwPollEvents();
     }
 
     glfwTerminate();

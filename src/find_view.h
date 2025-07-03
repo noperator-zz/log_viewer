@@ -13,6 +13,7 @@ class FindView : public Widget {
 
 		const FindView &parent_;
 
+		void update() override;
 		void draw() override;
 
 	public:
@@ -49,6 +50,8 @@ private:
 
 	FindView(FindView &&) = delete;
 	FindView &operator=(FindView &&) = delete;
+
+	void update() override;
 
 public:
 	FindView(std::function<void(FindView &)> &&on_find);

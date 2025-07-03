@@ -16,7 +16,7 @@ void StripeView::reset() {
 	// 	points_[i] = StripeShader::LineStyle{pos, {0xFF, 0, 0, 0xFF * pos}};
 	// }
 	std::memset(points_.get(), 0, resolution_ * sizeof(points_[0]));
-	dirty_ = true;
+	soil();
 }
 
 void StripeView::add_point(float location, color color) {
@@ -29,19 +29,14 @@ void StripeView::add_point(float location, color color) {
 		return; // no change
 	}
 	points_[index] = style;
-	dirty_ = true;
+	soil();
 }
 
 void StripeView::on_resize() {
-	dirty_ = true;
+	soil();
 }
 
-void StripeView::render() {
-	if (!dirty_) {
-		return; // no changes to draw
-	}
-	dirty_ = false;
-
+void StripeView::update() {
 	StripeShader::update(buf_, points_.get(), resolution_);
 
 	// glBindTexture(GL_TEXTURE_2D, tex_);
@@ -61,6 +56,5 @@ void StripeView::render() {
 }
 
 void StripeView::draw() {
-	render();
 	StripeShader::draw(buf_, resolution_, pos(), size(), point_size_, Z_UI_FG);
 }

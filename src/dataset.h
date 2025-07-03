@@ -41,12 +41,12 @@ public:
 
 		const Dataset &dataset_;
 		std::shared_lock<std::shared_mutex> lock_;
-		Timeit ctor_ {"Dataset::User"};
-		Timeit dtor_ {"Dataset::~User"};
+		// Timeit ctor_ {"Dataset::User"};
+		// Timeit dtor_ {"Dataset::~User"};
 
 		User(const Dataset &dataset) : User(dataset, std::shared_lock(dataset.mtx_)) {}
 		User(const Dataset &dataset, std::shared_lock<std::shared_mutex> &&lock_) : dataset_(dataset), lock_(std::move(lock_)) {
-			ctor_.stop();
+			// ctor_.stop();
 		}
 
 

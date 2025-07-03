@@ -30,6 +30,7 @@ class Widget {
 	glm::ivec2 pressed_pos_ {};
 	glm::ivec2 pos_ {};
 	glm::ivec2 size_ {};
+	bool dirty_ {true};
 
 	bool cursor_pos_cb(glm::ivec2 mouse);
 	bool mouse_button_cb(glm::ivec2 mouse, int button, int action, Window::KeyMods mods);
@@ -40,10 +41,12 @@ class Widget {
 	// bool frame_buffer_size_cb(int width, int height);
 	// bool window_size_cb(int width, int height);
 	// bool window_refresh_cb();
-
-	void draw_cb();
-
 	void _on_resize();
+	void clean_tree();
+	[[nodiscard]] bool do_update();
+
+	virtual void update() = 0;
+	virtual void draw() = 0;
 
 protected:
 	class Scissor {
@@ -95,5 +98,5 @@ public:
 	[[nodiscard]] std::string path() const;
 
 	std::tuple<int, int, int, int> resize(glm::ivec2 pos, glm::ivec2 size);
-	virtual void draw() {};
+	void soil();
 };

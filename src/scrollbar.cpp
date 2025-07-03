@@ -14,6 +14,9 @@ bool Scrollbar::Thumb::on_drag(ivec2 offset) {
 	return true;
 }
 
+void Scrollbar::Thumb::update() {
+}
+
 void Scrollbar::Thumb::draw() {
 	Scissor s {this};
 	GPShader::rect(pos(), size(), {100, hovered() * 255, pressed() * 255, 255}, Z_UI_FG);
@@ -106,6 +109,9 @@ void Scrollbar::scroll_to_mouse(ivec2 mouse) const {
 void Scrollbar::thumb_cb(int offset) const {
 	auto scroll_percent = position_percent_ + offset / (double)scroll_range();
 	scroll_cb_(scroll_percent);
+}
+
+void Scrollbar::update() {
 }
 
 void Scrollbar::draw() {

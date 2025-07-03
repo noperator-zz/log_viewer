@@ -79,6 +79,9 @@ void InputView::on_resize() {
 
 }
 
+void InputView::update() {
+}
+
 void InputView::draw() {
 	auto [x, y, w, h] = GPShader::rect(*this, pos() + ivec2{2}, ivec2{-4}, {}, Z_UI_BG_1); // transparent text box inside
 	GPShader::rect(*this, pos(), {}, {0xFF, 0xFF, 0xFF, 0xFF}, Z_UI_BG_2); // text box border

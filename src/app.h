@@ -11,6 +11,8 @@
 
 struct GLFWwindow;
 
+// TODO Need another class to hold the window (or be a subclass of WIndow, so it can track FPS during window_refresh_cb)
+//  instead of App being both the root widget and the window manager.
 class App : public Widget {
 	static inline std::unique_ptr<App> app_ {};
 
@@ -23,7 +25,6 @@ class App : public Widget {
 
 	int start();
 	int add_file(const char *path);
-	void draw() override;
 	int run();
 
 	void file_worker();
@@ -34,6 +35,9 @@ class App : public Widget {
 	bool on_drop(int path_count, const char* paths[]) override;
 
 	FileView& active_file_view();
+
+	void update() override;
+	void draw() override;
 
 public:
 	~App();

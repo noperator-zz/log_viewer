@@ -17,6 +17,8 @@ class InputView : public Widget {
 	bool on_char(unsigned int codepoint, Window::KeyMods mods) override;
 	void on_resize() override;
 
+	void update() override;
+
 public:
 	InputView(const std::function<void(std::string_view)> &&on_update = nullptr);
 

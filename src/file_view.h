@@ -33,6 +33,7 @@ class FileView : public Widget {
 	struct FindContext {
 		FindView view_;
 		size_t last_report_ {};
+		size_t next_report_ {};
 		size_t last_line_ {};
 
 		FindContext(auto&& cb)
@@ -61,7 +62,7 @@ class FileView : public Widget {
 	FileView(const char *path);
 
 	void on_new_lines();
-	void on_find(const void *ctx, size_t idx);
+	void on_find(void *ctx, size_t idx);
 
 	void handle_findview(FindView &find_view);
 	void on_resize() override;
@@ -78,6 +79,8 @@ class FileView : public Widget {
 	size_t num_lines() const;
 	glm::ivec2 max_scroll() const;
 	glm::ivec2 max_visible_scroll() const;
+
+	void update() override;
 
 public:
 	static std::unique_ptr<FileView> create(const char *path);

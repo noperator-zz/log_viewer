@@ -150,6 +150,9 @@ void ContentView::highlight_findings() {
 	}
 }
 
+void ContentView::update() {
+}
+
 void ContentView::draw() {
 	Scissor s {this};
 

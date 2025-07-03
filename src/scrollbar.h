@@ -15,6 +15,8 @@ class Scrollbar : public Widget {
 
 		// bool on_mouse_button(glm::ivec2 mouse, int button, int action, int mods) override;
 		bool on_drag(glm::ivec2 offset) override;
+
+		void update() override;
 		void draw() override;
 
 	public:
@@ -35,6 +37,8 @@ class Scrollbar : public Widget {
 	void scroll_to_mouse(glm::ivec2 mouse) const;
 	void scroll_toward_mouse(glm::ivec2 mouse, glm::uint pages) const;
 	void resize_thumb();
+
+	void update() override;
 
 public:
 	Scrollbar(bool horizontal, std::function<void(double)> &&scroll_cb);
