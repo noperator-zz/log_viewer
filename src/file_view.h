@@ -46,7 +46,7 @@ class FileView : public Widget {
 	LinenumView linenum_view_ {*this};
 	ContentView content_view_ {*this};
 	std::vector<std::unique_ptr<FindContext>> find_ctxs_ {};
-	StripeView stripe_view_ {1000, 3};
+	StripeView stripe_view_ {1000, 1};
 
 	size_t linenum_chars_ {1};
 	glm::ivec2 buf_lines_ {};
