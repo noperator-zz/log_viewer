@@ -72,12 +72,10 @@ add_executable(${PROJECT_NAME}
     src/find_view.cpp
     src/input_view.cpp
     src/button_view.cpp
-    src/parser.cpp
     src/widget.cpp
     src/window.cpp
     src/scrollbar.cpp
     src/worker.cpp
-    src/search.cpp
     src/loader.cpp
     src/finder.cpp
     src/log.h

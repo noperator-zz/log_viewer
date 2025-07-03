@@ -9,7 +9,6 @@
 #include "app.h"
 #include "font.h"
 #include "File.h"
-#include "parser.h"
 #include "util.h"
 #include "file_view.h"
 #include "../shaders/text_shader.h"

@@ -2,7 +2,6 @@
 
 #include <cassert>
 
-#include "parser.h"
 #include "util.h"
 #include <hs/hs.h>
 
