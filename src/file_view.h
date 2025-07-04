@@ -33,7 +33,6 @@ class FileView : public Widget {
 	struct FindContext {
 		FindView view_;
 		size_t last_report_ {};
-		size_t next_report_ {};
 		size_t last_line_ {};
 
 		FindContext(auto&& cb)
@@ -53,7 +52,6 @@ class FileView : public Widget {
 
 	glm::ivec2 scroll_ {};
 
-	std::mutex line_mtx_ {};
 	dynarray<size_t> line_starts_ {};
 	size_t longest_line_ {};
 

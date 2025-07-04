@@ -53,8 +53,8 @@ void FileView::handle_findview(FindView &find_view) {
 
 void FileView::on_find(void *ctx, size_t idx) {
 	// TODO dedicated find_ctx mutex
-	std::lock_guard lock(line_mtx_);
-	static_cast<FindContext *>(ctx)->next_report_ = idx;
+	// std::lock_guard lock(line_mtx_);
+	// static_cast<FindContext *>(ctx)->next_report_ = idx;
 	soil();
 }
 
@@ -302,10 +302,13 @@ void FileView::on_resize() {
 	}
 }
 
+
 void FileView::update() {
+	static microseconds duration {};
 	// Timeit timeit("FileView::update");
 
-	std::lock_guard lock(line_mtx_);
+	auto now = steady_clock::now();
+	loader_.get(line_starts_, longest_line_);
 
 	if (line_starts_.empty()) {
 		return;
@@ -319,12 +322,14 @@ void FileView::update() {
 		const auto &results = job->results();
 		const auto color = ctx->view_.color();
 
-		if (ctx->next_report_ == 0 || ctx->next_report_ < ctx->last_report_) {
+		auto num_new = results.size() - ctx->last_report_;
+
+		if (ctx->last_report_ == 0 || results.size() < ctx->last_report_) {
 			ctx->last_line_ = 0;
 			stripe_view_.reset();
 		}
 
-		std::cout << results.size() - ctx->last_report_ << std::endl;
+		// std::cout << num_new << std::endl;
 
 		for (size_t i = ctx->last_report_; i < results.size(); i++) {
 			const auto &result = results[i];
@@ -344,19 +349,18 @@ void FileView::update() {
 			stripe_view_.add_point(y, color);
 		}
 		// stripe_view_.soil();
-		ctx->last_report_ = ctx->next_report_;
+		ctx->last_report_ = results.size();
 	}
 	// fflush(stdout);
 	// Window::send_event();
+
+	duration += duration_cast<microseconds>(steady_clock::now() - now);
+	std::cout << "FileView::update total duration: " << duration.count() << "us\n";
 }
 
 void FileView::draw() {
 	auto prev_linenum_chars = linenum_chars_;
 
-	{
-		std::lock_guard lock(line_mtx_);
-		loader_.get(line_starts_, longest_line_);
-	}
 
 	if (autoscroll_) {
 		// jump to the end of the file
