@@ -53,7 +53,8 @@ private:
 	static void window_refresh_cb(GLFWwindow *glfw_window);
 
 	static void send_event();
-	void wait_events();
+
+	void swap_buffers() const;
 
 public:
 	Window(GLFWwindow *window, Widget *root);
@@ -62,8 +63,8 @@ public:
 	void toggle_fullscreen();
 
 	void destroy();
-	void swap_buffers() const;
 	[[nodiscard]] bool should_close() const;
 
+	// void wait_events();
 	bool draw() const;
 };

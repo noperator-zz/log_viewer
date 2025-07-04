@@ -32,6 +32,13 @@ class FileView : public Widget {
 
 	struct FindContext {
 		FindView view_;
+
+		// State as of the last update
+		// # lines used for position calculation.
+		// Latched until the actual # lines increases by (1 / resolution) %, at which point
+		// the value is updated, and the stripe view is reset and recomputed.
+		size_t num_lines_at_reset_ {};
+
 		size_t last_report_ {};
 		size_t last_line_ {};
 

@@ -28,6 +28,7 @@ public:
 	struct Buffer {
 		GLuint vao {};
 		GLuint vbo_style {};
+		size_t size {};
 	};
 
 private:
@@ -47,8 +48,8 @@ public:
 
 	static inline UniformGlobals globals {};
 	static int init();
-	static void create_buffers(Buffer &buf);
+	static void create_buffers(Buffer &buf, size_t size);
 	static void destroy_buffers(Buffer &buf);
-	static void update(const Buffer &buf, const LineStyle *data, size_t count);
-	static void draw(const Buffer &buf, size_t count, glm::ivec2 pos, glm::ivec2 size, uint8_t width, uint8_t z);
+	static void update(const Buffer &buf, const LineStyle *data);
+	static void draw(const Buffer &buf, glm::ivec2 pos, glm::ivec2 size, uint8_t width, uint8_t z);
 };

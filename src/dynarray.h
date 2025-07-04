@@ -3,11 +3,14 @@
 #include <type_traits>
 #include <utility>
 
+#include "util.h"
+
 template<typename T>
 class dynarray {
 	T* data_ = nullptr;
 	size_t size_ = 0;
 	size_t capacity_ = 0;
+	// TODO minimum capacity setting
 
 	// diable copy
 	dynarray(const dynarray &) = delete;
@@ -50,6 +53,7 @@ public:
 		}
 
 		if (new_capacity > capacity_) {
+			Timeit t("dynarray::reserve");
 			T* new_data = static_cast<T*>(::operator new(sizeof(T) * new_capacity));
 			std::memcpy(new_data, data_, sizeof(T) * size_);
 			::operator delete(data_);
@@ -78,6 +82,11 @@ public:
 	iterator end() { return data_ + size_; }
 	const_iterator begin() const { return data_; }
 	const_iterator end() const { return data_ + size_; }
+
+	T& front() { return data_[0]; }
+	const T& front() const { return data_[0]; }
+	T& back() { return data_[size_ - 1]; }
+	const T& back() const { return data_[size_ - 1]; }
 
 	void clear() {
 		if constexpr (!std::is_trivially_destructible_v<T>) {

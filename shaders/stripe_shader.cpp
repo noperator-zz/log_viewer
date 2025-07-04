@@ -46,13 +46,14 @@ int StripeShader::setup() {
 	return 0;
 }
 
-void StripeShader::create_buffers(Buffer &buf) {
+void StripeShader::create_buffers(Buffer &buf, size_t size) {
+	buf.size = size;
 	glGenVertexArrays(1, &buf.vao);
 	glBindVertexArray(buf.vao);
 
 	glGenBuffers(1, &buf.vbo_style);
 	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
-	glBufferData(GL_ARRAY_BUFFER, 0, nullptr, GL_DYNAMIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, size * sizeof(LineStyle), nullptr, GL_DYNAMIC_DRAW);
 	glClearBufferData(GL_ARRAY_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
 
 	glVertexAttribPointer(0, 1, GL_FLOAT, true, sizeof(LineStyle), (void*)offsetof(LineStyle, y));
@@ -85,20 +86,20 @@ void StripeShader::use(const Buffer &buf) {
 	glBindBufferBase(GL_UNIFORM_BUFFER, 0, inst_->ubo_globals_);
 }
 
-void StripeShader::update(const Buffer &buf, const LineStyle *data, size_t count) {
+void StripeShader::update(const Buffer &buf, const LineStyle *data) {
 	use(buf);
 	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
-	glBufferData(GL_ARRAY_BUFFER, count * sizeof(LineStyle), data, GL_DYNAMIC_DRAW);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, buf.size * sizeof(LineStyle), data);
 }
 
-void StripeShader::draw(const Buffer &buf, size_t count, ivec2 pos, ivec2 size, uint8_t width, uint8_t z) {
+void StripeShader::draw(const Buffer &buf, ivec2 pos, ivec2 size, uint8_t width, uint8_t z) {
 	use(buf);
 	globals.pos_px = pos;
 	globals.size_px = size;
 	globals.width_px = width;
 	globals.z_order = z;
 	update_uniforms();
-	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, count, 0);
+	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, buf.size, 0);
 }
 
 void StripeShader::UniformGlobals::set_viewport(ivec2 size) {

@@ -108,7 +108,7 @@ bool Window::draw() const {
 	if (tree_dirty) {
 		// Timeit t("Draw tree");
 		root_->draw();
-		root_->clean_tree();
+		swap_buffers();
 	} else {
 		// std::cout << "No changes in the tree, skipping draw." << std::endl;
 	}
@@ -116,16 +116,16 @@ bool Window::draw() const {
 }
 
 void Window::send_event() {
-	// glfwPostEmptyEvent();
-	std::lock_guard lock(event_mtx_);
-	event_pending_ = true;
-	event_cv_.notify_one();
-	// event_pending_.test_and_set();
+	// // glfwPostEmptyEvent();
+	// std::lock_guard lock(event_mtx_);
+	// event_pending_ = true;
+	// event_cv_.notify_one();
+	// // event_pending_.test_and_set();
 }
 
-void Window::wait_events() {
-	std::unique_lock lock(event_mtx_);
-	event_cv_.wait_for(lock, 16ms, [this] { return event_pending_; });
-	event_pending_ = false;
-	// event_pending_.wait_for
-}
+// void Window::wait_events() {
+// 	std::unique_lock lock(event_mtx_);
+// 	event_cv_.wait_for(lock, 16ms, [this] { return event_pending_; });
+// 	event_pending_ = false;
+// 	// event_pending_.wait_for
+// }

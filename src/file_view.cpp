@@ -49,6 +49,11 @@ void FileView::handle_findview(FindView &find_view) {
 	if (ret != 0) {
 		std::cerr << "Error submitting find request: " << ret << std::endl;
 	}
+
+	stripe_view_.remove_dataset(&find_view);
+	stripe_view_.add_dataset(&find_view, find_view.color(), [](const void *ele) {
+		return reinterpret_cast<const Finder::Job::Result*>(ele)->start;
+	});
 }
 
 void FileView::on_find(void *ctx, size_t idx) {
@@ -308,7 +313,8 @@ void FileView::update() {
 	// Timeit timeit("FileView::update");
 
 	auto now = steady_clock::now();
-	loader_.get(line_starts_, longest_line_);
+	Loader::State loader_state;
+	loader_.get(line_starts_, longest_line_, loader_state);
 
 	if (line_starts_.empty()) {
 		return;
@@ -316,40 +322,52 @@ void FileView::update() {
 
 	assert(!line_starts_.empty());
 
+	if (loader_state == Loader::State::kInitial) {
+		return;
+	}
+
+	// TODO memory re-alloc in Finder could cause this to block for a long time.
+	//  Add a timeout parameter to finder_.user()
 	auto user = finder_.user();
 	for (const auto &[ctx_, job] : user.jobs()) {
 		auto ctx = static_cast<FindContext *>(ctx_);
 		const auto &results = job->results();
-		const auto color = ctx->view_.color();
 
-		auto num_new = results.size() - ctx->last_report_;
-
-		if (ctx->last_report_ == 0 || results.size() < ctx->last_report_) {
-			ctx->last_line_ = 0;
-			stripe_view_.reset();
-		}
-
-		// std::cout << num_new << std::endl;
-
-		for (size_t i = ctx->last_report_; i < results.size(); i++) {
-			const auto &result = results[i];
-			assert(result.end < line_starts_[line_starts_.size() - 1]);
-			assert(ctx->last_line_ < line_starts_.size());
-
-			auto it = std::lower_bound(line_starts_.begin() + ctx->last_line_, line_starts_.end(), result.start);
-			// while (result.start >= line_starts_[ctx->last_line_]) {
-				// ctx->last_line_++;
-				// if (ctx->last_line_ >= line_starts_.size()) {
-					// break;
-				// }
-			// }
-			ctx->last_line_ = it - line_starts_.begin();
-
-			float y = (float)(ctx->last_line_ - 1) / (float)(num_lines() - 1);
-			stripe_view_.add_point(y, color);
-		}
-		// stripe_view_.soil();
-		ctx->last_report_ = results.size();
+		stripe_view_.feed(ctx_, line_starts_, results);
+		//
+		// const auto color = ctx->view_.color();
+		//
+		// auto num_new = results.size() - ctx->last_report_;
+		//
+		// if (ctx->last_report_ == 0 || results.size() < ctx->last_report_) {
+		// 	ctx->last_line_ = 0;
+		// 	stripe_view_.reset();
+		// }
+		//
+		// // const auto line_interval = line_s
+		// // auto next_line = ctx->last_line_ +
+		//
+		// // std::cout << num_new << std::endl;
+		//
+		// for (size_t i = ctx->last_report_; i < results.size(); i++) {
+		// 	const auto &result = results[i];
+		// 	assert(result.end < line_starts_[line_starts_.size() - 1]);
+		// 	assert(ctx->last_line_ < line_starts_.size());
+		//
+		// 	auto it = std::lower_bound(line_starts_.begin() + ctx->last_line_, line_starts_.end(), result.start);
+		// 	// while (result.start >= line_starts_[ctx->last_line_]) {
+		// 		// ctx->last_line_++;
+		// 		// if (ctx->last_line_ >= line_starts_.size()) {
+		// 			// break;
+		// 		// }
+		// 	// }
+		// 	ctx->last_line_ = it - line_starts_.begin();
+		//
+		// 	float y = (float)(ctx->last_line_ - 1) / (float)(num_lines() - 1);
+		// 	stripe_view_.add_point(y, color);
+		// }
+		// // stripe_view_.soil();
+		// ctx->last_report_ = results.size();
 	}
 	// fflush(stdout);
 	// Window::send_event();

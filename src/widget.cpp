@@ -180,20 +180,14 @@ void Widget::soil() {
 
 bool Widget::do_update() {
 	bool tree_dirty = dirty_;
-	if (dirty_) {
+	if (tree_dirty) {
+		dirty_ = false;
 		update();
 	}
 	for (auto child : children_) {
 		tree_dirty |= child->do_update();
 	}
 	return tree_dirty;
-}
-
-void Widget::clean_tree() {
-	dirty_ = false;
-	for (auto child : children_) {
-		child->clean_tree();
-	}
 }
 
 Widget *Widget::parent() const {

@@ -8,6 +8,7 @@
 #include "worker.h"
 
 class Finder {
+public:
 	class Job {
 	public:
 		enum class Status {
@@ -16,12 +17,20 @@ class Finder {
 			kERROR,
 		};
 
-	private:
 		struct Result {
 			size_t start;
 			size_t end;
+
+			bool operator<(const Result &other) const {
+				return start < other.start;
+			}
+
+			bool operator<(size_t pos) const {
+				return start < pos;
+			}
 		};
 
+	private:
 		std::thread thread_;
 		std::mutex &result_mtx_;
 		Dataset &dataset_;
@@ -65,6 +74,7 @@ class Finder {
 		Status status() const;
 	};
 
+private:
 	class User {
 		friend class Finder;
 

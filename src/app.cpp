@@ -231,8 +231,6 @@ void App::draw() {
     }
 
     GPShader::draw();
-
-    window_->swap_buffers();
 }
 
 int App::run() {
@@ -247,8 +245,9 @@ int App::run() {
     // TODO limit framerate
     // TODO separate processing from rendering
     while (!window_->should_close()) {
-        auto frame_start = high_resolution_clock::now();
+        glfwPollEvents();
 
+        auto frame_start = high_resolution_clock::now();
         fps += window_->draw();
 
         // auto frame_remain = 1000ms - duration_cast<milliseconds>(high_resolution_clock::now() - frame_start);
@@ -266,12 +265,11 @@ int App::run() {
 
         // logger << "Wait event" << std::endl;
         fflush(stdout);
-        // Window::wait_events();
+        // window_->wait_events();
         // TODO instead of glfwWaitEvents() and Window::send_event() to trigger an update,
         // hva e cv
         // glfwWaitEvents();
         // TODO limit to 60 FPS
-        glfwPollEvents();
     }
 
     glfwTerminate();
