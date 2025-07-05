@@ -11,12 +11,6 @@
 #include "worker.h"
 
 class Loader {
-public:
-	enum class State {
-		kInitial,
-		kTail,
-	};
-
 	File file_;
 	Dataset &dataset_;
 	std::function<void()> on_data_;
@@ -31,7 +25,6 @@ public:
 	size_t longest_line_ {};
 	std::thread thread_ {};
 	Event quit_ {};
-	State state_ {};
 
 	void quit();
 	void worker();
@@ -55,5 +48,5 @@ public:
 	int start();
 	void stop();
 
-	void get(dynarray<size_t> &line_starts, size_t &longest_line, State &state);
+	void get(dynarray<size_t> &line_starts, size_t &longest_line);
 };

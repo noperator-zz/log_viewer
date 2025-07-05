@@ -313,8 +313,7 @@ void FileView::update() {
 	// Timeit timeit("FileView::update");
 
 	auto now = steady_clock::now();
-	Loader::State loader_state;
-	loader_.get(line_starts_, longest_line_, loader_state);
+	loader_.get(line_starts_, longest_line_);
 
 	if (line_starts_.empty()) {
 		return;

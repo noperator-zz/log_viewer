@@ -56,13 +56,12 @@ void Loader::stop() {
 	}
 }
 
-void Loader::get(dynarray<size_t> &line_starts, size_t &longest_line, State &state) {
+void Loader::get(dynarray<size_t> &line_starts, size_t &longest_line) {
 	std::lock_guard lock(mtx_);
 
 	line_starts.extend(line_starts_);
 	line_starts_.clear();
 	longest_line = longest_line_;
-	state = state_;
 }
 
 void Loader::quit() {
@@ -82,17 +81,11 @@ void Loader::worker() {
 		}
 	}
 
-	load_tail();
-	state_ = State::kTail;
-	if (on_data_) {
-		on_data_();
-	}
-
 	while (1) {
+		load_tail();
 		if (quit_.wait(1000ms)) {
 			break;
 		}
-		load_tail();
 	}
 }
 
