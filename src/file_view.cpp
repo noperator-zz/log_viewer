@@ -319,29 +319,7 @@ void FileView::update() {
 		return;
 	}
 
-	assert(!line_starts_.empty());
-
-	if (loader_state == Loader::State::kInitial) {
-		return;
-	}
-
-	// TODO memory re-alloc in Finder could cause this to block for a long time.
-	//  Add a timeout parameter to finder_.user()
-	auto user = finder_.user();
-	for (const auto &[ctx_, job] : user.jobs()) {
-		const auto &results = job->results();
-		stripe_view_.feed(ctx_, line_starts_, results);
-	}
-	// fflush(stdout);
-	// Window::send_event();
-
-	duration += duration_cast<microseconds>(steady_clock::now() - now);
-	std::cout << "FileView::update total duration: " << duration.count() << "us\n";
-}
-
-void FileView::draw() {
 	auto prev_linenum_chars = linenum_chars_;
-
 
 	if (autoscroll_) {
 		// jump to the end of the file
@@ -360,6 +338,22 @@ void FileView::draw() {
 	}
 	// TODO this is only needed if longest_line_ or num_lines_ changed
 	content_view_.update_scrollbar();
+
+	// TODO memory re-alloc in Finder could cause this to block for a long time.
+	//  Add a timeout parameter to finder_.user()
+	auto user = finder_.user();
+	for (const auto &[ctx_, job] : user.jobs()) {
+		const auto &results = job->results();
+		stripe_view_.feed(ctx_, line_starts_, results);
+	}
+	// fflush(stdout);
+	// Window::send_event();
+
+	duration += duration_cast<microseconds>(steady_clock::now() - now);
+	// std::cout << "FileView::update total duration: " << duration.count() << "us\n";
+}
+
+void FileView::draw() {
 
 	// std::cout << content_render_range.x << " " << content_render_range.y << "\n";
 
