@@ -34,12 +34,16 @@ public:
 			return get_location_(a) < get_location_(b);
 		}
 
-		size_t get_tick_line(size_t tick, size_t num_lines) const {
+		size_t first_line_for_tick(size_t tick, size_t num_lines) const {
 			return tick * num_lines / parent_.num_ticks_;
 		}
 
-		size_t get_line_tick(size_t line, size_t num_lines) const {
-			return line * parent_.num_ticks_ / num_lines;
+		size_t middle_tick_for_line(size_t line, size_t num_lines) const {
+			return ((line + 1) * parent_.num_ticks_ / num_lines) - (parent_.num_ticks_ / (2 * num_lines));
+
+			// Return the _last_ tick associated with this line.
+			const size_t next_tick = (line + 1) * parent_.num_ticks_ / num_lines;
+			return next_tick == 0 ? 0 : next_tick - 1;
 		}
 
 		void reset() {
@@ -88,8 +92,17 @@ public:
 			}
 
 			size_t free_tick = prev_free_tick_;
+			size_t tick_line = 0;
+			bool first = true;
 			while (free_tick < parent_.num_ticks_) {
-				size_t tick_line = get_tick_line(free_tick, num_lines);
+				const auto line = first_line_for_tick(free_tick, num_lines);
+				if (first) {
+					tick_line = line;
+					first = false;
+				} else {
+					tick_line = std::max(tick_line + 1, line);
+				}
+
 				size_t char_pos = line_starts[tick_line];
 				const auto poi_it = std::lower_bound(POIs.begin() + prev_poi_idx_, POIs.end(), char_pos);
 
@@ -108,56 +121,21 @@ public:
 				}
 				// assert(line_it != line_starts.end());
 
-				tick_line = std::distance(line_starts.begin(), line_it);
-				// prev_poi_line_ = tick_line;
+				const size_t tick_line2 = std::distance(line_starts.begin(), line_it);
+				// prev_poi_line_ = tick_line2;
 
-				const float position = tick_line / (double)num_lines;
-				size_t tick = get_line_tick(tick_line, num_lines);
+				const float position = tick_line2 / (double)num_lines;
+				size_t tick = middle_tick_for_line(tick_line2, num_lines);
 				ticks_[tick] = {position, color_};
 
+				// // If there are more ticks than lines, tick could be < free_tick here, so std::max() them to ensure
+				// //  we don't loop forever.
+				// // TODO This solution is hacky and inefficient since it will cause every single tick to be processed
+				// //  even if there are fewer lines than ticks.
+				// //  Better would be to update get_line_tick() to return the _last_ tick associated with a line.
+				// free_tick = std::max(tick, free_tick) + 1;
 				free_tick = tick + 1;
 			}
-
-			//
-			// // Check if lastest POI is at least one tick further than the last tick.
-			// // If it's not, there's nothing more to do.
-			// const size_t latest_char_pos = get_location_(&POIs.back());
-			// assert(latest_char_pos < line_starts.back());
-			//
-			// const auto latest_line_it = std::lower_bound(line_starts.begin(), line_starts.end(), latest_char_pos);
-			// assert(latest_line_it < line_starts.end());
-			//
-			// const auto latest_line = std::distance(line_starts.begin(), latest_line_it);
-			// const auto latest_tick = get_line_tick(latest_line, num_lines);
-			// const auto prev_tick = get_line_tick(prev_poi_line_, num_lines);
-			// assert(latest_tick < parent_.num_ticks_);
-			//
-			// // // If the latest tick is the previous tick, and it's already filled, no need to update.
-			// // if (latest_tick <= prev_tick && ticks_[prev_tick].fg == color_) {
-			// // 	prev_poi_line_ = latest_line;
-			// // 	return;
-			// // }
-			//
-			// // For each tick, compute the starting and ending line for the tick, and check if any POI falls into that tick.
-			// auto start_it = line_starts.begin() + prev_poi_line_; // get_tick_line(prev_tick, num_lines);
-			// for (size_t tick = prev_tick; tick <= latest_tick; tick++) {
-			// 	assert(tick < parent_.num_ticks_);
-			// 	const auto end_it = line_starts.begin() + get_tick_line(tick + 1, num_lines);
-			// 	assert(end_it <= line_starts.end());
-			//
-			// 	const auto first_match_it = std::lower_bound(start_it, end_it, latest_char_pos);
-			// 	const auto last_match_it = std::upper_bound(first_match_it, end_it, latest_char_pos);
-			//
-			// 	if (first_match_it != last_match_it) {
-			// 		// If we have a match, fill the tick.
-			// 		const float position = (first_match_it - line_starts.begin()) / (double)num_lines;
-			// 		ticks_[tick] = {position, color_};
-			// 	}
-			//
-			// 	start_it = end_it;
-			// }
-			//
-			// prev_poi_line_ = latest_line;
 
 			if (free_tick != prev_free_tick_) {
 				prev_free_tick_ = free_tick;
