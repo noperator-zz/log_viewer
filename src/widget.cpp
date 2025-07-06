@@ -146,11 +146,11 @@ bool Widget::hovered() const {
 bool Widget::pressed(int button) const {
 	switch (button) {
 		case GLFW_MOUSE_BUTTON_LEFT:
-			return state_.l_pressed;
+			return window_->state_.l_pressed;
 		case GLFW_MOUSE_BUTTON_RIGHT:
-			return state_.r_pressed;
+			return window_->state_.r_pressed;
 		case GLFW_MOUSE_BUTTON_MIDDLE:
-			return state_.m_pressed;
+			return window_->state_.m_pressed;
 		default:
 			return false; // Unsupported button
 	}

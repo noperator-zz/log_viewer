@@ -71,24 +71,20 @@ void Window::cursor_pos_cb(double xpos, double ypos) {
 	mouse_ = {xpos, ypos};
 	update_hovered();
 
-	if (!hovered_) {
-		return;
-	}
-
 	if (mouse_active_) {
 		// Send the event to the active widget
 
-		if (mouse_active_->state_.l_pressed) {
-			auto mouse_offset = mouse_ - mouse_active_->pressed_mouse_pos_;
-			auto self_offset = mouse_active_->pos_ - mouse_active_->pressed_pos_;
+		if (state_.l_pressed) {
+			auto mouse_offset = mouse_ - pressed_mouse_pos_;
+			auto self_offset = mouse_active_->pos_ - pressed_pos_;
 			auto offset = mouse_offset - self_offset;
 			mouse_active_->drag_cb(offset);
 		}
 
 		mouse_active_->cursor_pos_cb(mouse_);
-		return;
+	} else if (hovered_) {
+		invoke_on(hovered_, &Widget::cursor_pos_cb, mouse_);
 	}
-	invoke_on(hovered_, &Widget::cursor_pos_cb, mouse_);
 }
 
 void Window::mouse_button_cb(int button, int action, int mods) {
@@ -102,43 +98,43 @@ void Window::mouse_button_cb(int button, int action, int mods) {
 		}
 		switch (button) {
 			case GLFW_MOUSE_BUTTON_LEFT:
-				mouse_active_->state_.l_pressed = true;
-				mouse_active_->pressed_mouse_pos_ = mouse_;
-				mouse_active_->pressed_pos_ = mouse_active_->pos_;
+				state_.l_pressed = true;
+				pressed_mouse_pos_ = mouse_;
+				pressed_pos_ = mouse_active_->pos_;
 				break;
 			case GLFW_MOUSE_BUTTON_RIGHT:
-				mouse_active_->state_.r_pressed = true;
+				state_.r_pressed = true;
 				break;
 			case GLFW_MOUSE_BUTTON_MIDDLE:
-				mouse_active_->state_.m_pressed = true;
+				state_.m_pressed = true;
 				break;
 			default:
 				break;
 		}
-		invoke_on(mouse_active_, &Widget::mouse_button_cb, mouse_, button, action, key_mods_);
+		mouse_active_ = invoke_on(mouse_active_, &Widget::mouse_button_cb, mouse_, button, action, key_mods_);
 
 	} else if (action == GLFW_RELEASE) {
-		assert(mouse_active_);
 		switch (button) {
 			case GLFW_MOUSE_BUTTON_LEFT:
-				mouse_active_->state_.l_pressed = false;
+				state_.l_pressed = false;
 				break;
 			case GLFW_MOUSE_BUTTON_RIGHT:
-				mouse_active_->state_.r_pressed = false;
+				state_.r_pressed = false;
 				break;
 			case GLFW_MOUSE_BUTTON_MIDDLE:
-				mouse_active_->state_.m_pressed = false;
+				state_.m_pressed = false;
 				break;
 			default:
 				break;
 		}
-		invoke_on(mouse_active_, &Widget::mouse_button_cb, mouse_, button, action, key_mods_);
-		if (!mouse_active_->state_.l_pressed &&
-		    !mouse_active_->state_.r_pressed &&
-		    !mouse_active_->state_.m_pressed) {
-			mouse_active_ = nullptr;
+		if (mouse_active_) {
+			invoke_on(mouse_active_, &Widget::mouse_button_cb, mouse_, button, action, key_mods_);
+			if (!state_.l_pressed &&
+				!state_.r_pressed &&
+				!state_.m_pressed) {
+				mouse_active_ = nullptr;
+			}
 		}
-
 	} else {
 		assert(false);
 	}

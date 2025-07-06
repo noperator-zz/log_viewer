@@ -6,7 +6,7 @@
 class Widget;
 
 class Window {
-	// friend class App;
+	friend class Widget;
 public:
 	struct KeyMods {
 		int shift : 1;
@@ -32,16 +32,29 @@ public:
 	};
 
 private:
+	struct State {
+		// bool visible: 1;
+		// bool enabled: 1;
+		// bool focused: 1;
+		// bool hovered: 1;
+		bool l_pressed: 1;
+		bool r_pressed: 1;
+		bool m_pressed: 1;
+		// bool clicked: 1;
+	};
+
 	GLFWwindow *window_;
 	Widget &root_;
 	Widget *hovered_ {};
 	Widget *key_active_ {};
 	Widget *mouse_active_ {};
-
+	glm::ivec2 pressed_mouse_pos_ {};
+	glm::ivec2 pressed_pos_ {};
 	glm::ivec2 mouse_ {};
-
 	KeyMods key_mods_ {};
 	bool fullscreen_ {};
+	State state_ {};
+
 	static inline std::mutex event_mtx_ {};
 	static inline std::condition_variable event_cv_ {};
 	static inline bool event_pending_ {};
@@ -60,14 +73,15 @@ private:
 	virtual void window_refresh_cb() {};
 
 
-	template<typename T, typename... Args>
-	void invoke_on(T *widget, bool (Widget::*cb)(Args...), Args... args) {
+	template<typename Widget, typename... Args>
+	Widget *invoke_on(Widget *widget, bool (Widget::*cb)(Args...), Args... args) {
 		while (widget) {
 			if ((widget->*cb)(args...)) {
-				return;
+				return widget;
 			}
 			widget = widget->parent_;
 		}
+		return nullptr;
 	}
 
 	Window(const Window &) = delete;

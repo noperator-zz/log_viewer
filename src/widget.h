@@ -15,9 +15,9 @@ class Widget {
 		// bool enabled: 1;
 		// bool focused: 1;
 		// bool hovered: 1;
-		bool l_pressed: 1;
-		bool r_pressed: 1;
-		bool m_pressed: 1;
+		// bool l_pressed: 1;
+		// bool r_pressed: 1;
+		// bool m_pressed: 1;
 		// bool clicked: 1;
 	};
 
@@ -25,12 +25,10 @@ class Widget {
 	Widget *parent_;
 	Window *window_;
 	std::vector<Widget*> children_ {};
-	glm::ivec2 pressed_mouse_pos_ {};
-	glm::ivec2 pressed_pos_ {};
 	glm::ivec2 pos_ {};
 	glm::ivec2 size_ {};
 	std::atomic<bool> dirty_ {true};
-	State state_ {};
+	// State state_ {};
 
 
 	bool hit_test(const glm::uvec2 &point) const;
