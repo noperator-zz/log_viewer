@@ -19,10 +19,6 @@ FileView::FileView(Widget *parent, const char *path)
 
 	add_child(linenum_view_);
 	add_child(content_view_);
-	add_child(stripe_view_);
-
-	find_ctxs_.emplace_back(std::make_unique<FindContext>(this, [this](auto &find_view) { handle_findview(find_view); }));
-	add_child(find_ctxs_.back()->view_);
 }
 
 FileView::~FileView() {
@@ -44,26 +40,8 @@ int FileView::open() {
 	return 0;
 }
 
-void FileView::handle_findview(FindView &find_view) {
-	int ret = finder_.submit(&find_view, [this](auto ctx, auto idx){on_find(ctx, idx);}, find_view.text(), 0);//find_view.flags());
-	if (ret != 0) {
-		std::cerr << "Error submitting find request: " << ret << std::endl;
-	}
-
-	stripe_view_.remove_dataset(&find_view);
-	stripe_view_.add_dataset(&find_view, find_view.color(), [](const void *ele) {
-		return reinterpret_cast<const Finder::Job::Result*>(ele)->start;
-	});
-}
-
-void FileView::on_find(void *ctx, size_t idx) {
-	// TODO dedicated find_ctx mutex
-	// std::lock_guard lock(line_mtx_);
-	// static_cast<FindContext *>(ctx)->next_report_ = idx;
-	soil();
-}
-
 void FileView::on_new_lines() {
+	// content_view_.soil();
 	soil();
 	// Window::send_event();
 }
@@ -302,11 +280,6 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 void FileView::on_resize() {
 	auto [x, y, w, h] = linenum_view_.resize(pos(), {linenum_chars_ * TextShader::font().size.x + 20, size().y});
 	std::tie(x, y, w, h) = content_view_.resize({x + w, y}, {size().x - w, h});
-	stripe_view_.resize({x + w - 30, y}, {30, h});
-	for (auto &ctx : find_ctxs_) {
-		ctx->view_.resize({x, y}, {content_view_.size().x - content_view_.scroll_v_.size().x, 30});
-		y += 30;
-	}
 }
 
 
@@ -341,13 +314,6 @@ void FileView::update() {
 	// TODO this is only needed if longest_line_ or num_lines_ changed
 	content_view_.update_scrollbar();
 
-	// TODO memory re-alloc in Finder could cause this to block for a long time.
-	//  Add a timeout parameter to finder_.user()
-	auto user = finder_.user();
-	for (const auto &[ctx_, job] : user.jobs()) {
-		const auto &results = job->results();
-		stripe_view_.feed(ctx_, line_starts_, results);
-	}
 	// fflush(stdout);
 	// Window::send_event();
 
@@ -365,11 +331,6 @@ void FileView::draw() {
 	//
 	content_view_.draw();
 	linenum_view_.draw();
-	stripe_view_.draw();
-
-	for (auto &ctx : find_ctxs_) {
-		ctx->view_.draw();
-	}
 
 	// draw.stop();
 }

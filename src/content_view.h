@@ -4,6 +4,9 @@
 #include "scrollbar.h"
 #include "text_shader.h"
 #include "widget.h"
+#include "find_view.h"
+#include "finder.h"
+#include "stripe_view.h"
 
 class FileView;
 
@@ -12,8 +15,26 @@ class ContentView : public Widget {
 
 	static constexpr int SCROLL_W = 20;
 
+	struct FindContext {
+		FindView view_;
+
+		// State as of the last update
+		// # lines used for position calculation.
+		// Latched until the actual # lines increases by (1 / resolution) %, at which point
+		// the value is updated, and the stripe view is reset and recomputed.
+		size_t num_lines_at_reset_ {};
+
+		size_t last_report_ {};
+		size_t last_line_ {};
+
+		FindContext(Widget *parent, auto&& cb)
+		: view_{parent, std::forward<decltype(cb)>(cb)} {}
+	};
+
 	Scrollbar scroll_h_ {this, false, [this](double p){scroll_h_cb(p);}};
 	Scrollbar scroll_v_ {this, true, [this](double p){scroll_v_cb(p);}};
+	StripeView stripe_view_ {this, 1000, 1};
+	std::vector<std::unique_ptr<FindContext>> find_ctxs_ {};
 	TextShader::Buffer buf_ {};
 	glm::uvec2 render_range_ {};
 
@@ -24,9 +45,9 @@ class ContentView : public Widget {
 	bool selection_active_ {false};
 
 	FileView &parent();
-	void on_resize() override;
-	bool on_mouse_button(glm::ivec2 mouse, int button, int action, Window::KeyMods mods) override;
-	bool on_cursor_pos(glm::ivec2 mouse) override;
+
+	void on_find(void *ctx, size_t idx);
+	void handle_findview(FindView &find_view);
 
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
@@ -37,9 +58,15 @@ class ContentView : public Widget {
 	void highlight_selection();
 	void highlight_findings();
 
+	bool on_mouse_button(glm::ivec2 mouse, int button, int action, Window::KeyMods mods) override;
+	bool on_cursor_pos(glm::ivec2 mouse) override;
+	void on_resize() override;
+
 	void update() override;
 
 public:
 	ContentView(Widget *parent);
+	~ContentView();
+
 	void draw() override;
 };

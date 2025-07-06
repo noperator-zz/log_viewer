@@ -7,6 +7,13 @@ using namespace glm;
 ContentView::ContentView(Widget *parent) : Widget(parent, "C") {
 	add_child(scroll_h_);
 	add_child(scroll_v_);
+	add_child(stripe_view_);
+
+	find_ctxs_.emplace_back(std::make_unique<FindContext>(this, [this](auto &find_view) { handle_findview(find_view); }));
+	add_child(find_ctxs_.back()->view_);
+}
+
+ContentView::~ContentView() {
 }
 
 FileView &ContentView::parent() { return *Widget::parent<FileView>(); }
@@ -19,43 +26,28 @@ void ContentView::scroll_v_cb(double percent) {
 	parent().scroll_v_cb(percent);
 }
 
-void ContentView::on_resize() {
-	scroll_h_.resize({pos().x, pos().y + size().y - SCROLL_W}, {size().x - SCROLL_W, SCROLL_W});
-	scroll_v_.resize({pos().x + size().x - SCROLL_W, pos().y}, {SCROLL_W, size().y});
-	update_scrollbar();
+void ContentView::handle_findview(FindView &find_view) {
+	int ret = parent().finder_.submit(&find_view, [this](auto ctx, auto idx){on_find(ctx, idx);}, find_view.text(), 0);//find_view.flags());
+	if (ret != 0) {
+		std::cerr << "Error submitting find request: " << ret << std::endl;
+	}
+
+	stripe_view_.remove_dataset(&find_view);
+	stripe_view_.add_dataset(&find_view, find_view.color(), [](const void *ele) {
+		return reinterpret_cast<const Finder::Job::Result*>(ele)->start;
+	});
+}
+
+void ContentView::on_find(void *ctx, size_t idx) {
+	// TODO dedicated find_ctx mutex
+	// std::lock_guard lock(line_mtx_);
+	// static_cast<FindContext *>(ctx)->next_report_ = idx;
+	soil();
 }
 
 void ContentView::update_scrollbar() {
 	scroll_h_.set(parent().scroll_.x, size().x, parent().longest_line_ * TextShader::font().size.x);
 	scroll_v_.set(parent().scroll_.y, size().y, parent().num_lines() * TextShader::font().size.y);
-}
-
-bool ContentView::on_mouse_button(ivec2 mouse, int button, int action, Window::KeyMods mods) {
-	if (pressed()) {
-		// TODO if selection is in blank space, clip to the nearest left character
-		ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));
-		selection_abs_char_loc = {mouse_abs_char_loc, mouse_abs_char_loc};
-		selection_active_ = true;
-	}
-	soil();
-	return false;
-}
-
-bool ContentView::on_cursor_pos(ivec2 mouse) {
-	if (!pressed()) {
-		return false;
-	}
-
-	if (parent().line_starts_.empty()) {
-		return false;
-	}
-
-	// TODO if selection is in blank space, clip to the nearest left character
-	ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));
-	selection_abs_char_loc.second = mouse_abs_char_loc;
-
-	soil();
-	return false;
 }
 
 ivec2 ContentView::view_pos_to_abs_char_loc(ivec2 view_pos) {
@@ -154,7 +146,56 @@ void ContentView::highlight_findings() {
 	}
 }
 
+bool ContentView::on_mouse_button(ivec2 mouse, int button, int action, Window::KeyMods mods) {
+	if (pressed()) {
+		// TODO if selection is in blank space, clip to the nearest left character
+		ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));
+		selection_abs_char_loc = {mouse_abs_char_loc, mouse_abs_char_loc};
+		selection_active_ = true;
+	}
+	soil();
+	return false;
+}
+
+bool ContentView::on_cursor_pos(ivec2 mouse) {
+	if (!pressed()) {
+		return false;
+	}
+
+	if (parent().line_starts_.empty()) {
+		return false;
+	}
+
+	// TODO if selection is in blank space, clip to the nearest left character
+	ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));
+	selection_abs_char_loc.second = mouse_abs_char_loc;
+
+	soil();
+	return false;
+}
+
+void ContentView::on_resize() {
+	auto y = pos().y;
+	for (auto &ctx : find_ctxs_) {
+		ctx->view_.resize({pos().x, y}, {size().x - scroll_v_.size().x, 30});
+		y += 30;
+	}
+
+	stripe_view_.resize({pos().x + size().x - 30, y}, {30, size().y - y});
+
+	scroll_h_.resize({pos().x, pos().y + size().y - SCROLL_W}, {size().x - SCROLL_W, SCROLL_W});
+	scroll_v_.resize({pos().x + size().x - SCROLL_W, y}, {SCROLL_W, size().y - y});
+	update_scrollbar();
+}
+
 void ContentView::update() {
+	// TODO memory re-alloc in Finder could cause this to block for a long time.
+	//  Add a timeout parameter to finder_.user()
+	auto user = parent().finder_.user();
+	for (const auto &[ctx_, job] : user.jobs()) {
+		const auto &results = job->results();
+		stripe_view_.feed(ctx_, parent().line_starts_, results);
+	}
 }
 
 void ContentView::draw() {
@@ -175,6 +216,12 @@ void ContentView::draw() {
 	glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
 
 	TextShader::draw(pos(), parent().scroll_, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG);
+
+	for (auto &ctx : find_ctxs_) {
+		ctx->view_.draw();
+	}
+
+	stripe_view_.draw();
 
 	scroll_h_.draw();
 	scroll_v_.draw();

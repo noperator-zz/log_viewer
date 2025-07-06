@@ -2,8 +2,6 @@
 
 #include <chrono>
 #include <condition_variable>
-#include <thread>
-#include <vector>
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 
@@ -13,9 +11,6 @@
 #include "loader.h"
 #include "linenum_view.h"
 #include "content_view.h"
-#include "find_view.h"
-#include "finder.h"
-#include "stripe_view.h"
 
 class FileView : public Widget {
 	friend class LinenumView;
@@ -30,29 +25,11 @@ class FileView : public Widget {
 	static_assert(CONTENT_BUFFER_SIZE < 128 * 1024 * 1024, "Content buffer size too large");
 	static_assert(OVERSCAN_LINES >= 1, "Overscan lines must be at least 1");
 
-	struct FindContext {
-		FindView view_;
-
-		// State as of the last update
-		// # lines used for position calculation.
-		// Latched until the actual # lines increases by (1 / resolution) %, at which point
-		// the value is updated, and the stripe view is reset and recomputed.
-		size_t num_lines_at_reset_ {};
-
-		size_t last_report_ {};
-		size_t last_line_ {};
-
-		FindContext(Widget *parent, auto&& cb)
-		: view_{parent, std::forward<decltype(cb)>(cb)} {}
-	};
-
 	Loader loader_;
 	Dataset dataset_ {nullptr, nullptr};
 	Finder finder_ {dataset_};
 	LinenumView linenum_view_ {this};
 	ContentView content_view_ {this};
-	std::vector<std::unique_ptr<FindContext>> find_ctxs_ {};
-	StripeView stripe_view_ {this, 1000, 1};
 
 	size_t linenum_chars_ {1};
 	glm::ivec2 buf_lines_ {};
@@ -67,9 +44,6 @@ class FileView : public Widget {
 	FileView(Widget *parent, const char *path);
 
 	void on_new_lines();
-	void on_find(void *ctx, size_t idx);
-
-	void handle_findview(FindView &find_view);
 	void on_resize() override;
 
 	void really_update_buffers(int start, int end, const uint8_t *data);
