@@ -4,8 +4,10 @@
 #include "util.h"
 
 using namespace std::chrono;
+using namespace glm;
 
 Window::Window(GLFWwindow *window, Widget &root) : window_(window), root_(root) {
+	root_.window_ = this;
 	glfwSetWindowUserPointer(window_, this);
 
 #define win static_cast<Window*>(glfwGetWindowUserPointer(g))
@@ -28,44 +30,137 @@ Window::~Window() {
 	}
 }
 
+void Window::update_hovered() {
+	// TODO maybe only run this when widgets have moved (resize()) instead of every time it's needed
+	// TODO make this more efficient by re-checking the current hovered widget first (check if it or any of it's children are hovered)
+	// TODO add_child and remove_child could mess with this?
+	auto prev = hovered_;
+	if (hovered_) {
+		// Check if still hovered
+		// if (!hovered_->hit_test(mouse_)) {
+		// 	hovered_->state_.hovered = false;
+		// 	std::cout << "U " << hovered_->path() << std::endl;
+		// 	hovered_->unhover_cb();
+		// 	// hovered_ = nullptr;
+		// }
+	}
+
+	// Find the deepest hovered child
+	hovered_ = root_.deepest_hit_child(mouse_);
+
+	// if (hovered_ && hovered_ != prev) {
+	// 	hovered_->state_.hovered = true;
+	// 	std::cout << "H " << hovered_->path() << std::endl;
+	// 	hovered_->hover_cb();
+	// }
+}
+
 void Window::key_cb(int key, int scancode, int action, int mods) {
 	key_mods_ = {mods};
-	root_.key_cb(key, scancode, action, key_mods_);
+
+	Widget *w = key_active_ ? key_active_ : &root_;
+	invoke_on(w, &Widget::key_cb, key, scancode, action, key_mods_);
 }
 
 void Window::char_cb(unsigned int codepoint) {
-	root_.char_cb(codepoint, key_mods_);
+	Widget *w = key_active_ ? key_active_ : &root_;
+	invoke_on(w, &Widget::char_cb, codepoint, key_mods_);
 }
 
 void Window::cursor_pos_cb(double xpos, double ypos) {
 	mouse_ = {xpos, ypos};
-	root_.cursor_pos_cb(mouse_);
+	update_hovered();
+
+	if (!hovered_) {
+		return;
+	}
+
+	if (mouse_active_) {
+		// Send the event to the active widget
+
+		if (mouse_active_->state_.l_pressed) {
+			auto mouse_offset = mouse_ - mouse_active_->pressed_mouse_pos_;
+			auto self_offset = mouse_active_->pos_ - mouse_active_->pressed_pos_;
+			auto offset = mouse_offset - self_offset;
+			mouse_active_->drag_cb(offset);
+		}
+
+		mouse_active_->cursor_pos_cb(mouse_);
+		return;
+	}
+	invoke_on(hovered_, &Widget::cursor_pos_cb, mouse_);
 }
 
 void Window::mouse_button_cb(int button, int action, int mods) {
 	key_mods_ = {mods};
-	root_.mouse_button_cb(mouse_, button, action, key_mods_);
+	update_hovered();
+
+	if (action == GLFW_PRESS) {
+		assert(hovered_);
+		if (!mouse_active_) {
+			mouse_active_ = hovered_;
+		}
+		switch (button) {
+			case GLFW_MOUSE_BUTTON_LEFT:
+				mouse_active_->state_.l_pressed = true;
+				mouse_active_->pressed_mouse_pos_ = mouse_;
+				mouse_active_->pressed_pos_ = mouse_active_->pos_;
+				break;
+			case GLFW_MOUSE_BUTTON_RIGHT:
+				mouse_active_->state_.r_pressed = true;
+				break;
+			case GLFW_MOUSE_BUTTON_MIDDLE:
+				mouse_active_->state_.m_pressed = true;
+				break;
+			default:
+				break;
+		}
+		invoke_on(mouse_active_, &Widget::mouse_button_cb, mouse_, button, action, key_mods_);
+
+	} else if (action == GLFW_RELEASE) {
+		assert(mouse_active_);
+		switch (button) {
+			case GLFW_MOUSE_BUTTON_LEFT:
+				mouse_active_->state_.l_pressed = false;
+				break;
+			case GLFW_MOUSE_BUTTON_RIGHT:
+				mouse_active_->state_.r_pressed = false;
+				break;
+			case GLFW_MOUSE_BUTTON_MIDDLE:
+				mouse_active_->state_.m_pressed = false;
+				break;
+			default:
+				break;
+		}
+		invoke_on(mouse_active_, &Widget::mouse_button_cb, mouse_, button, action, key_mods_);
+		if (!mouse_active_->state_.l_pressed &&
+		    !mouse_active_->state_.r_pressed &&
+		    !mouse_active_->state_.m_pressed) {
+			mouse_active_ = nullptr;
+		}
+
+	} else {
+		assert(false);
+	}
 }
 
 void Window::scroll_cb(double xoffset, double yoffset) {
-	root_.scroll_cb({xoffset, yoffset}, key_mods_);
+	update_hovered();
+	invoke_on(hovered_, &Widget::scroll_cb, ivec2{xoffset, yoffset}, key_mods_);
 }
 
 void Window::drop_cb(int path_count, const char* paths[]) {
-	root_.drop_cb(path_count, paths);
+	update_hovered();
+	invoke_on(hovered_, &Widget::drop_cb, path_count, paths);
 }
 
 void Window::frame_buffer_size_cb(int width, int height) {
+	fb_size_ = {width, height};
 	glViewport(0, 0, width, height);
-	root_.resize({0, 0}, {width, height});
+	root_.resize({0, 0}, fb_size_);
 }
 
 void Window::window_size_cb(int width, int height) {
-}
-
-void Window::window_refresh_cb() {
-	draw();
-	glFinish();
 }
 
 void Window::destroy() {
@@ -122,3 +217,11 @@ void Window::send_event() {
 // 	event_pending_ = false;
 // 	// event_pending_.wait_for
 // }
+
+void Window::set_key_focus(Widget *widget) {
+	key_active_ = widget;
+}
+
+uvec2 Window::mouse() const {
+	return mouse_;
+}

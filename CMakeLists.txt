@@ -63,6 +63,7 @@ add_executable(${PROJECT_NAME}
     shaders/stripe_shader.cpp
     src/main.cpp
     src/app.cpp
+    src/app_window.cpp
     src/font.cpp
     src/file.cpp
     src/shader.h

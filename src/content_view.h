@@ -13,8 +13,8 @@ class ContentView : public Widget {
 	static constexpr int SCROLL_W = 20;
 
 	FileView &parent_;
-	Scrollbar scroll_h_ {true, [this](double p){scroll_h_cb(p);}};
-	Scrollbar scroll_v_ {false, [this](double p){scroll_v_cb(p);}};
+	Scrollbar scroll_h_ {false, [this](double p){scroll_h_cb(p);}};
+	Scrollbar scroll_v_ {true, [this](double p){scroll_v_cb(p);}};
 	TextShader::Buffer buf_ {};
 	glm::uvec2 render_range_ {};
 

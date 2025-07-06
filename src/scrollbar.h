@@ -10,7 +10,6 @@ class Scrollbar : public Widget {
 	class Thumb : public Widget {
 		friend class Scrollbar;
 		color color_ {100, 0, 0, 255};
-		bool horizontal_;
 		std::function<void(int)> scroll_cb_;
 
 		// bool on_mouse_button(glm::ivec2 mouse, int button, int action, int mods) override;
@@ -19,14 +18,17 @@ class Scrollbar : public Widget {
 		void update() override;
 		void draw() override;
 
+		bool vert() const;
+
 	public:
-		Thumb(bool horizontal, std::function<void(int)> &&scroll_cb);
+		Thumb(std::function<void(int)> &&scroll_cb);
 	};
 
 	std::function<void(double)> scroll_cb_;
 	Thumb thumb_;
 	double position_percent_ {};
 	double visible_percent_ {};
+	bool vert_;
 
 	void on_resize() override;
 	bool on_cursor_pos(glm::ivec2 pos) override;
@@ -41,7 +43,7 @@ class Scrollbar : public Widget {
 	void update() override;
 
 public:
-	Scrollbar(bool horizontal, std::function<void(double)> &&scroll_cb);
+	Scrollbar(bool vertical, std::function<void(double)> &&scroll_cb);
 
 	void draw() override;
 	void set(size_t position, size_t visible_extents, size_t total_extents);

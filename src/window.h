@@ -6,7 +6,7 @@
 class Widget;
 
 class Window {
-	friend class Widget;
+	// friend class App;
 public:
 	struct KeyMods {
 		int shift : 1;
@@ -34,13 +34,20 @@ public:
 private:
 	GLFWwindow *window_;
 	Widget &root_;
+	Widget *hovered_ {};
+	Widget *key_active_ {};
+	Widget *mouse_active_ {};
+
 	glm::ivec2 mouse_ {};
+
 	KeyMods key_mods_ {};
 	bool fullscreen_ {};
 	static inline std::mutex event_mtx_ {};
 	static inline std::condition_variable event_cv_ {};
 	static inline bool event_pending_ {};
 	// static inline std::atomic_flag event_pending_ {};
+
+	void update_hovered();
 
 	void key_cb(int key, int scancode, int action, int mods);
 	void char_cb(unsigned int codepoint);
@@ -50,21 +57,40 @@ private:
 	void drop_cb(int path_count, const char* paths[]);
 	void frame_buffer_size_cb(int width, int height);
 	void window_size_cb(int width, int height);
-	void window_refresh_cb();
+	virtual void window_refresh_cb() {};
 
-	static void send_event();
 
+	template<typename T, typename... Args>
+	void invoke_on(T *widget, bool (Widget::*cb)(Args...), Args... args) {
+		while (widget) {
+			if ((widget->*cb)(args...)) {
+				return;
+			}
+			widget = widget->parent_;
+		}
+	}
+
+	Window(const Window &) = delete;
+	Window &operator=(const Window &) = delete;
+	Window(Window &&) = delete;
+	Window &operator=(Window &&) = delete;
+
+protected:
+	glm::ivec2 fb_size_ {};
+	void destroy();
 	void swap_buffers() const;
+	void toggle_fullscreen();
+	[[nodiscard]] bool should_close() const;
+	// void wait_events();
+	bool draw() const;
 
 public:
 	Window(GLFWwindow *window, Widget &root);
-	~Window();
 
-	void toggle_fullscreen();
+	virtual ~Window();
 
-	void destroy();
-	[[nodiscard]] bool should_close() const;
+	static void send_event();
 
-	// void wait_events();
-	bool draw() const;
+	void set_key_focus(Widget *widget);
+	glm::uvec2 mouse() const;
 };

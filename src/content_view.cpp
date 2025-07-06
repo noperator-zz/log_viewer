@@ -35,6 +35,7 @@ bool ContentView::on_mouse_button(ivec2 mouse, int button, int action, Window::K
 		selection_abs_char_loc = {mouse_abs_char_loc, mouse_abs_char_loc};
 		selection_active_ = true;
 	}
+	soil();
 	return false;
 }
 
@@ -51,6 +52,7 @@ bool ContentView::on_cursor_pos(ivec2 mouse) {
 	ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));
 	selection_abs_char_loc.second = mouse_abs_char_loc;
 
+	soil();
 	return false;
 }
 

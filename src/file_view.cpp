@@ -74,6 +74,7 @@ void FileView::scroll_h_cb(double percent) {
 	scroll_.x = percent * max.x;
 	scroll_.x = std::clamp(scroll_.x, 0, max.x);
 	content_view_.update_scrollbar();
+	soil();
 }
 
 void FileView::scroll_v_cb(double percent) {
@@ -84,6 +85,7 @@ void FileView::scroll_v_cb(double percent) {
 
 	scroll_.y = std::clamp(scroll_.y, 0, max.y);
 	content_view_.update_scrollbar();
+	soil();
 }
 
 void FileView::scroll(ivec2 scroll) {

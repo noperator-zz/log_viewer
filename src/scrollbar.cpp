@@ -2,15 +2,19 @@
 
 using namespace glm;
 
-Scrollbar::Thumb::Thumb(bool horizontal, std::function<void(int)> &&scroll_cb)
-	: Widget("T"), horizontal_(horizontal), scroll_cb_(std::move(scroll_cb)) {}
+Scrollbar::Thumb::Thumb(std::function<void(int)> &&scroll_cb)
+	: Widget("T"), scroll_cb_(std::move(scroll_cb)) {}
 
 // bool Scrollbar::Thumb::on_mouse_button(ivec2 mouse, int button, int action, int mods) {
 // 	return false;//hovered() && button == GLFW_MOUSE_BUTTON_LEFT;
 // }
 
+bool Scrollbar::Thumb::vert() const {
+	return static_cast<const Scrollbar *>(parent())->vert_;
+}
+
 bool Scrollbar::Thumb::on_drag(ivec2 offset) {
-	scroll_cb_(horizontal_ ? offset.x : offset.y);
+	scroll_cb_(offset[vert()]);
 	return true;
 }
 
@@ -23,8 +27,8 @@ void Scrollbar::Thumb::draw() {
 }
 
 
-Scrollbar::Scrollbar(bool horizontal, std::function<void(double)> &&scroll_cb)
-	: Widget("S"), scroll_cb_(std::move(scroll_cb)), thumb_(horizontal, [this](int o){thumb_cb(o);}) {
+Scrollbar::Scrollbar(bool vertical, std::function<void(double)> &&scroll_cb)
+	: Widget("S"), scroll_cb_(std::move(scroll_cb)), thumb_([this](int o){thumb_cb(o);}), vert_(vertical) {
 	add_child(thumb_);
 }
 
@@ -68,41 +72,31 @@ void Scrollbar::set(size_t position, size_t visible_extents, size_t total_extent
 }
 
 void Scrollbar::resize_thumb() {
-	if (thumb_.horizontal_) {
-		auto thumb_size = std::max<int>(50, (double)size().x * visible_percent_);
-		double scroll_range = size().x - thumb_size;
-		int thumb_top = scroll_range * position_percent_;
-		thumb_.resize({pos().x + thumb_top, pos().y}, {thumb_size, size().y});
-	} else {
-		auto thumb_size = std::max<int>(50, (double)size().y * visible_percent_);
-		double scroll_range = size().y - thumb_size;
-		int thumb_top = scroll_range * position_percent_;
+	auto thumb_size = std::max<int>(50, (double)size()[vert_] * visible_percent_);
+	double scroll_range = size()[vert_] - thumb_size;
+	int thumb_top = scroll_range * position_percent_;
+
+	if (vert_) {
 		thumb_.resize({pos().x, pos().y + thumb_top}, {size().x, thumb_size});
+	} else {
+		thumb_.resize({pos().x + thumb_top, pos().y}, {thumb_size, size().y});
 	}
 }
 
 size_t Scrollbar::scroll_range() const {
-	if (thumb_.horizontal_) {
-		return size().x - thumb_.size().x;
-	}
-	return size().y - thumb_.size().y;
+	return size()[vert_] - thumb_.size()[vert_];
 }
 
 void Scrollbar::scroll_toward_mouse(ivec2 mouse, uint pages) const {
-	if (mouse.y < thumb_.pos().y) {
-		scroll_cb_(std::max(0.0, position_percent_ - visible_percent_));
+	if (mouse[vert_] < thumb_.pos()[vert_]) {
+		scroll_cb_(std::max(0.0, position_percent_ - visible_percent_ * pages));
 	} else {
-		scroll_cb_(std::min(1.0, position_percent_ + visible_percent_));
+		scroll_cb_(std::min(1.0, position_percent_ + visible_percent_ * pages));
 	}
 }
 
 void Scrollbar::scroll_to_mouse(ivec2 mouse) const {
-	double percent;
-	if (thumb_.horizontal_) {
-		percent = (double)(mouse.x - pos().x) / (double)size().x;
-	} else {
-		percent = (double)(mouse.y - pos().y) / (double)size().y;
-	}
+	double percent = (double)(mouse[vert_] - pos()[vert_]) / (double)size()[vert_];
 	scroll_cb_(std::clamp(percent, 0.0, 1.0));
 }
 
