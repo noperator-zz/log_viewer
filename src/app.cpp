@@ -144,7 +144,7 @@ int App::start() {
         return -1;
     }
 
-    window_ = std::make_unique<Window>(window, this);
+    window_ = std::make_unique<Window>(window, *this);
     return 0;
 }
 

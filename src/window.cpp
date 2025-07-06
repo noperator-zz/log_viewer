@@ -5,19 +5,21 @@
 
 using namespace std::chrono;
 
-Window::Window(GLFWwindow *window, Widget *root) : window_(window), root_(root) {
+Window::Window(GLFWwindow *window, Widget &root) : window_(window), root_(root) {
 	glfwSetWindowUserPointer(window_, this);
 
-	glfwSetKeyCallback(window_,              key_cb);
-	glfwSetCharCallback(window_,             char_cb);
-	glfwSetCursorPosCallback(window_,        cursor_pos_cb);
-	glfwSetMouseButtonCallback(window_,      mouse_button_cb);
-	glfwSetScrollCallback(window_,           scroll_cb);
-	glfwSetDropCallback(window_,             drop_cb);
-	glfwSetFramebufferSizeCallback(window_,  frame_buffer_size_cb);
-	glfwSetWindowSizeCallback(window_,       window_size_cb);
-	glfwSetWindowRefreshCallback(window_,    window_refresh_cb);
+#define win static_cast<Window*>(glfwGetWindowUserPointer(g))
+	glfwSetKeyCallback(window_,             [](GLFWwindow *g, int key, int scancode, int action, int mods) { return win->key_cb(key, scancode, action, mods); });
+	glfwSetCharCallback(window_,            [](GLFWwindow *g, unsigned int codepoint)                      { return win->char_cb(codepoint); });
+	glfwSetCursorPosCallback(window_,       [](GLFWwindow *g, double xpos, double ypos)                    { return win->cursor_pos_cb(xpos, ypos); });
+	glfwSetMouseButtonCallback(window_,     [](GLFWwindow *g, int button, int action, int mods)            { return win->mouse_button_cb(button, action, mods); });
+	glfwSetScrollCallback(window_,          [](GLFWwindow *g, double xoffset, double yoffset)              { return win->scroll_cb(xoffset, yoffset); });
+	glfwSetDropCallback(window_,            [](GLFWwindow *g, int path_count, const char* paths[])         { return win->drop_cb(path_count, paths); });
+	glfwSetFramebufferSizeCallback(window_, [](GLFWwindow *g, int width, int height)                       { return win->frame_buffer_size_cb(width, height); });
+	glfwSetWindowSizeCallback(window_,      [](GLFWwindow *g, int width, int height)                       { return win->window_size_cb(width, height); });
+	glfwSetWindowRefreshCallback(window_,   [](GLFWwindow *g)                                              { return win->window_refresh_cb(); });
 	// glfwSetMonitorCallback(                   [](GLFWmonitor* monitor, int event) { std::cout << "Monitor\n" << std::endl; });
+#undef win
 }
 
 Window::~Window() {
@@ -26,52 +28,43 @@ Window::~Window() {
 	}
 }
 
-void Window::key_cb(GLFWwindow *glfw_window, int key, int scancode, int action, int mods) {
-	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	window->key_mods_ = {mods};
-	window->root_->key_cb(key, scancode, action, window->key_mods_);
+void Window::key_cb(int key, int scancode, int action, int mods) {
+	key_mods_ = {mods};
+	root_.key_cb(key, scancode, action, key_mods_);
 }
 
-void Window::char_cb(GLFWwindow *glfw_window, unsigned int codepoint) {
-	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	window->root_->char_cb(codepoint, window->key_mods_);
+void Window::char_cb(unsigned int codepoint) {
+	root_.char_cb(codepoint, key_mods_);
 }
 
-void Window::cursor_pos_cb(GLFWwindow *glfw_window, double xpos, double ypos) {
-	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	window->mouse_ = {xpos, ypos};
-	window->root_->cursor_pos_cb(window->mouse_);
+void Window::cursor_pos_cb(double xpos, double ypos) {
+	mouse_ = {xpos, ypos};
+	root_.cursor_pos_cb(mouse_);
 }
 
-void Window::mouse_button_cb(GLFWwindow *glfw_window, int button, int action, int mods) {
-	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	window->key_mods_ = {mods};
-	window->root_->mouse_button_cb(window->mouse_, button, action, window->key_mods_);
+void Window::mouse_button_cb(int button, int action, int mods) {
+	key_mods_ = {mods};
+	root_.mouse_button_cb(mouse_, button, action, key_mods_);
 }
 
-void Window::scroll_cb(GLFWwindow *glfw_window, double xoffset, double yoffset) {
-	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	window->root_->scroll_cb({xoffset, yoffset}, window->key_mods_);
+void Window::scroll_cb(double xoffset, double yoffset) {
+	root_.scroll_cb({xoffset, yoffset}, key_mods_);
 }
 
-void Window::drop_cb(GLFWwindow *glfw_window, int path_count, const char* paths[]) {
-	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	window->root_->drop_cb(path_count, paths);
+void Window::drop_cb(int path_count, const char* paths[]) {
+	root_.drop_cb(path_count, paths);
 }
 
-void Window::frame_buffer_size_cb(GLFWwindow *glfw_window, int width, int height) {
-	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+void Window::frame_buffer_size_cb(int width, int height) {
 	glViewport(0, 0, width, height);
-	window->root_->resize({0, 0}, {width, height});
+	root_.resize({0, 0}, {width, height});
 }
 
-void Window::window_size_cb(GLFWwindow *glfw_window, int width, int height) {
-	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
+void Window::window_size_cb(int width, int height) {
 }
 
-void Window::window_refresh_cb(GLFWwindow *glfw_window) {
-	auto window = static_cast<Window*>(glfwGetWindowUserPointer(glfw_window));
-	window->draw();
+void Window::window_refresh_cb() {
+	draw();
 	glFinish();
 }
 
@@ -90,7 +83,7 @@ bool Window::should_close() const {
 
 void Window::toggle_fullscreen() {
 	if (fullscreen_) {
-		glfwSetWindowMonitor(window_, nullptr, 0, 0, root_->size_.x, root_->size_.y, GLFW_DONT_CARE);
+		glfwSetWindowMonitor(window_, nullptr, 0, 0, root_.size_.x, root_.size_.y, GLFW_DONT_CARE);
 	} else {
 		GLFWmonitor *monitor = glfwGetPrimaryMonitor();
 		const GLFWvidmode *mode = glfwGetVideoMode(monitor);
@@ -103,11 +96,11 @@ bool Window::draw() const {
 	bool tree_dirty = false;
 	{
 		// Timeit t("Update tree");
-		tree_dirty = root_->do_update();
+		tree_dirty = root_.do_update();
 	}
 	if (tree_dirty) {
 		// Timeit t("Draw tree");
-		root_->draw();
+		root_.draw();
 		swap_buffers();
 	} else {
 		// std::cout << "No changes in the tree, skipping draw." << std::endl;

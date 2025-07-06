@@ -33,7 +33,7 @@ public:
 
 private:
 	GLFWwindow *window_;
-	Widget *root_;
+	Widget &root_;
 	glm::ivec2 mouse_ {};
 	KeyMods key_mods_ {};
 	bool fullscreen_ {};
@@ -42,22 +42,22 @@ private:
 	static inline bool event_pending_ {};
 	// static inline std::atomic_flag event_pending_ {};
 
-	static void key_cb(GLFWwindow *glfw_window, int key, int scancode, int action, int mods);
-	static void char_cb(GLFWwindow *glfw_window, unsigned int codepoint);
-	static void cursor_pos_cb(GLFWwindow *glfw_window, double xpos, double ypos);
-	static void mouse_button_cb(GLFWwindow *glfw_window, int button, int action, int mods);
-	static void scroll_cb(GLFWwindow *glfw_window, double xoffset, double yoffset);
-	static void drop_cb(GLFWwindow *glfw_window, int path_count, const char* paths[]);
-	static void frame_buffer_size_cb(GLFWwindow *glfw_window, int width, int height);
-	static void window_size_cb(GLFWwindow *glfw_window, int width, int height);
-	static void window_refresh_cb(GLFWwindow *glfw_window);
+	void key_cb(int key, int scancode, int action, int mods);
+	void char_cb(unsigned int codepoint);
+	void cursor_pos_cb(double xpos, double ypos);
+	void mouse_button_cb(int button, int action, int mods);
+	void scroll_cb(double xoffset, double yoffset);
+	void drop_cb(int path_count, const char* paths[]);
+	void frame_buffer_size_cb(int width, int height);
+	void window_size_cb(int width, int height);
+	void window_refresh_cb();
 
 	static void send_event();
 
 	void swap_buffers() const;
 
 public:
-	Window(GLFWwindow *window, Widget *root);
+	Window(GLFWwindow *window, Widget &root);
 	~Window();
 
 	void toggle_fullscreen();
