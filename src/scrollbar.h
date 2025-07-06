@@ -12,7 +12,7 @@ class Scrollbar : public Widget {
 		color color_ {100, 0, 0, 255};
 		std::function<void(int)> scroll_cb_;
 
-		// bool on_mouse_button(glm::ivec2 mouse, int button, int action, int mods) override;
+		bool on_mouse_button(glm::ivec2 mouse, int button, int action, Window::KeyMods mods) override;
 		bool on_drag(glm::ivec2 offset) override;
 
 		void update() override;

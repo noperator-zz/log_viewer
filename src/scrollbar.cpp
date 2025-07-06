@@ -13,6 +13,10 @@ bool Scrollbar::Thumb::vert() {
 	return parent<Scrollbar>()->vert_;
 }
 
+bool Scrollbar::Thumb::on_mouse_button(ivec2 mouse, int button, int action, Window::KeyMods mods) {
+	return button == GLFW_MOUSE_BUTTON_LEFT;
+}
+
 bool Scrollbar::Thumb::on_drag(ivec2 offset) {
 	scroll_cb_(offset[vert()]);
 	return true;
