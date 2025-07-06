@@ -13,6 +13,7 @@ class InputView : public Widget {
 	size_t cursor_ {};
 	TextShader::Buffer buf_ {};
 
+	bool on_mouse_button(glm::ivec2 mouse, int button, int action, Window::KeyMods mods)  override;
 	bool on_key(int key, int scancode, int action, Window::KeyMods mods) override;
 	bool on_char(unsigned int codepoint, Window::KeyMods mods) override;
 	void on_resize() override;

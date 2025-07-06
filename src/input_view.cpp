@@ -9,6 +9,17 @@ InputView::InputView(Widget *parent, const std::function<void(std::string_view)>
 	TextShader::create_buffers(buf_, BUFFER_SIZE);
 }
 
+bool InputView::on_mouse_button(ivec2 mouse, int button, int action, Window::KeyMods mods)  {
+	if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT) {
+		assert(hovered());
+		window()->set_key_focus(this);
+
+		soil();
+		return true;
+	}
+	return false;
+}
+
 bool InputView::on_key(int key, int scancode, int action, Window::KeyMods mods) {
 	if (action == GLFW_RELEASE) {
 		return false;
@@ -18,6 +29,7 @@ bool InputView::on_key(int key, int scancode, int action, Window::KeyMods mods) 
 		if (cursor_ > 0) {
 			cursor_--;
 		}
+		soil();
 		return true;
 	}
 
@@ -25,6 +37,7 @@ bool InputView::on_key(int key, int scancode, int action, Window::KeyMods mods) 
 		if (cursor_ < text_.size()) {
 			cursor_++;
 		}
+		soil();
 		return true;
 	}
 
@@ -36,6 +49,7 @@ bool InputView::on_key(int key, int scancode, int action, Window::KeyMods mods) 
 				on_update_(text_);
 			}
 		}
+		soil();
 		return true;
 	}
 
@@ -46,6 +60,7 @@ bool InputView::on_key(int key, int scancode, int action, Window::KeyMods mods) 
 				on_update_(text_);
 			}
 		}
+		soil();
 		return true;
 	}
 
@@ -55,6 +70,7 @@ bool InputView::on_key(int key, int scancode, int action, Window::KeyMods mods) 
 		if (on_update_) {
 			on_update_(text_);
 		}
+		soil();
 		return true;
 	}
 	return false;
@@ -69,6 +85,7 @@ bool InputView::on_char(unsigned int codepoint, Window::KeyMods mods) {
 	if (on_update_) {
 		on_update_(text_);
 	}
+	soil();
 	return true;
 }
 
