@@ -4,7 +4,8 @@
 
 using namespace glm;
 
-InputView::InputView(const std::function<void(std::string_view)> &&on_update) : on_update_(std::move(on_update)) {
+InputView::InputView(Widget *parent, const std::function<void(std::string_view)> &&on_update)
+	: Widget(parent), on_update_(std::move(on_update)) {
 	TextShader::create_buffers(buf_, BUFFER_SIZE);
 }
 

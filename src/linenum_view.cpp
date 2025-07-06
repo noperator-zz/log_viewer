@@ -4,7 +4,7 @@
 
 using namespace glm;
 
-LinenumView::LinenumView(FileView &parent) : Widget("L"), parent_(parent) {}
+LinenumView::LinenumView(Widget *parent) : Widget(parent, "L") {}
 
 void LinenumView::update() {
 }
@@ -16,5 +16,5 @@ void LinenumView::draw() {
 	GPShader::draw();
 
 	TextShader::use(buf_);
-	TextShader::draw(pos(), {0, parent_.scroll_.y}, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG);
+	TextShader::draw(pos(), {0, parent<FileView>()->scroll_.y}, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG);
 }

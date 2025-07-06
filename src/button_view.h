@@ -12,7 +12,7 @@ class ButtonView : public Widget {
 	void update() override;
 
 public:
-	ButtonView(const std::function<void(bool)> &&on_click = nullptr);
+	ButtonView(Widget *parent, const std::function<void(bool)> &&on_click = nullptr);
 
 	void draw() override;
 };

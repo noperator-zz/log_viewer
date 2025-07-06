@@ -10,18 +10,18 @@
 using namespace glm;
 using namespace std::chrono;
 
-std::unique_ptr<FileView> FileView::create(const char *path) {
-	return std::unique_ptr<FileView>(new FileView(path));
+std::unique_ptr<FileView> FileView::create(Widget *parent, const char *path) {
+	return std::unique_ptr<FileView>(new FileView(parent, path));
 }
 
-FileView::FileView(const char *path)
-	: Widget("FV"), loader_(File{path}, dataset_, [this]{on_new_lines();}) {
+FileView::FileView(Widget *parent, const char *path)
+	: Widget(parent, "FV"), loader_(File{path}, dataset_, [this]{on_new_lines();}) {
 
 	add_child(linenum_view_);
 	add_child(content_view_);
 	add_child(stripe_view_);
 
-	find_ctxs_.emplace_back(std::make_unique<FindContext>([this](auto &find_view) { handle_findview(find_view); }));
+	find_ctxs_.emplace_back(std::make_unique<FindContext>(this, [this](auto &find_view) { handle_findview(find_view); }));
 	add_child(find_ctxs_.back()->view_);
 }
 

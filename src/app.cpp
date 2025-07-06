@@ -20,7 +20,7 @@
 
 using namespace std::chrono;
 
-App::App(AppWindow &window) : Widget(window, "App") {
+App::App(AppWindow &window) : Widget(window, nullptr, "App") {
 }
 
 App::~App() {
@@ -76,7 +76,7 @@ int App::start(int argc, char *argv[]) {
 }
 
 int App::add_file(const char *path) {
-    auto view = FileView::create(path);
+    auto view = FileView::create(this, path);
     {
         Timeit file_open_timeit("View Open");
         if (view->open() != 0) {
@@ -111,7 +111,7 @@ bool App::on_key(int key, int scancode, int action, Window::KeyMods mods) {
     }
 
     if (key == GLFW_KEY_F11) {
-        static_cast<const AppWindow&>(window_).toggle_fullscreen();
+        static_cast<AppWindow*>(window())->toggle_fullscreen();
         return true;
     }
     return false;

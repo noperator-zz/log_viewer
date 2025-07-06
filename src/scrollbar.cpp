@@ -2,15 +2,15 @@
 
 using namespace glm;
 
-Scrollbar::Thumb::Thumb(std::function<void(int)> &&scroll_cb)
-	: Widget("T"), scroll_cb_(std::move(scroll_cb)) {}
+Scrollbar::Thumb::Thumb(Widget *parent, std::function<void(int)> &&scroll_cb)
+	: Widget(parent, "T"), scroll_cb_(std::move(scroll_cb)) {}
 
 // bool Scrollbar::Thumb::on_mouse_button(ivec2 mouse, int button, int action, int mods) {
 // 	return false;//hovered() && button == GLFW_MOUSE_BUTTON_LEFT;
 // }
 
-bool Scrollbar::Thumb::vert() const {
-	return static_cast<const Scrollbar *>(parent())->vert_;
+bool Scrollbar::Thumb::vert() {
+	return parent<Scrollbar>()->vert_;
 }
 
 bool Scrollbar::Thumb::on_drag(ivec2 offset) {
@@ -27,8 +27,8 @@ void Scrollbar::Thumb::draw() {
 }
 
 
-Scrollbar::Scrollbar(bool vertical, std::function<void(double)> &&scroll_cb)
-	: Widget("S"), scroll_cb_(std::move(scroll_cb)), thumb_([this](int o){thumb_cb(o);}), vert_(vertical) {
+Scrollbar::Scrollbar(Widget *parent, bool vertical, std::function<void(double)> &&scroll_cb)
+	: Widget(parent, "S"), scroll_cb_(std::move(scroll_cb)), thumb_(this, [this](int o){thumb_cb(o);}), vert_(vertical) {
 	add_child(thumb_);
 }
 

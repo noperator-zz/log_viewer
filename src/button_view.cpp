@@ -4,7 +4,7 @@
 
 using namespace glm;
 
-ButtonView::ButtonView(const std::function<void(bool)> &&on_click) : on_click_(std::move(on_click)) {}
+ButtonView::ButtonView(Widget *parent, const std::function<void(bool)> &&on_click) : Widget(parent), on_click_(std::move(on_click)) {}
 
 bool ButtonView::on_mouse_button(ivec2 mouse, int button, int action, Window::KeyMods mods) {
 	if (button != GLFW_MOUSE_BUTTON_LEFT || action != GLFW_RELEASE) {

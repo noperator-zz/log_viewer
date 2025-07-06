@@ -25,13 +25,15 @@ Widget::Scissor::~Scissor() {
 	}
 }
 
-Widget::Widget(const Window &window) : window_(window) {
+Widget::Widget(Widget *parent) : parent_(parent), window_(parent ? parent->window_ : nullptr) {
 	char buf[128];
 	sprintf(buf, "%s<%p>", typeid(*this).name(), this);
 	name_ = std::string(buf);
 }
 
-Widget::Widget(const Window &window, std::string_view name) : window_(window), name_(name) {}
+Widget::Widget(Widget *parent, std::string_view name) : parent_(parent), window_(parent ? parent->window_ : nullptr), name_(name) {}
+
+Widget::Widget(Window &window, Widget *parent, std::string_view name) : parent_(parent), window_(&window), name_(name) {}
 
 bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, Window::KeyMods mods) {
 	// for (auto child : children_) {
@@ -116,17 +118,12 @@ bool Widget::do_update() {
 	return tree_dirty;
 }
 
-Widget *Widget::parent() const {
-	return parent_;
+Window *Widget::window() {
+	return window_;
 }
 
-// Window *Widget::window() const {
-// 	return window_;
-// }
-
-
 ivec2 Widget::mouse_pos() const {
-	return window_.mouse();
+	return window_->mouse();
 }
 
 ivec2 Widget::pos() const {
@@ -142,7 +139,7 @@ ivec2 Widget::rel_pos(ivec2 abs_pos) const {
 }
 
 bool Widget::hovered() const {
-	return hit_test(window_.mouse());
+	return hit_test(window_->mouse());
 	// return state_.hovered;
 }
 

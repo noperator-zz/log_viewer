@@ -22,8 +22,8 @@ class Widget {
 	};
 
 	std::string name_;
-	const Window &window_;
-	Widget *parent_ {};
+	Widget *parent_;
+	Window *window_;
 	std::vector<Widget*> children_ {};
 	glm::ivec2 pressed_mouse_pos_ {};
 	glm::ivec2 pressed_pos_ {};
@@ -85,12 +85,14 @@ protected:
 	// Scissor && scissor();
 
 public:
-	Widget(const Window &window);
-	Widget(const Window &window, std::string_view name);
+	Widget(Widget *parent);
+	Widget(Widget *parent, std::string_view name);
+	Widget(Window &window, Widget *parent, std::string_view name);
 	virtual ~Widget() = default;
 
-	[[nodiscard]] Widget *parent() const;
-	// Window *window() const;
+	template<typename T=Widget>
+	[[nodiscard]] T *parent() { return static_cast<T *>(parent_); }
+	[[nodiscard]] Window *window();
 	[[nodiscard]] glm::ivec2 mouse_pos() const;
 	[[nodiscard]] glm::ivec2 pos() const;
 	[[nodiscard]] glm::ivec2 size() const;

@@ -4,16 +4,16 @@
 
 using namespace glm;
 
-FindView::HandleView::HandleView(const FindView &parent) : parent_(parent) {}
+FindView::HandleView::HandleView(Widget *parent) : Widget(parent) {}
 
 void FindView::HandleView::update() {
 }
 
 void FindView::HandleView::draw() {
-	GPShader::rect(pos(), size(), parent_.color_, Z_UI_FG);
+	GPShader::rect(pos(), size(), parent<FindView>()->color_, Z_UI_FG);
 }
 
-FindView::FindView(std::function<void(FindView &)> &&on_find) : on_find_(std::move(on_find)) {
+FindView::FindView(Widget *parent, std::function<void(FindView &)> &&on_find) : Widget(parent), on_find_(std::move(on_find)) {
 	color_ = {0x00, 0xFF, 0x00, 0xFF}; // default color
 	add_child(handle_);
 	add_child(input_);

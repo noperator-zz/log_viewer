@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <cstring>
 
-StripeView::StripeView(size_t resolution, size_t tick_size)
-	: Widget("StripeView"), num_ticks_(resolution), tick_size_(tick_size) {
+StripeView::StripeView(Widget *parent, size_t resolution, size_t tick_size)
+	: Widget(parent, "StripeView"), num_ticks_(resolution), tick_size_(tick_size) {
 	assert(resolution > 0);
 }
 

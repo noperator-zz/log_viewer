@@ -42,17 +42,17 @@ class FileView : public Widget {
 		size_t last_report_ {};
 		size_t last_line_ {};
 
-		FindContext(auto&& cb)
-		: view_{std::forward<decltype(cb)>(cb)} {}
+		FindContext(Widget *parent, auto&& cb)
+		: view_{parent, std::forward<decltype(cb)>(cb)} {}
 	};
 
 	Loader loader_;
 	Dataset dataset_ {nullptr, nullptr};
 	Finder finder_ {dataset_};
-	LinenumView linenum_view_ {*this};
-	ContentView content_view_ {*this};
+	LinenumView linenum_view_ {this};
+	ContentView content_view_ {this};
 	std::vector<std::unique_ptr<FindContext>> find_ctxs_ {};
-	StripeView stripe_view_ {1000, 1};
+	StripeView stripe_view_ {this, 1000, 1};
 
 	size_t linenum_chars_ {1};
 	glm::ivec2 buf_lines_ {};
@@ -64,7 +64,7 @@ class FileView : public Widget {
 
 	bool autoscroll_ {true};
 
-	FileView(const char *path);
+	FileView(Widget *parent, const char *path);
 
 	void on_new_lines();
 	void on_find(void *ctx, size_t idx);
@@ -88,7 +88,7 @@ class FileView : public Widget {
 	void update() override;
 
 public:
-	static std::unique_ptr<FileView> create(const char *path);
+	static std::unique_ptr<FileView> create(Widget *parent, const char *path);
 	~FileView();
 
 	int open();

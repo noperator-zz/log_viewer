@@ -4,17 +4,19 @@
 
 using namespace glm;
 
-ContentView::ContentView(FileView &parent) : Widget("C"), parent_(parent) {
+ContentView::ContentView(Widget *parent) : Widget(parent, "C") {
 	add_child(scroll_h_);
 	add_child(scroll_v_);
 }
 
+FileView &ContentView::parent() { return *Widget::parent<FileView>(); }
+
 void ContentView::scroll_h_cb(double percent) {
-	parent_.scroll_h_cb(percent);
+	parent().scroll_h_cb(percent);
 }
 
 void ContentView::scroll_v_cb(double percent) {
-	parent_.scroll_v_cb(percent);
+	parent().scroll_v_cb(percent);
 }
 
 void ContentView::on_resize() {
@@ -24,8 +26,8 @@ void ContentView::on_resize() {
 }
 
 void ContentView::update_scrollbar() {
-	scroll_h_.set(parent_.scroll_.x, size().x, parent_.longest_line_ * TextShader::font().size.x);
-	scroll_v_.set(parent_.scroll_.y, size().y, parent_.num_lines() * TextShader::font().size.y);
+	scroll_h_.set(parent().scroll_.x, size().x, parent().longest_line_ * TextShader::font().size.x);
+	scroll_v_.set(parent().scroll_.y, size().y, parent().num_lines() * TextShader::font().size.y);
 }
 
 bool ContentView::on_mouse_button(ivec2 mouse, int button, int action, Window::KeyMods mods) {
@@ -44,7 +46,7 @@ bool ContentView::on_cursor_pos(ivec2 mouse) {
 		return false;
 	}
 
-	if (parent_.line_starts_.empty()) {
+	if (parent().line_starts_.empty()) {
 		return false;
 	}
 
@@ -56,8 +58,8 @@ bool ContentView::on_cursor_pos(ivec2 mouse) {
 	return false;
 }
 
-ivec2 ContentView::view_pos_to_abs_char_loc(ivec2 view_pos) const {
-	return (view_pos + parent_.scroll_) / TextShader::font().size;
+ivec2 ContentView::view_pos_to_abs_char_loc(ivec2 view_pos) {
+	return (view_pos + parent().scroll_) / TextShader::font().size;
 }
 
 void ContentView::reset_mod_styles() {
@@ -68,8 +70,8 @@ void ContentView::highlight_selection() {
 #if 1
 	// TODO highlight blank parts of selected lines
 	// FIXME messed up when mouse starts outside the text area
-	auto lo_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.first);
-	auto hi_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx(selection_abs_char_loc.second);
+	auto lo_buf_char_idx = parent().abs_char_loc_to_buf_char_idx(selection_abs_char_loc.first);
+	auto hi_buf_char_idx = parent().abs_char_loc_to_buf_char_idx(selection_abs_char_loc.second);
 
 	if (hi_buf_char_idx < lo_buf_char_idx) {
 		std::swap(lo_buf_char_idx, hi_buf_char_idx);
@@ -109,7 +111,7 @@ void ContentView::highlight_selection() {
 		}
 
 		pos *= TextShader::font().size;
-		pos += this->pos() - parent_.scroll_;
+		pos += this->pos() - parent().scroll_;
 		size *= TextShader::font().size;
 
 		GPShader::rect(pos, size, {200, 200, 200, 100}, Z_FILEVIEW_BG);
@@ -118,18 +120,18 @@ void ContentView::highlight_selection() {
 }
 
 void ContentView::highlight_findings() {
-	auto lo_abs_char_idx = parent_.abs_char_loc_to_abs_char_idx(parent_.scroll_ / TextShader::font().size);
-	auto hi_abs_char_idx = parent_.abs_char_loc_to_abs_char_idx((parent_.scroll_ + size()) / TextShader::font().size);
+	auto lo_abs_char_idx = parent().abs_char_loc_to_abs_char_idx(parent().scroll_ / TextShader::font().size);
+	auto hi_abs_char_idx = parent().abs_char_loc_to_abs_char_idx((parent().scroll_ + size()) / TextShader::font().size);
 
-	// auto lo_buf_char_idx = parent_.abs_char_idx_to_buf_char_idx(lo_abs_char_idx);
-	// auto hi_buf_char_idx = parent_.abs_char_loc_to_buf_char_idx((parent_.scroll_ + size()) / TextShader::font().size);
+	// auto lo_buf_char_idx = parent().abs_char_idx_to_buf_char_idx(lo_abs_char_idx);
+	// auto hi_buf_char_idx = parent().abs_char_loc_to_buf_char_idx((parent().scroll_ + size()) / TextShader::font().size);
 
-	auto user = parent_.finder_.user();
+	auto user = parent().finder_.user();
 	for (const auto &[ctx, job] : user.jobs()) {
 		const auto find_view = static_cast<const FindView *>(ctx);
 		const auto &results = job->results();
 
-		// const auto &job = parent_.finder_.jobs().at(&find_view);
+		// const auto &job = parent().finder_.jobs().at(&find_view);
 
 		// Timeit t("search");
 		// binary search for the first result that starts at >= lo_buf_char_idx
@@ -140,8 +142,8 @@ void ContentView::highlight_findings() {
 
 		// iterate through all results that start at >= lo_buf_char_idx and <= hi_buf_char_idx
 		for (; it != results.end() && it->start <= hi_abs_char_idx; ++it) {
-			auto start = parent_.abs_char_idx_to_buf_char_idx(it->start);
-			auto end = parent_.abs_char_idx_to_buf_char_idx(it->end);
+			auto start = parent().abs_char_idx_to_buf_char_idx(it->start);
+			auto end = parent().abs_char_idx_to_buf_char_idx(it->end);
 
 			// highlight the result
 			for (size_t buf_char_idx = start; buf_char_idx < end; buf_char_idx++) {
@@ -172,7 +174,7 @@ void ContentView::draw() {
 	glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
 
-	TextShader::draw(pos(), parent_.scroll_, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG);
+	TextShader::draw(pos(), parent().scroll_, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG);
 
 	scroll_h_.draw();
 	scroll_v_.draw();

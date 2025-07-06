@@ -158,7 +158,7 @@ private:
 	void update() override;
 
 public:
-	StripeView(size_t resolution, size_t tick_size);
+	StripeView(Widget *parent, size_t resolution, size_t tick_size);
 
 	// void reset();
 	// void add_tick(float location, color color);

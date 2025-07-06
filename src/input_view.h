@@ -20,7 +20,7 @@ class InputView : public Widget {
 	void update() override;
 
 public:
-	InputView(const std::function<void(std::string_view)> &&on_update = nullptr);
+	InputView(Widget *parent, const std::function<void(std::string_view)> &&on_update = nullptr);
 
 	std::string_view text() const;
 	void draw() override;

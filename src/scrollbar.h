@@ -18,10 +18,10 @@ class Scrollbar : public Widget {
 		void update() override;
 		void draw() override;
 
-		bool vert() const;
+		bool vert();
 
 	public:
-		Thumb(std::function<void(int)> &&scroll_cb);
+		Thumb(Widget *parent, std::function<void(int)> &&scroll_cb);
 	};
 
 	std::function<void(double)> scroll_cb_;
@@ -43,7 +43,7 @@ class Scrollbar : public Widget {
 	void update() override;
 
 public:
-	Scrollbar(bool vertical, std::function<void(double)> &&scroll_cb);
+	Scrollbar(Widget *parent, bool vertical, std::function<void(double)> &&scroll_cb);
 
 	void draw() override;
 	void set(size_t position, size_t visible_extents, size_t total_extents);

@@ -11,13 +11,11 @@ class FindView : public Widget {
 	class HandleView : public Widget {
 		friend class FindView;
 
-		const FindView &parent_;
-
 		void update() override;
 		void draw() override;
 
 	public:
-		HandleView(const FindView &parent);
+		HandleView(Widget *parent);
 	};
 
 public:
@@ -31,13 +29,13 @@ private:
 	std::function<void(FindView &)> on_find_ {};
 	color color_ {};
 	Flags flags_ {};
-	HandleView handle_ {*this};
-	InputView input_ {[this](auto) { handle_text(); }};
-	ButtonView but_prev_ {};
-	ButtonView but_next_ {};
-	ButtonView but_case_ {};
-	ButtonView but_word_ {};
-	ButtonView but_regex_ {};
+	HandleView handle_ {this};
+	InputView input_ {this, [this](auto) { handle_text(); }};
+	ButtonView but_prev_ {this};
+	ButtonView but_next_ {this};
+	ButtonView but_case_ {this};
+	ButtonView but_word_ {this};
+	ButtonView but_regex_ {this};
 
 	void handle_text();
 
@@ -54,7 +52,7 @@ private:
 	void update() override;
 
 public:
-	FindView(std::function<void(FindView &)> &&on_find);
+	FindView(Widget *parent, std::function<void(FindView &)> &&on_find);
 
 	Flags flags() const;
 	color color() const;
