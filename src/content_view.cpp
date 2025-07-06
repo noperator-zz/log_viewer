@@ -111,14 +111,13 @@ void ContentView::highlight_selection() {
 #endif
 }
 
-void ContentView::highlight_findings() {
+void ContentView::highlight_findings(Finder::User &user) {
 	auto lo_abs_char_idx = parent().abs_char_loc_to_abs_char_idx(parent().scroll_ / TextShader::font().size);
 	auto hi_abs_char_idx = parent().abs_char_loc_to_abs_char_idx((parent().scroll_ + size()) / TextShader::font().size);
 
 	// auto lo_buf_char_idx = parent().abs_char_idx_to_buf_char_idx(lo_abs_char_idx);
 	// auto hi_buf_char_idx = parent().abs_char_loc_to_buf_char_idx((parent().scroll_ + size()) / TextShader::font().size);
 
-	auto user = parent().finder_.user();
 	for (const auto &[ctx, job] : user.jobs()) {
 		const auto find_view = static_cast<const FindView *>(ctx);
 		const auto &results = job->results();
@@ -189,9 +188,21 @@ void ContentView::on_resize() {
 }
 
 void ContentView::update() {
+	reset_mod_styles();
+
+	if (selection_active_) {
+		highlight_selection();
+	}
+	auto user = parent().finder_.user();
+	highlight_findings(user);
+
+	TextShader::use(buf_);
+
+	glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
+
 	// TODO memory re-alloc in Finder could cause this to block for a long time.
 	//  Add a timeout parameter to finder_.user()
-	auto user = parent().finder_.user();
 	for (const auto &[ctx_, job] : user.jobs()) {
 		const auto &results = job->results();
 		stripe_view_.feed(ctx_, parent().line_starts_, results);
@@ -201,20 +212,10 @@ void ContentView::update() {
 void ContentView::draw() {
 	Scissor s {this};
 
-	reset_mod_styles();
-
 	GPShader::rect(pos(), size(), {0x2B, 0x2B, 0x2B, 0xFF}, Z_FILEVIEW_BG);
-	if (selection_active_) {
-		highlight_selection();
-	}
-	highlight_findings();
 	GPShader::draw();
 
 	TextShader::use(buf_);
-
-	glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
-
 	TextShader::draw(pos(), parent().scroll_, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG);
 
 	for (auto &ctx : find_ctxs_) {

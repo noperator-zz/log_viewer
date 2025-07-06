@@ -74,7 +74,6 @@ public:
 		Status status() const;
 	};
 
-private:
 	class User {
 		friend class Finder;
 

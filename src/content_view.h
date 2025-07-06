@@ -56,7 +56,7 @@ class ContentView : public Widget {
 	glm::ivec2 view_pos_to_abs_char_loc(glm::ivec2 view_pos);
 	void reset_mod_styles();
 	void highlight_selection();
-	void highlight_findings();
+	void highlight_findings(Finder::User &user);
 
 	bool on_mouse_button(glm::ivec2 mouse, int button, int action, Window::KeyMods mods) override;
 	bool on_cursor_pos(glm::ivec2 mouse) override;

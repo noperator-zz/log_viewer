@@ -173,6 +173,7 @@ void FileView::really_update_buffers(int start, int end, const uint8_t *data) {
 	num_chars = line_starts_[buf_lines_.y] - first_line_start;
 	glBufferSubData(GL_ARRAY_BUFFER, 0, num_chars, data + first_line_start);
 
+	content_view_.soil();
 	content_view_.base_styles_.resize_uninitialized(num_chars);
 	content_view_.mod_styles_.resize_uninitialized(num_chars);
 	size_t c = 0;
@@ -258,6 +259,7 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 	visible_lines.x = std::min(visible_lines.x, (int)num_lines() - 1);
 	visible_lines.y = std::min(visible_lines.y, (int)num_lines());
 
+	// TODO also run this when new lines are added and they're visible
 	// Check if the visible lines are already in the buffer
 	if (visible_lines.x < buf_lines_.x || visible_lines.y > buf_lines_.y) {
 		really_update_buffers(
@@ -319,6 +321,10 @@ void FileView::update() {
 
 	duration += duration_cast<microseconds>(steady_clock::now() - now);
 	// std::cout << "FileView::update total duration: " << duration.count() << "us\n";
+
+	// TODO temporary
+	content_view_.soil();
+	linenum_view_.soil();
 }
 
 void FileView::draw() {
