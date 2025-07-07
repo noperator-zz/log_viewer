@@ -35,13 +35,24 @@ Widget::Widget(Widget *parent, std::string_view name) : parent_(parent), window_
 
 Widget::Widget(Window &window, Widget *parent, std::string_view name) : parent_(parent), window_(&window), name_(name) {}
 
+bool Widget::soil_if_handled(bool handled) {
+	if (handled) {
+		soil();
+	}
+	return handled;
+}
+
+void Widget::hover_cb(bool state) {
+	on_hover(state);
+}
+
 bool Widget::mouse_button_cb(ivec2 mouse, int button, int action, Window::KeyMods mods) {
 	// for (auto child : children_) {
 	// 	if (child->mouse_button_cb(mouse, button, action, mods)) {
 	// 		return true;
 	// 	}
 	// }
-	return on_mouse_button(mouse, button, action, mods);
+	return soil_if_handled(on_mouse_button(mouse, button, action, mods));
 }
 
 bool Widget::cursor_pos_cb(ivec2 mouse) {
@@ -50,7 +61,7 @@ bool Widget::cursor_pos_cb(ivec2 mouse) {
 	// 		return true;
 	// 	}
 	// }
-	return on_cursor_pos(mouse);
+	return soil_if_handled(on_cursor_pos(mouse));
 }
 
 bool Widget::key_cb(int key, int scancode, int action, Window::KeyMods mods) {
@@ -59,7 +70,7 @@ bool Widget::key_cb(int key, int scancode, int action, Window::KeyMods mods) {
 	// 		return true;
 	// 	}
 	// }
-	return on_key(key, scancode, action, mods);
+	return soil_if_handled(on_key(key, scancode, action, mods));
 }
 
 bool Widget::char_cb(unsigned int codepoint, Window::KeyMods mods) {
@@ -68,7 +79,7 @@ bool Widget::char_cb(unsigned int codepoint, Window::KeyMods mods) {
 	// 		return true;
 	// 	}
 	// }
-	return on_char(codepoint, mods);
+	return soil_if_handled(on_char(codepoint, mods));
 }
 
 bool Widget::scroll_cb(ivec2 offset, Window::KeyMods mods) {
@@ -77,7 +88,7 @@ bool Widget::scroll_cb(ivec2 offset, Window::KeyMods mods) {
 	// 		return true;
 	// 	}
 	// }
-	return on_scroll(offset, mods);
+	return soil_if_handled(on_scroll(offset, mods));
 }
 
 bool Widget::drop_cb(int path_count, const char* paths[]) {
@@ -86,7 +97,7 @@ bool Widget::drop_cb(int path_count, const char* paths[]) {
 	// 		return true;
 	// 	}
 	// }
-	return on_drop(path_count, paths);
+	return soil_if_handled(on_drop(path_count, paths));
 }
 
 // void Widget::hover_cb() {
@@ -144,6 +155,10 @@ bool Widget::hovered() const {
 }
 
 bool Widget::pressed(int button) const {
+	if (window_->mouse_active_ != this) {
+		return false; // Not the active widget
+	}
+
 	switch (button) {
 		case GLFW_MOUSE_BUTTON_LEFT:
 			return window_->state_.l_pressed;

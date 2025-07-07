@@ -6,6 +6,7 @@
 #include "types.h"
 #include "input_view.h"
 #include "button_view.h"
+#include "label_view.h"
 
 class FindView : public Widget {
 	class HandleView : public Widget {
@@ -25,17 +26,31 @@ public:
 		bool regex {};
 	};
 
+	enum class Event {
+		kCriteria,
+		kPrev,
+		kNext,
+	};
+
+	struct State {
+		size_t total_matches {};
+		size_t current_match {};
+		bool bad_pattern {};
+	};
+
 private:
-	std::function<void(FindView &)> on_find_ {};
+	std::function<void(FindView &, Event)> event_cb_;
+	State state_ {};
 	color color_ {};
 	Flags flags_ {};
 	HandleView handle_ {this};
 	InputView input_ {this, [this](auto) { handle_text(); }};
-	ButtonView but_prev_ {this};
-	ButtonView but_next_ {this};
-	ButtonView but_case_ {this};
-	ButtonView but_word_ {this};
-	ButtonView but_regex_ {this};
+	LabelView match_label_ {this};
+	ButtonView but_prev_ {this, false, [this](bool){ event_cb_(*this, Event::kPrev); }};
+	ButtonView but_next_ {this, false, [this](bool){ event_cb_(*this, Event::kNext); }};
+	ButtonView but_case_ {this, true};
+	ButtonView but_word_ {this, true};
+	ButtonView but_regex_ {this, true};
 
 	void handle_text();
 
@@ -52,8 +67,11 @@ private:
 	void update() override;
 
 public:
-	FindView(Widget *parent, std::function<void(FindView &)> &&on_find);
+	FindView(Widget *parent, std::function<void(FindView &, Event)> &&event_cb);
 
+	void set_state(State state);
+
+	const State &state() const;
 	Flags flags() const;
 	color color() const;
 	std::string_view text() const;

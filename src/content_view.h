@@ -15,26 +15,10 @@ class ContentView : public Widget {
 
 	static constexpr int SCROLL_W = 20;
 
-	struct FindContext {
-		FindView view_;
-
-		// State as of the last update
-		// # lines used for position calculation.
-		// Latched until the actual # lines increases by (1 / resolution) %, at which point
-		// the value is updated, and the stripe view is reset and recomputed.
-		size_t num_lines_at_reset_ {};
-
-		size_t last_report_ {};
-		size_t last_line_ {};
-
-		FindContext(Widget *parent, auto&& cb)
-		: view_{parent, std::forward<decltype(cb)>(cb)} {}
-	};
-
 	Scrollbar scroll_h_ {this, false, [this](double p){scroll_h_cb(p);}};
 	Scrollbar scroll_v_ {this, true, [this](double p){scroll_v_cb(p);}};
 	StripeView stripe_view_ {this, 1000, 1};
-	std::vector<std::unique_ptr<FindContext>> find_ctxs_ {};
+	std::vector<std::unique_ptr<FindView>> find_views_ {};
 	TextShader::Buffer buf_ {};
 	glm::uvec2 render_range_ {};
 
@@ -47,7 +31,7 @@ class ContentView : public Widget {
 	FileView &parent();
 
 	void on_find(void *ctx, size_t idx);
-	void handle_findview(FindView &find_view);
+	void on_findview_event(FindView &view, FindView::Event event);
 
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);

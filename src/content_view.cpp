@@ -9,8 +9,10 @@ ContentView::ContentView(Widget *parent) : Widget(parent, "C") {
 	add_child(scroll_v_);
 	add_child(stripe_view_);
 
-	find_ctxs_.emplace_back(std::make_unique<FindContext>(this, [this](auto &find_view) { handle_findview(find_view); }));
-	add_child(find_ctxs_.back()->view_);
+	find_views_.emplace_back(std::make_unique<FindView>(this,
+		[this](auto &find_view, auto event) { on_findview_event(find_view, event); }
+	));
+	add_child(*find_views_.back().get());
 }
 
 ContentView::~ContentView() {
@@ -26,22 +28,42 @@ void ContentView::scroll_v_cb(double percent) {
 	parent().scroll_v_cb(percent);
 }
 
-void ContentView::handle_findview(FindView &find_view) {
-	int ret = parent().finder_.submit(&find_view, [this](auto ctx, auto idx){on_find(ctx, idx);}, find_view.text(), 0);//find_view.flags());
-	if (ret != 0) {
-		std::cerr << "Error submitting find request: " << ret << std::endl;
-	}
+void ContentView::on_findview_event(FindView &view, FindView::Event event) {
 
-	stripe_view_.remove_dataset(&find_view);
-	stripe_view_.add_dataset(&find_view, find_view.color(), [](const void *ele) {
-		return reinterpret_cast<const Finder::Job::Result*>(ele)->start;
-	});
+	switch (event) {
+		case FindView::Event::kCriteria: {
+			FindView::State state {};
+
+			int ret = parent().finder_.submit(&view, [this](auto ctx, auto idx){on_find(ctx, idx);}, view.text(), 0);//find_view.flags());
+			if (ret != 0) {
+				state.bad_pattern = true;
+				std::cerr << "Error submitting find request: " << ret << std::endl;
+			}
+
+			view.set_state(state);
+
+			stripe_view_.remove_dataset(&view);
+			stripe_view_.add_dataset(&view, view.color(), [](const void *ele) {
+				return static_cast<const Finder::Job::Result*>(ele)->start;
+			});
+			soil();
+			break;
+		}
+		case FindView::Event::kPrev:
+		case FindView::Event::kNext: {
+			auto state = view.state();
+
+			assert(state.total_matches > 0);
+			ssize_t inc = event == FindView::Event::kNext ? 1 : -1;
+			state.current_match = ((ssize_t)state.current_match + inc + state.total_matches) % state.total_matches;
+			view.set_state(state);
+			// TODO scroll to the match
+			break;
+		}
+	}
 }
 
 void ContentView::on_find(void *ctx, size_t idx) {
-	// TODO dedicated find_ctx mutex
-	// std::lock_guard lock(line_mtx_);
-	// static_cast<FindContext *>(ctx)->next_report_ = idx;
 	soil();
 }
 
@@ -175,8 +197,8 @@ bool ContentView::on_cursor_pos(ivec2 mouse) {
 
 void ContentView::on_resize() {
 	auto y = pos().y;
-	for (auto &ctx : find_ctxs_) {
-		ctx->view_.resize({pos().x, y}, {size().x - scroll_v_.size().x, 30});
+	for (auto &view : find_views_) {
+		view->resize({pos().x, y}, {size().x - scroll_v_.size().x, 30});
 		y += 30;
 	}
 
@@ -204,7 +226,9 @@ void ContentView::update() {
 	// TODO memory re-alloc in Finder could cause this to block for a long time.
 	//  Add a timeout parameter to finder_.user()
 	for (const auto &[ctx_, job] : user.jobs()) {
+		auto view = static_cast<FindView *>(ctx_);
 		const auto &results = job->results();
+		view->set_state({results.size(), view->state().current_match, false});
 		stripe_view_.feed(ctx_, parent().line_starts_, results);
 	}
 }
@@ -218,8 +242,8 @@ void ContentView::draw() {
 	TextShader::use(buf_);
 	TextShader::draw(pos(), parent().scroll_, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG);
 
-	for (auto &ctx : find_ctxs_) {
-		ctx->view_.draw();
+	for (auto &view : find_views_) {
+		view->draw();
 	}
 
 	stripe_view_.draw();

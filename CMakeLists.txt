@@ -72,6 +72,7 @@ add_executable(${PROJECT_NAME}
     src/content_view.cpp
     src/find_view.cpp
     src/input_view.cpp
+    src/label_view.cpp
     src/button_view.cpp
     src/widget.cpp
     src/window.cpp

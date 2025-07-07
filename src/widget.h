@@ -33,7 +33,9 @@ class Widget {
 
 	bool hit_test(const glm::uvec2 &point) const;
 	Widget *deepest_hit_child(glm::uvec2 point);
+	bool soil_if_handled(bool handled);
 
+	void hover_cb(bool state);
 	bool cursor_pos_cb(glm::ivec2 mouse);
 	bool mouse_button_cb(glm::ivec2 mouse, int button, int action, Window::KeyMods mods);
 	bool key_cb(int key, int scancode, int action, Window::KeyMods mods);
@@ -68,10 +70,9 @@ protected:
 
 	virtual void on_resize() {}
 
-	// virtual void on_hover() {}
-	// virtual void on_unhover() {}
 
 	// TODO should these default to return true to stop event propagation unless explicitly overridden?
+	virtual void on_hover(bool state) {}
 	virtual bool on_mouse_button(glm::ivec2 mouse, int button, int action, Window::KeyMods mods) { return false; }
 	virtual bool on_cursor_pos(glm::ivec2 pos) { return false; }
 	virtual bool on_drag(glm::ivec2 offset) { return false; }

@@ -4,13 +4,49 @@
 
 using namespace glm;
 
-ButtonView::ButtonView(Widget *parent, const std::function<void(bool)> &&on_click) : Widget(parent), on_click_(std::move(on_click)) {}
+ButtonView::ButtonView(Widget *parent, bool toggle, const std::function<void(bool)> &&on_click)
+	: Widget(parent), toggle_(toggle), on_click_(std::move(on_click)) {}
+
+void ButtonView::set_enabled(bool enabled) {
+	enabled_ = enabled;
+	soil();
+}
+
+void ButtonView::on_hover(bool state) {
+	if (enabled_) {
+		soil();
+	}
+}
 
 bool ButtonView::on_mouse_button(ivec2 mouse, int button, int action, Window::KeyMods mods) {
-	if (button != GLFW_MOUSE_BUTTON_LEFT || action != GLFW_RELEASE) {
+	if (!enabled_) {
 		return false;
 	}
-	state_ = !state_;
+
+	if (button != GLFW_MOUSE_BUTTON_LEFT) {
+		return false;
+	}
+
+	if (action == GLFW_PRESS) {
+		state_ = !state_;
+		return true;
+	}
+
+	if (action != GLFW_RELEASE) {
+		return false;
+	}
+
+	if (!hovered()) {
+		// undo the state change if the button was released outside the button
+		state_ = !state_;
+		return true;
+	}
+
+	if (!toggle_) {
+		// if not toggle, reset state to false on release
+		state_ = false;
+	}
+
 	if (on_click_) {
 		on_click_(state_);
 	}
@@ -25,6 +61,13 @@ void ButtonView::draw() {
 	auto [x, y, w, h] = GPShader::rect(*this, pos() + ivec2{2}, ivec2{-4}, {0x00, 0x00, 0x80, 0xFF}, Z_UI_FG); // content
 	if (state_) {
 		GPShader::rect(*this, {x, y}, {w, h}, {0xFF, 0xFF, 0xFF, 0x40}, Z_UI_FG); // highlight
+	}
+	if (enabled_) {
+		if (hovered()) {
+			GPShader::rect(*this, {x, y}, {w, h}, {0xFF, 0xFF, 0xFF, 0x40}, Z_UI_FG); // highlight
+		}
+	} else {
+		GPShader::rect(*this, {x, y}, {w, h}, {0x00, 0x00, 0x00, 0x40}, Z_UI_FG); // disabled
 	}
 }
 

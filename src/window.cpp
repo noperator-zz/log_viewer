@@ -48,6 +48,15 @@ void Window::update_hovered() {
 	// Find the deepest hovered child
 	hovered_ = root_.deepest_hit_child(mouse_);
 
+	if (hovered_ != prev) {
+		if (prev) {
+			prev->hover_cb(false);
+		}
+		if (hovered_) {
+			hovered_->hover_cb(true);
+		}
+	}
+
 	// if (hovered_ && hovered_ != prev) {
 	// 	hovered_->state_.hovered = true;
 	// 	std::cout << "H " << hovered_->path() << std::endl;
