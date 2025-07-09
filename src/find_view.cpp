@@ -1,6 +1,7 @@
 #include "find_view.h"
 
 #include "gp_shader.h"
+#include "layout.h"
 
 using namespace glm;
 
@@ -28,6 +29,18 @@ FindView::FindView(Widget *parent, std::function<void(FindView &, Event)> &&even
 	but_case_.set_enabled(true);
 	but_word_.set_enabled(true);
 	but_regex_.set_enabled(true);
+
+	static constexpr int HANDLE_W = 20;
+	static constexpr int BUTTON_W = 30;
+
+	layout_.add(handle_, HANDLE_W);
+	layout_.add(input_, layout::Remain{100});
+	layout_.add(match_label_, 300);
+	layout_.add(but_prev_, BUTTON_W);
+	layout_.add(but_next_, BUTTON_W);
+	layout_.add(but_case_, BUTTON_W);
+	layout_.add(but_word_, BUTTON_W);
+	layout_.add(but_regex_, BUTTON_W);
 }
 
 bool FindView::on_key(int key, int scancode, int action, Window::KeyMods mods) {
@@ -72,16 +85,7 @@ std::string_view FindView::text() const {
 }
 
 void FindView::on_resize() {
-	static constexpr int HANDLE_W = 20;
-	static constexpr int BUTTON_W = 30;
-	auto [x, y, w, h] = handle_.resize(pos(), {HANDLE_W, size().y});
-	std::tie(x, y, w, h) = input_.resize({x+w, y}, {-BUTTON_W * 5 - w, h});
-	match_label_.resize({x + 100, y}, {HANDLE_W, size().y});
-	std::tie(x, y, w, h) = but_prev_.resize({x+w, y}, {BUTTON_W, h});
-	std::tie(x, y, w, h) = but_next_.resize({x+w, y}, {BUTTON_W, h});
-	std::tie(x, y, w, h) = but_case_.resize({x+w, y}, {BUTTON_W, h});
-	std::tie(x, y, w, h) = but_word_.resize({x+w, y}, {BUTTON_W, h});
-	std::tie(x, y, w, h) = but_regex_.resize({x+w, y}, {BUTTON_W, h});
+	layout_.apply(*this);
 }
 
 void FindView::update() {

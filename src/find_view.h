@@ -7,6 +7,7 @@
 #include "input_view.h"
 #include "button_view.h"
 #include "label_view.h"
+#include "layout.h"
 
 class FindView : public Widget {
 	class HandleView : public Widget {
@@ -51,6 +52,7 @@ private:
 	ButtonView but_case_ {this, true};
 	ButtonView but_word_ {this, true};
 	ButtonView but_regex_ {this, true};
+	layout::H layout_ {};
 
 	void handle_text();
 

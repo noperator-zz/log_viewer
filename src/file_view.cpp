@@ -280,8 +280,11 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 }
 
 void FileView::on_resize() {
-	auto [x, y, w, h] = linenum_view_.resize(pos(), {linenum_chars_ * TextShader::font().size.x + 20, size().y});
-	std::tie(x, y, w, h) = content_view_.resize({x + w, y}, {size().x - w, h});
+	// TODO cache the layout; update only when linenum_chars_ or font size changes
+	layout::H lay {};
+	lay.add(linenum_view_, linenum_chars_ * TextShader::font().size.x + 20);
+	lay.add(content_view_, layout::Remain{100});
+	lay.apply(*this);
 }
 
 

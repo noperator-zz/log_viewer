@@ -5,9 +5,11 @@
 #include <glm/glm.hpp>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
+
+#include "resizable.h"
 #include "window.h"
 
-class Widget {
+class Widget : public Resizable {
 	friend class Window;
 
 	struct State {
@@ -25,8 +27,6 @@ class Widget {
 	Widget *parent_;
 	Window *window_;
 	std::vector<Widget*> children_ {};
-	glm::ivec2 pos_ {};
-	glm::ivec2 size_ {};
 	std::atomic<bool> dirty_ {true};
 	// State state_ {};
 
@@ -103,6 +103,6 @@ public:
 	[[nodiscard]] std::string_view name() const;
 	[[nodiscard]] std::string path() const;
 
-	std::tuple<int, int, int, int> resize(glm::ivec2 pos, glm::ivec2 size);
+	std::tuple<int, int, int, int> resize(glm::ivec2 pos, glm::ivec2 size) override;
 	void soil();
 };

@@ -1,5 +1,6 @@
 #include "content_view.h"
 #include "file_view.h"
+#include "layout.h"
 #include "util.h"
 
 using namespace glm;
@@ -196,16 +197,22 @@ bool ContentView::on_cursor_pos(ivec2 mouse) {
 }
 
 void ContentView::on_resize() {
-	auto y = pos().y;
+	layout::H hlay {};
+	layout::V vlay {};
+
 	for (auto &view : find_views_) {
-		view->resize({pos().x, y}, {size().x - scroll_v_.size().x, 30});
-		y += 30;
+		vlay.add(view.get(), 30);
 	}
 
-	stripe_view_.resize({pos().x + size().x - 30, y}, {30, size().y - y});
+	vlay.add(nullptr, layout::Remain{100});
+	vlay.add(scroll_h_, SCROLL_W);
 
-	scroll_h_.resize({pos().x, pos().y + size().y - SCROLL_W}, {size().x - SCROLL_W, SCROLL_W});
-	scroll_v_.resize({pos().x + size().x - SCROLL_W, y}, {SCROLL_W, size().y - y});
+	hlay.add(vlay, layout::Remain{100});
+	hlay.add(scroll_v_, SCROLL_W);
+
+	stripe_view_.resize({pos().x + size().x - 30, pos().y}, {30, size().y});
+
+	hlay.apply(*this);
 	update_scrollbar();
 }
 
