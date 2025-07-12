@@ -44,11 +44,14 @@ FindView::FindView(Widget *parent, std::function<void(FindView &, Event)> &&even
 }
 
 bool FindView::on_key(int key, int scancode, int action, Window::KeyMods mods) {
-	if (action != GLFW_PRESS) {
-		return false;
-	}
-
-	if (key == GLFW_KEY_ENTER) {
+	if (key == GLFW_KEY_ENTER && (action == GLFW_PRESS || action == GLFW_REPEAT)) {
+		if (state_.total_matches) {
+			if (mods.shift) {
+				event_cb_(*this, Event::kPrev);
+			} else {
+				event_cb_(*this, Event::kNext);
+			}
+		}
 		return true;
 	}
 
