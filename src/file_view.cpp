@@ -46,21 +46,12 @@ void FileView::on_new_lines() {
 	// Window::send_event();
 }
 
-void FileView::scroll_h_cb(double percent) {
+void FileView::scroll_to(ivec2 pos, bool allow_autoscroll) {
 	auto max = max_scroll();
+	scroll_ = pos;
+	autoscroll_ = allow_autoscroll && scroll_.y >= max_visible_scroll().y;
 
-	scroll_.x = percent * max.x;
 	scroll_.x = std::clamp(scroll_.x, 0, max.x);
-	content_view_.update_scrollbar();
-	soil();
-}
-
-void FileView::scroll_v_cb(double percent) {
-	auto max = max_scroll();
-
-	scroll_.y = percent * max.y;
-	autoscroll_ = scroll_.y >= max_visible_scroll().y;
-
 	scroll_.y = std::clamp(scroll_.y, 0, max.y);
 	content_view_.update_scrollbar();
 	soil();

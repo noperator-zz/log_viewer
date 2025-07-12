@@ -226,3 +226,41 @@ void Finder::remove(void* ctx) {
 	// TODO This will block until the next match is found. Probably milliseconds, but it's indeterminate.
 	jobs_.erase(ctx);
 }
+
+size_t Finder::find_prev_match(const dynarray<Job::Result> &results, size_t char_idx) {
+	// search through results for the first match that starts before char_idx
+	auto it = std::lower_bound(results.begin(), results.end(), char_idx);
+	if (it == results.end()) {
+		return results.size() - 1; // char_idx is after the last match, return the last match
+	}
+	if (char_idx > it->start) {
+		return it - results.begin(); // char_idx is after the match, return this match
+	}
+	// char_idx is at or before the match, return the previous match
+	if (it == results.begin()) {
+		return results.size() - 1; // wrap around to the last match
+	}
+	it--; // move to the previous match
+	return it - results.begin();
+}
+
+size_t Finder::find_next_match(const dynarray<Job::Result> &results, size_t char_idx) {
+	// search through results for the first match that starts after char_idx
+	auto it = std::upper_bound(results.begin(), results.end(), char_idx,
+		[](size_t char_idx, const Job::Result &result) { return char_idx < result.start; });
+	if (it == results.end()) {
+		return 0; // wrap around to the first match
+	}
+	return it - results.begin();
+}
+
+size_t Finder::find_line_containing_SOM(const dynarray<size_t> &line_starts, const dynarray<Job::Result> &results, size_t match_idx) {
+	auto char_pos = results[match_idx].start;
+
+	auto line_it = std::lower_bound(line_starts.begin(), line_starts.end(), char_pos);
+	assert(line_it != line_starts.end());
+	if (*line_it > char_pos && line_it != line_starts.begin()) {
+		line_it--;
+	}
+	return line_it - line_starts.begin();
+}

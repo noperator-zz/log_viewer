@@ -108,5 +108,9 @@ public:
 	[[nodiscard]] int submit(void* ctx, std::function<void(void*, size_t)> &&on_result, std::string_view pattern, int flags);
 	void remove(void* ctx);
 	User user() const {	return User(*this);	}
+
+	static size_t find_prev_match(const dynarray<Job::Result> &results, size_t char_idx);
+	static size_t find_next_match(const dynarray<Job::Result> &results, size_t char_idx);
+	static size_t find_line_containing_SOM(const dynarray<size_t> &line_starts, const dynarray<Job::Result> &results, size_t match_idx);
 };
 

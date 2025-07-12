@@ -31,7 +31,9 @@ class ContentView : public Widget {
 
 	FileView &parent();
 
-	void on_find(void *ctx, size_t idx);
+	void scroll_to_cursor(bool center);
+
+	void on_finder_results(void *ctx, size_t idx);
 	void on_findview_event(FindView &view, FindView::Event event);
 
 	void scroll_h_cb(double percent);

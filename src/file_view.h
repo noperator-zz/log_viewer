@@ -48,8 +48,7 @@ class FileView : public Widget {
 
 	void really_update_buffers(int start, int end, const uint8_t *data);
 	void update_buffers(glm::uvec2 &content_render_range, glm::uvec2 &linenum_render_range, const Dataset::User &user);
-	void scroll_h_cb(double percent);
-	void scroll_v_cb(double percent);
+	void scroll_to(glm::ivec2 pos, bool allow_autoscrol);
 	// size_t get_line_start(size_t line_idx) const;
 	static glm::ivec2 abs_char_loc_to_abs_px_loc(glm::ivec2 abs_loc) ;
 	size_t abs_char_loc_to_abs_char_idx(glm::ivec2 abs_loc) const;

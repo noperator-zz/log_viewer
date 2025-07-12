@@ -22,21 +22,32 @@ ContentView::~ContentView() {
 
 FileView &ContentView::parent() { return *Widget::parent<FileView>(); }
 
+void ContentView::scroll_to_cursor(bool center) {
+	if (!center) {
+		// TODO
+		center = true;
+	}
+
+	auto px_loc = FileView::abs_char_loc_to_abs_px_loc(cursor_abs_char_loc_);
+	auto pos = px_loc - size() / 2;
+
+	parent().scroll_to(pos, false);
+}
+
 void ContentView::scroll_h_cb(double percent) {
-	parent().scroll_h_cb(percent);
+	parent().scroll_to({percent * parent().max_scroll().x, parent().scroll_.y}, true);
 }
 
 void ContentView::scroll_v_cb(double percent) {
-	parent().scroll_v_cb(percent);
+	parent().scroll_to({parent().scroll_.x, percent * parent().max_scroll().y}, true);
 }
 
 void ContentView::on_findview_event(FindView &view, FindView::Event event) {
-
 	switch (event) {
 		case FindView::Event::kCriteria: {
 			FindView::State state {};
 
-			int ret = parent().finder_.submit(&view, [this](auto ctx, auto idx){on_find(ctx, idx);}, view.text(), 0);//find_view.flags());
+			int ret = parent().finder_.submit(&view, [this](auto ctx, auto idx){on_finder_results(ctx, idx);}, view.text(), 0);//find_view.flags());
 			if (ret != 0) {
 				state.bad_pattern = true;
 				std::cerr << "Error submitting find request: " << ret << std::endl;
@@ -56,16 +67,34 @@ void ContentView::on_findview_event(FindView &view, FindView::Event event) {
 			auto state = view.state();
 
 			assert(state.total_matches > 0);
-			ssize_t inc = event == FindView::Event::kNext ? 1 : -1;
-			state.current_match = ((ssize_t)state.current_match + inc + state.total_matches) % state.total_matches;
+
+			auto user = parent().finder_.user();
+			auto &job = user.jobs().at(&view);
+			const auto &results = job->results();
+
+			auto cursor_abs_char_idx = parent().abs_char_loc_to_abs_char_idx(cursor_abs_char_loc_);
+
+			if (event == FindView::Event::kNext) {
+				state.current_match = Finder::find_next_match(results, cursor_abs_char_idx);
+			} else {
+				state.current_match = Finder::find_prev_match(results, cursor_abs_char_idx);
+			}
+
 			view.set_state(state);
-			// TODO scroll to the match
+
+			const auto &match = results[state.current_match];
+			size_t line_idx = Finder::find_line_containing_SOM(parent().line_starts_, results, state.current_match);
+
+			cursor_abs_char_loc_ = ivec2(match.start - parent().line_starts_[line_idx], line_idx);
+			// TODO also highlight the active match
+			scroll_to_cursor(true);
+
 			break;
 		}
 	}
 }
 
-void ContentView::on_find(void *ctx, size_t idx) {
+void ContentView::on_finder_results(void *ctx, size_t idx) {
 	soil();
 }
 
