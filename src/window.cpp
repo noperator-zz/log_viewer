@@ -192,12 +192,13 @@ void Window::toggle_fullscreen() {
 	fullscreen_ = !fullscreen_;
 }
 
-bool Window::draw() const {
+bool Window::draw(bool force) const {
 	bool tree_dirty = false;
 	{
 		// Timeit t("Update tree");
 		tree_dirty = root_.do_update();
 	}
+	tree_dirty |= force;
 	if (tree_dirty) {
 		// Timeit t("Draw tree");
 		root_.draw();

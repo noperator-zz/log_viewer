@@ -96,7 +96,7 @@ protected:
 	void toggle_fullscreen();
 	[[nodiscard]] bool should_close() const;
 	// void wait_events();
-	bool draw() const;
+	[[nodiscard]] bool draw(bool force) const;
 
 public:
 	Window(GLFWwindow *window, Widget &root);

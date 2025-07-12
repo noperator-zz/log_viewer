@@ -104,7 +104,16 @@ void AppWindow::window_refresh_cb() {
 
 void AppWindow::draw_cb() {
     auto frame_start = high_resolution_clock::now();
-    fps_ += draw();
+    auto time_since_last_draw = duration_cast<milliseconds>(frame_start - last_draw_);
+
+    // This is mostly so the cursor blinks smoothly
+    bool force_draw = time_since_last_draw >= 50ms;
+
+    bool did_draw = draw(force_draw);
+    if (did_draw) {
+        last_draw_ = frame_start;
+        fps_++;
+    }
 
     // auto frame_remain = 1000ms - duration_cast<milliseconds>(high_resolution_clock::now() - frame_start);
     // if (frame_remain > 0ms) {

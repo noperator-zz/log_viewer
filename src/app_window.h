@@ -7,6 +7,7 @@
 class AppWindow : public Window {
 	App app_ {*this};
 	std::chrono::time_point<std::chrono::high_resolution_clock> last_stat_ {std::chrono::high_resolution_clock::now()};
+	std::chrono::time_point<std::chrono::high_resolution_clock> last_draw_ {std::chrono::high_resolution_clock::now()};
 	size_t fps_ {};
 
 	AppWindow(GLFWwindow *window);
