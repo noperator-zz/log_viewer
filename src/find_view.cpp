@@ -68,7 +68,11 @@ void FindView::set_state(State state) {
 	but_prev_.set_enabled(state_.total_matches > 0);
 	but_next_.set_enabled(state_.total_matches > 0);
 
-	match_label_.set_text(std::to_string(state_.current_match) + " / " + std::to_string(state_.total_matches));
+	if (!state_.total_matches) {
+		match_label_.set_text("0 results");
+	} else {
+		match_label_.set_text(std::to_string(state_.current_match + 1) + "/" + std::to_string(state_.total_matches));
+	}
 }
 
 const FindView::State &FindView::state() const {
