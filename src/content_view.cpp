@@ -269,7 +269,7 @@ static bool cursor_visible() {
 }
 
 void ContentView::draw() {
-	// Scissor s {this};
+	Scissor s {this};
 
 	GPShader::rect(pos(), size(), {0x2B, 0x2B, 0x2B, 0xFF}, Z_FILEVIEW_BG);
 	GPShader::draw();

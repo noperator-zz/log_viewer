@@ -8,19 +8,24 @@ using namespace glm;
 
 
 Widget::Scissor::Scissor(Widget *widget) {
-	if (!nesting_) {
+	if (stack_.empty()) {
 		glEnable(GL_SCISSOR_TEST);
 	}
-	nesting_++;
+	auto window_h = widget->window()->fb_size_.y;
 	auto pos = widget->pos();
 	auto size = widget->size();
-	glScissor(pos.x, pos.y, size.x, size.y);
+	stack_.emplace_back(pos.x, window_h - (pos.y + size.y), size.x, size.y);
+	auto rect = stack_.back();
+	glScissor(rect.x, rect.y, rect.z, rect.w);
 }
 
 Widget::Scissor::~Scissor() {
-	nesting_--;
-	assert(nesting_ >= 0);
-	if (nesting_ == 0) {
+	if (!stack_.empty()) {
+		auto rect = stack_.back();
+		stack_.pop_back();
+		glScissor(rect.x, rect.y, rect.z, rect.w);
+	}
+	if (stack_.empty()) {
 		glDisable(GL_SCISSOR_TEST);
 	}
 }

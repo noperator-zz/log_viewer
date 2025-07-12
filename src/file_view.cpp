@@ -20,7 +20,6 @@ FileView::FileView(Widget *parent, const char *path)
 	add_child(linenum_view_);
 	add_child(content_view_);
 
-	// TODO move these back to FileView
 	find_views_.emplace_back(std::make_unique<FindView>(this,
 		[this](auto &find_view, auto event) { content_view_.on_findview_event(find_view, event); }
 	));
@@ -339,7 +338,7 @@ void FileView::update() {
 }
 
 void FileView::draw() {
-
+	Scissor s {this};
 	// std::cout << content_render_range.x << " " << content_render_range.y << "\n";
 
 	// TextShader::globals.frame_offset_px = pos();

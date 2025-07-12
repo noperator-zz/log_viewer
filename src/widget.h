@@ -58,7 +58,7 @@ class Widget : public Resizable {
 
 protected:
 	class Scissor {
-		int nesting_ {};
+		static inline std::vector<glm::ivec4> stack_ {};
 	public:
 		Scissor(Widget *widget);
 		~Scissor();
