@@ -51,6 +51,7 @@ class FileView : public Widget {
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
 	// size_t get_line_start(size_t line_idx) const;
+	static glm::ivec2 abs_char_loc_to_abs_px_loc(glm::ivec2 abs_loc) ;
 	size_t abs_char_loc_to_abs_char_idx(glm::ivec2 abs_loc) const;
 	size_t abs_char_idx_to_buf_char_idx(size_t abs_idx) const;
 	size_t abs_char_loc_to_buf_char_idx(glm::ivec2 abs_loc) const;

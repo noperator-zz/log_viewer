@@ -130,6 +130,10 @@ ivec2 FileView::max_visible_scroll() const {
 //  buf_char_loc -> buf_char_idx: abs_char_loc(buf_loc) - line_start[buf_lines_.x]
 //  -
 
+ivec2 FileView::abs_char_loc_to_abs_px_loc(ivec2 abs_loc) {
+	return abs_loc * TextShader::font().size;
+}
+
 size_t FileView::abs_char_loc_to_abs_char_idx(ivec2 abs_loc) const {
 	if (abs_loc.y < 0) {
 		return 0;

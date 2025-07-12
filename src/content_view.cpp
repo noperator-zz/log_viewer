@@ -4,6 +4,7 @@
 #include "util.h"
 
 using namespace glm;
+using namespace std::chrono;
 
 ContentView::ContentView(Widget *parent) : Widget(parent, "C") {
 	add_child(scroll_h_);
@@ -73,8 +74,12 @@ void ContentView::update_scrollbar() {
 	scroll_v_.set(parent().scroll_.y, size().y, parent().num_lines() * TextShader::font().size.y);
 }
 
-ivec2 ContentView::view_pos_to_abs_char_loc(ivec2 view_pos) {
-	return (view_pos + parent().scroll_) / TextShader::font().size;
+ivec2 ContentView::view_px_loc_to_abs_char_loc(ivec2 view_px_loc) {
+	return (view_px_loc + parent().scroll_) / TextShader::font().size;
+}
+
+ivec2 ContentView::abs_px_loc_to_view_px_loc(ivec2 px_loc)  {
+	return px_loc - parent().scroll_ + pos();
 }
 
 void ContentView::reset_mod_styles() {
@@ -171,12 +176,12 @@ void ContentView::highlight_findings(Finder::User &user) {
 bool ContentView::on_mouse_button(ivec2 mouse, int button, int action, Window::KeyMods mods) {
 	if (pressed()) {
 		// TODO if selection is in blank space, clip to the nearest left character
-		ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));
-		selection_abs_char_loc = {mouse_abs_char_loc, mouse_abs_char_loc};
+		cursor_abs_char_loc_ = view_px_loc_to_abs_char_loc(rel_pos(mouse));
+		selection_abs_char_loc = {cursor_abs_char_loc_, cursor_abs_char_loc_};
 		selection_active_ = true;
 	}
 	soil();
-	return false;
+	return true;
 }
 
 bool ContentView::on_cursor_pos(ivec2 mouse) {
@@ -189,11 +194,11 @@ bool ContentView::on_cursor_pos(ivec2 mouse) {
 	}
 
 	// TODO if selection is in blank space, clip to the nearest left character
-	ivec2 mouse_abs_char_loc = view_pos_to_abs_char_loc(rel_pos(mouse));
-	selection_abs_char_loc.second = mouse_abs_char_loc;
+	cursor_abs_char_loc_ = view_px_loc_to_abs_char_loc(rel_pos(mouse));
+	selection_abs_char_loc.second = cursor_abs_char_loc_;
 
 	soil();
-	return false;
+	return true;
 }
 
 void ContentView::on_resize() {
@@ -240,6 +245,12 @@ void ContentView::update() {
 	}
 }
 
+static bool cursor_visible() {
+	// 500ms blink
+	auto now = steady_clock::now();
+	return duration_cast<milliseconds>(now.time_since_epoch()).count() % 1000 < 500;
+}
+
 void ContentView::draw() {
 	Scissor s {this};
 
@@ -248,6 +259,11 @@ void ContentView::draw() {
 
 	TextShader::use(buf_);
 	TextShader::draw(pos(), parent().scroll_, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG);
+
+	if (cursor_visible()) {
+		auto view_px_loc = abs_px_loc_to_view_px_loc(FileView::abs_char_loc_to_abs_px_loc(cursor_abs_char_loc_));
+		GPShader::rect(view_px_loc, ivec2{2, TextShader::font().size.y}, {0xFF, 0xFF, 0xFF, 0xFF}, Z_UI_FG);
+	}
 
 	for (auto &view : find_views_) {
 		view->draw();

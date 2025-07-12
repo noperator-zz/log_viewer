@@ -25,6 +25,7 @@ class ContentView : public Widget {
 	dynarray<TextShader::CharStyle> base_styles_ {};
 	dynarray<TextShader::CharStyle> mod_styles_ {};
 
+	glm::ivec2 cursor_abs_char_loc_ {};
 	std::pair<glm::ivec2, glm::ivec2> selection_abs_char_loc {};
 	bool selection_active_ {false};
 
@@ -37,7 +38,9 @@ class ContentView : public Widget {
 	void scroll_v_cb(double percent);
 	void update_scrollbar();
 
-	glm::ivec2 view_pos_to_abs_char_loc(glm::ivec2 view_pos);
+	glm::ivec2 view_px_loc_to_abs_char_loc(glm::ivec2 view_px_loc);
+	glm::ivec2 abs_px_loc_to_view_px_loc(glm::ivec2 px_loc);
+
 	void reset_mod_styles();
 	void highlight_selection();
 	void highlight_findings(Finder::User &user);
