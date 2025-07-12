@@ -11,10 +11,11 @@ ContentView::ContentView(Widget *parent) : Widget(parent, "C") {
 	add_child(scroll_v_);
 	add_child(stripe_view_);
 
-	find_views_.emplace_back(std::make_unique<FindView>(this,
-		[this](auto &find_view, auto event) { on_findview_event(find_view, event); }
-	));
-	add_child(*find_views_.back().get());
+	vlay_.add(nullptr, layout::Remain{100});
+	vlay_.add(scroll_h_, SCROLL_W);
+
+	hlay_.add(vlay_, layout::Remain{100});
+	hlay_.add(scroll_v_, SCROLL_W);
 }
 
 ContentView::~ContentView() {
@@ -231,22 +232,9 @@ bool ContentView::on_cursor_pos(ivec2 mouse) {
 }
 
 void ContentView::on_resize() {
-	layout::H hlay {};
-	layout::V vlay {};
-
-	for (auto &view : find_views_) {
-		vlay.add(view.get(), 30);
-	}
-
-	vlay.add(nullptr, layout::Remain{100});
-	vlay.add(scroll_h_, SCROLL_W);
-
-	hlay.add(vlay, layout::Remain{100});
-	hlay.add(scroll_v_, SCROLL_W);
-
 	stripe_view_.resize({pos().x + size().x - 30, pos().y}, {30, size().y});
 
-	hlay.apply(*this);
+	hlay_.apply(*this);
 	update_scrollbar();
 }
 
@@ -281,7 +269,7 @@ static bool cursor_visible() {
 }
 
 void ContentView::draw() {
-	Scissor s {this};
+	// Scissor s {this};
 
 	GPShader::rect(pos(), size(), {0x2B, 0x2B, 0x2B, 0xFF}, Z_FILEVIEW_BG);
 	GPShader::draw();
@@ -292,10 +280,6 @@ void ContentView::draw() {
 	if (cursor_visible()) {
 		auto view_px_loc = abs_px_loc_to_view_px_loc(FileView::abs_char_loc_to_abs_px_loc(cursor_abs_char_loc_));
 		GPShader::rect(view_px_loc, ivec2{2, TextShader::font().size.y}, {0xFF, 0xFF, 0xFF, 0xFF}, Z_UI_FG);
-	}
-
-	for (auto &view : find_views_) {
-		view->draw();
 	}
 
 	stripe_view_.draw();

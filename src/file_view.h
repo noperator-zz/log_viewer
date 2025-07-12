@@ -30,6 +30,7 @@ class FileView : public Widget {
 	Finder finder_ {dataset_};
 	LinenumView linenum_view_ {this};
 	ContentView content_view_ {this};
+	std::vector<std::unique_ptr<FindView>> find_views_ {};
 
 	size_t linenum_chars_ {1};
 	glm::ivec2 buf_lines_ {};

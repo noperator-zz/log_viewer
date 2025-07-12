@@ -18,7 +18,9 @@ class ContentView : public Widget {
 	Scrollbar scroll_h_ {this, false, [this](double p){scroll_h_cb(p);}};
 	Scrollbar scroll_v_ {this, true, [this](double p){scroll_v_cb(p);}};
 	StripeView stripe_view_ {this, 1000, 1};
-	std::vector<std::unique_ptr<FindView>> find_views_ {};
+	layout::H hlay_ {};
+	layout::V vlay_ {};
+
 	TextShader::Buffer buf_ {};
 	glm::uvec2 render_range_ {};
 

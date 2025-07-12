@@ -19,6 +19,12 @@ FileView::FileView(Widget *parent, const char *path)
 
 	add_child(linenum_view_);
 	add_child(content_view_);
+
+	// TODO move these back to FileView
+	find_views_.emplace_back(std::make_unique<FindView>(this,
+		[this](auto &find_view, auto event) { content_view_.on_findview_event(find_view, event); }
+	));
+	add_child(*find_views_.back().get());
 }
 
 FileView::~FileView() {
@@ -276,10 +282,17 @@ void FileView::update_buffers(uvec2 &content_render_range, uvec2 &linenum_render
 
 void FileView::on_resize() {
 	// TODO cache the layout; update only when linenum_chars_ or font size changes
-	layout::H lay {};
-	lay.add(linenum_view_, linenum_chars_ * TextShader::font().size.x + 20);
-	lay.add(content_view_, layout::Remain{100});
-	lay.apply(*this);
+	layout::H hlay {};
+	layout::V vlay {};
+
+	for (auto &view : find_views_) {
+		vlay.add(view.get(), 30);
+	}
+
+	hlay.add(linenum_view_, linenum_chars_ * TextShader::font().size.x + 20);
+	hlay.add(content_view_, layout::Remain{100});
+	vlay.add(hlay, layout::Remain{100});
+	vlay.apply(*this);
 }
 
 
@@ -333,6 +346,10 @@ void FileView::draw() {
 
 	// Timeit draw("Draw");
 	//
+	for (auto &view : find_views_) {
+		view->draw();
+	}
+
 	content_view_.draw();
 	linenum_view_.draw();
 
