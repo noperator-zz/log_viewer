@@ -25,6 +25,12 @@ void main() {
     // TODO convert SRGB to linear before blending, then convert back to SRGB.
     //  There may be a way to get OpenGL to do this automatically by specifying th correct texture format.
 
+    ivec2 fb_size_px = ivec2(2. / u_proj[0][0], -2. / u_proj[1][1]);
+    vec2 fragCoord = gl_FragCoord.xy;
+    if (fragCoord.x < frame_offset_px.x || (fb_size_px.y - fragCoord.y) < frame_offset_px.y) {
+        discard;
+    }
+
     float a = texture(atlas, v_uv).r;
     vec4 fg = mix(v_bg, v_fg, a);
 //    color = vec4((v_style_mask & 0xFFU), 0, 0, 1);
