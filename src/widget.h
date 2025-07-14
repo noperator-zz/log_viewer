@@ -40,7 +40,7 @@ class Widget : public Resizable {
 	bool mouse_button_cb(glm::ivec2 mouse, int button, int action, Window::KeyMods mods);
 	bool key_cb(int key, int scancode, int action, Window::KeyMods mods);
 	bool char_cb(unsigned int codepoint, Window::KeyMods mods);
-	bool scroll_cb(glm::ivec2 offset, Window::KeyMods mods);
+	bool scroll_cb(glm::dvec2 offset, Window::KeyMods mods);
 	bool drop_cb(int path_count, const char* paths[]);
 	// void hover_cb();
 	// void unhover_cb();
@@ -78,7 +78,7 @@ protected:
 	virtual bool on_drag(glm::ivec2 offset) { return false; }
 	virtual bool on_key(int key, int scancode, int action, Window::KeyMods mods) { return false; }
 	virtual bool on_char(unsigned int codepoint, Window::KeyMods mods) { return false; }
-	virtual bool on_scroll(glm::ivec2 offset, Window::KeyMods mods) { return false; }
+	virtual bool on_scroll(glm::dvec2 offset, Window::KeyMods mods) { return false; }
 	virtual bool on_drop(int path_count, const char* paths[]) { return false; }
 
 	// Scissor && scissor();

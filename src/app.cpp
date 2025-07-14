@@ -117,7 +117,7 @@ bool App::on_key(int key, int scancode, int action, Window::KeyMods mods) {
     return false;
 }
 
-bool App::on_scroll(glm::ivec2 offset, Window::KeyMods mods) {
+bool App::on_scroll(glm::dvec2 offset, Window::KeyMods mods) {
     if (mods.shift) {
         offset.x = offset.y;
         offset.y = 0;

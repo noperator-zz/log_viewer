@@ -36,6 +36,7 @@ class FileView : public Widget {
 	glm::ivec2 buf_lines_ {};
 
 	glm::ivec2 scroll_ {};
+	glm::dvec2 frac_scroll_ {};
 
 	dynarray<size_t> line_starts_ {};
 	size_t longest_line_ {};
@@ -69,7 +70,7 @@ public:
 	~FileView();
 
 	int open();
-	void scroll(glm::ivec2 scroll);
+	void scroll(glm::dvec2 scroll);
 
 	void draw() override;
 };

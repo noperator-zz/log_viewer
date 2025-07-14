@@ -70,7 +70,7 @@ void FileView::scroll_to(ivec2 pos, bool allow_autoscroll) {
 	soil();
 }
 
-void FileView::scroll(ivec2 scroll) {
+void FileView::scroll(dvec2 scroll) {
 	auto max = max_scroll();
 
 	scroll *= TextShader::font().size;

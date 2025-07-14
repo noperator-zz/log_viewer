@@ -151,7 +151,7 @@ void Window::mouse_button_cb(int button, int action, int mods) {
 
 void Window::scroll_cb(double xoffset, double yoffset) {
 	update_hovered();
-	invoke_on(hovered_, &Widget::scroll_cb, ivec2{xoffset, yoffset}, key_mods_);
+	invoke_on(hovered_, &Widget::scroll_cb, dvec2{xoffset, yoffset}, key_mods_);
 }
 
 void Window::drop_cb(int path_count, const char* paths[]) {

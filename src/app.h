@@ -28,7 +28,7 @@ class App : public Widget {
 
 	void on_resize() override;
 	bool on_key(int key, int scancode, int action, Window::KeyMods mods) override;
-	bool on_scroll(glm::ivec2 offset, Window::KeyMods mods) override;
+	bool on_scroll(glm::dvec2 offset, Window::KeyMods mods) override;
 	bool on_drop(int path_count, const char* paths[]) override;
 
 	FileView& active_file_view();

@@ -87,7 +87,7 @@ bool Widget::char_cb(unsigned int codepoint, Window::KeyMods mods) {
 	return soil_if_handled(on_char(codepoint, mods));
 }
 
-bool Widget::scroll_cb(ivec2 offset, Window::KeyMods mods) {
+bool Widget::scroll_cb(dvec2 offset, Window::KeyMods mods) {
 	// for (auto child : children_) {
 	// 	if (child->scroll_cb(offset, mods)) {
 	// 		return true;
