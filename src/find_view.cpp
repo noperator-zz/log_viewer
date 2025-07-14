@@ -34,12 +34,12 @@ FindView::FindView(Widget *parent, ::color color, std::function<void(FindView &,
 
 	layout_.add(handle_, HANDLE_W);
 	layout_.add(input_, layout::Remain{100});
-	layout_.add(match_label_, 300);
 	layout_.add(but_prev_, BUTTON_W);
 	layout_.add(but_next_, BUTTON_W);
 	layout_.add(but_case_, BUTTON_W);
 	layout_.add(but_word_, BUTTON_W);
 	layout_.add(but_regex_, BUTTON_W);
+	layout_.add(match_label_, 300);
 
 	input_.take_key_focus();
 }
