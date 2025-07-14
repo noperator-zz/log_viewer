@@ -3,8 +3,10 @@
 #include <functional>
 
 #include "widget.h"
+#include "res/tex.h"
 
 class ButtonView : public Widget {
+	TexID tex_id_;
 	const bool toggle_;
 	std::function<void(bool)> on_click_;
 	bool enabled_ {};
@@ -15,7 +17,7 @@ class ButtonView : public Widget {
 	void update() override;
 
 public:
-	ButtonView(Widget *parent, bool toggle = false, const std::function<void(bool)> &&on_click = nullptr);
+	ButtonView(Widget *parent, TexID tex_id = TexID::None, bool toggle = false, const std::function<void(bool)> &&on_click = nullptr);
 
 	void set_enabled(bool enabled);
 	void draw() override;

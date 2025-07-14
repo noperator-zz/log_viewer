@@ -5,8 +5,8 @@
 
 using namespace glm;
 
-ButtonView::ButtonView(Widget *parent, bool toggle, const std::function<void(bool)> &&on_click)
-	: Widget(parent), toggle_(toggle), on_click_(std::move(on_click)) {}
+ButtonView::ButtonView(Widget *parent, TexID tex_id, bool toggle, const std::function<void(bool)> &&on_click)
+	: Widget(parent), tex_id_(tex_id), toggle_(toggle), on_click_(std::move(on_click)) {}
 
 void ButtonView::set_enabled(bool enabled) {
 	enabled_ = enabled;
@@ -59,7 +59,7 @@ void ButtonView::update() {
 
 void ButtonView::draw() {
 	GPShader::rect(*this, pos(), {}, {0xFF, 0xFF, 0x00, 0xFF}, Z_UI_FG); // border
-	auto [x, y, w, h] = GPShader::rect(*this, pos() + ivec2{2}, ivec2{-4}, {0x00, 0x00, 0x80, 0xFF}, Z_UI_FG); // content
+	auto [x, y, w, h] = GPShader::rect(*this, pos() + ivec2{2}, ivec2{-4}, {0x00, 0x00, 0x80, 0xFF}, Z_UI_FG, tex_id_); // content
 	if (state_) {
 		GPShader::rect(*this, {x, y}, {w, h}, {0xFF, 0xFF, 0xFF, 0x40}, Z_UI_FG); // highlight
 	}
