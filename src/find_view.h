@@ -47,11 +47,11 @@ private:
 	HandleView handle_ {this};
 	InputView input_ {this, [this](auto) { handle_text(); }};
 	LabelView match_label_ {this};
-	ButtonView but_prev_ {this, false, [this](bool){ event_cb_(*this, Event::kPrev); }};
-	ButtonView but_next_ {this, false, [this](bool){ event_cb_(*this, Event::kNext); }};
-	ButtonView but_case_ {this, true};
-	ButtonView but_word_ {this, true};
-	ButtonView but_regex_ {this, true};
+	ButtonView but_prev_ {this, TexID::previousOccurence, false, [this](bool){ event_cb_(*this, Event::kPrev); }};
+	ButtonView but_next_ {this, TexID::nextOccurence, false, [this](bool){ event_cb_(*this, Event::kNext); }};
+	ButtonView but_case_ {this, TexID::matchCase, true};
+	ButtonView but_word_ {this, TexID::words, true};
+	ButtonView but_regex_ {this, TexID::regex, true};
 	layout::H layout_ {};
 
 	void handle_text();
