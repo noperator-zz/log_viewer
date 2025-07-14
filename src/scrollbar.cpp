@@ -27,7 +27,6 @@ void Scrollbar::Thumb::update() {
 }
 
 void Scrollbar::Thumb::draw() {
-	Scissor s {this};
 	GPShader::rect(pos(), size(), {100, hovered() * 255, pressed() * 255, 255}, Z_UI_FG);
 }
 
@@ -114,11 +113,9 @@ void Scrollbar::update() {
 }
 
 void Scrollbar::draw() {
-	Scissor s {this};
 	if (visible_percent_ >= 1.0f) {
 		return; // No need to draw the thumb if it covers the whole scrollbar
 	}
 	thumb_.draw();
 	GPShader::rect(pos(), size(), {100, 100, 100, 50}, Z_UI_FG);
-	GPShader::draw(); // TODO remove this, but scissoring messes it up since the scissor region is different by the time its drawn
 }

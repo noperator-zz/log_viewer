@@ -81,8 +81,6 @@ protected:
 	virtual bool on_scroll(glm::dvec2 offset, Window::KeyMods mods) { return false; }
 	virtual bool on_drop(int path_count, const char* paths[]) { return false; }
 
-	// Scissor && scissor();
-
 public:
 	Widget(Widget *parent);
 	Widget(Widget *parent, std::string_view name);

@@ -361,7 +361,6 @@ void FileView::update() {
 }
 
 void FileView::draw() {
-	Scissor s {this};
 	// std::cout << content_render_range.x << " " << content_render_range.y << "\n";
 
 	// TextShader::globals.frame_offset_px = pos();

@@ -10,7 +10,6 @@ void LinenumView::update() {
 }
 
 void LinenumView::draw() {
-	Scissor s {this};
 	GPShader::rect(pos(), size(), {0x2B, 0x2B, 0x2B, 0xFF}, Z_FILEVIEW_BG);
 	GPShader::rect(pos() + ivec2{size().x - 2, 0}, ivec2{2, size().y}, {0x37, 0x37, 0x37, 0xFF}, Z_FILEVIEW_BG);
 	GPShader::draw();

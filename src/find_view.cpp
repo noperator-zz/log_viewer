@@ -100,8 +100,6 @@ void FindView::update() {
 }
 
 void FindView::draw() {
-	// Scissor s{this};
-
 	GPShader::rect(*this, pos(), {}, {0x80, 0x00, 0x00, 0xFF}, Z_UI_BG_1); // background
 	handle_.draw();
 	input_.draw();
