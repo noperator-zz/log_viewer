@@ -1,5 +1,6 @@
 #include "label_view.h"
 #include "gp_shader.h"
+#include "types.h"
 
 using namespace glm;
 

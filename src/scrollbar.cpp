@@ -1,4 +1,5 @@
 #include "scrollbar.h"
+#include "types.h"
 
 using namespace glm;
 

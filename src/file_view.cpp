@@ -4,6 +4,7 @@
 
 #include <mutex>
 
+#include "color.h"
 #include "../shaders/text_shader.h"
 #include "util.h"
 

@@ -4,7 +4,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 
-#include "types.h"
+#include "color.h"
 #include "../src/font.h"
 #include "../src/shader.h"
 
