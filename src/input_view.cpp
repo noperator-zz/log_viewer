@@ -1,5 +1,4 @@
 #include "input_view.h"
-
 #include "gp_shader.h"
 #include "types.h"
 
@@ -116,5 +115,6 @@ void InputView::draw() {
 	TextShader::draw({x, y}, {}, 0, text_.size(), Z_UI_FG);
 
 	GPShader::rect(ivec2{x, y} + coords[0] * TextShader::font().size, ivec2{2, TextShader::font().size.y}, {0xFF, 0xFF, 0xFF, 0xFF}, Z_UI_FG); // cursor
+	GPShader::draw();
 }
 

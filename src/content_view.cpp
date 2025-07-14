@@ -282,6 +282,7 @@ void ContentView::draw() {
 	if (cursor_visible()) {
 		auto view_px_loc = abs_px_loc_to_view_px_loc(FileView::abs_char_loc_to_abs_px_loc(cursor_abs_char_loc_));
 		GPShader::rect(view_px_loc, ivec2{2, TextShader::font().size.y}, {0xFF, 0xFF, 0xFF, 0xFF}, Z_UI_FG);
+		GPShader::draw();
 	}
 
 	stripe_view_.draw();
