@@ -79,7 +79,12 @@ void FileView::scroll(dvec2 scroll) {
 		autoscroll_ = false;
 	}
 
-	scroll_ += scroll;
+	auto frac = scroll - dvec2(ivec2(scroll));
+	frac_scroll_ += frac;
+	auto mant = ivec2(frac_scroll_);
+	frac_scroll_ -= dvec2(mant);
+
+	scroll_ += mant + ivec2(scroll);
 	if (scroll_.y >= max_visible_scroll().y) {
 		autoscroll_ = true;
 	}
