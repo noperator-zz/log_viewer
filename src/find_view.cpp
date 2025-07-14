@@ -41,6 +41,8 @@ FindView::FindView(Widget *parent, std::function<void(FindView &, Event)> &&even
 	layout_.add(but_case_, BUTTON_W);
 	layout_.add(but_word_, BUTTON_W);
 	layout_.add(but_regex_, BUTTON_W);
+
+	input_.take_key_focus();
 }
 
 bool FindView::on_key(int key, int scancode, int action, Window::KeyMods mods) {

@@ -19,11 +19,6 @@ FileView::FileView(Widget *parent, const char *path)
 
 	add_child(linenum_view_);
 	add_child(content_view_);
-
-	find_views_.emplace_back(std::make_unique<FindView>(this,
-		[this](auto &find_view, auto event) { content_view_.on_findview_event(find_view, event); }
-	));
-	add_child(*find_views_.back().get());
 }
 
 FileView::~FileView() {
@@ -49,6 +44,19 @@ void FileView::on_new_lines() {
 	// content_view_.soil();
 	soil();
 	// Window::send_event();
+}
+
+bool FileView::on_key(int key, int scancode, int action, Window::KeyMods mods) {
+	if (mods.control && key == GLFW_KEY_F && action == GLFW_PRESS) {
+		// Open find view
+		find_views_.emplace_back(std::make_unique<FindView>(this,
+			[this](auto &find_view, auto event) { content_view_.on_findview_event(find_view, event); }
+		));
+		add_child(*find_views_.back().get());
+		on_resize();
+		return true;
+	}
+	return false;
 }
 
 void FileView::scroll_to(ivec2 pos, bool allow_autoscroll) {

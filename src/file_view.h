@@ -45,6 +45,8 @@ class FileView : public Widget {
 	FileView(Widget *parent, const char *path);
 
 	void on_new_lines();
+
+	bool on_key(int key, int scancode, int action, Window::KeyMods mods) override;
 	void on_resize() override;
 
 	void really_update_buffers(int start, int end, const uint8_t *data);

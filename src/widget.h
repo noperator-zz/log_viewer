@@ -103,6 +103,9 @@ public:
 	[[nodiscard]] std::string_view name() const;
 	[[nodiscard]] std::string path() const;
 
+	void take_key_focus();
+	void drop_key_focus();
+
 	std::tuple<int, int, int, int> resize(glm::ivec2 pos, glm::ivec2 size) override;
 	void soil();
 };

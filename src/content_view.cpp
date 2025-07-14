@@ -16,6 +16,8 @@ ContentView::ContentView(Widget *parent) : Widget(parent, "C") {
 
 	hlay_.add(vlay_, layout::Remain{100});
 	hlay_.add(scroll_v_, SCROLL_W);
+
+	take_key_focus();
 }
 
 ContentView::~ContentView() {

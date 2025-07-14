@@ -97,6 +97,7 @@ protected:
 	[[nodiscard]] bool should_close() const;
 	// void wait_events();
 	[[nodiscard]] bool draw(bool force) const;
+	void set_key_focus(Widget *widget);
 
 public:
 	Window(GLFWwindow *window, Widget &root);
@@ -105,6 +106,5 @@ public:
 
 	static void send_event();
 
-	void set_key_focus(Widget *widget);
 	glm::uvec2 mouse() const;
 };

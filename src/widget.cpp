@@ -249,3 +249,12 @@ Widget *Widget::deepest_hit_child(const uvec2 point) {
 	}
 	return this;
 }
+
+
+void Widget::take_key_focus() {
+	window()->set_key_focus(this);
+}
+
+void Widget::drop_key_focus() {
+	window()->set_key_focus(parent_);
+}

@@ -12,7 +12,7 @@ InputView::InputView(Widget *parent, const std::function<void(std::string_view)>
 bool InputView::on_mouse_button(ivec2 mouse, int button, int action, Window::KeyMods mods)  {
 	if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_LEFT) {
 		assert(hovered());
-		window()->set_key_focus(this);
+		take_key_focus();
 
 		soil();
 		return true;
