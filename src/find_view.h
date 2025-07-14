@@ -40,9 +40,9 @@ public:
 	};
 
 private:
+	const color color_;
 	std::function<void(FindView &, Event)> event_cb_;
 	State state_ {};
-	color color_ {};
 	Flags flags_ {};
 	HandleView handle_ {this};
 	InputView input_ {this, [this](auto) { handle_text(); }};
@@ -69,7 +69,7 @@ private:
 	void update() override;
 
 public:
-	FindView(Widget *parent, std::function<void(FindView &, Event)> &&event_cb);
+	FindView(Widget *parent, color color, std::function<void(FindView &, Event)> &&event_cb);
 
 	void set_state(State state);
 

@@ -49,8 +49,17 @@ void FileView::on_new_lines() {
 
 bool FileView::on_key(int key, int scancode, int action, Window::KeyMods mods) {
 	if (mods.control && key == GLFW_KEY_F && action == GLFW_PRESS) {
-		// Open find view
-		find_views_.emplace_back(std::make_unique<FindView>(this,
+
+		color color = UNIQUE_COLORS[0];
+		for (::color c : UNIQUE_COLORS) {
+			if (std::none_of(find_views_.begin(), find_views_.end(),
+				[&c](const auto &view) { return view->color() == c; })) {
+				color = c;
+				break;
+			}
+		}
+
+		find_views_.emplace_back(std::make_unique<FindView>(this, color,
 			[this](auto &find_view, auto event) { content_view_.on_findview_event(find_view, event); }
 		));
 		add_child(*find_views_.back().get());
