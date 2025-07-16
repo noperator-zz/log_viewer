@@ -30,7 +30,7 @@ FindView::FindView(Widget *parent, ::color color, std::function<void(FindView &,
 	but_regex_.set_enabled(true);
 
 	static constexpr int HANDLE_W = 20;
-	static constexpr int BUTTON_W = 30;
+	static constexpr int BUTTON_W = 36;
 
 	layout_.add(handle_, HANDLE_W);
 	layout_.add(input_, layout::Remain{100});

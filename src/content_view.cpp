@@ -102,6 +102,7 @@ void ContentView::on_finder_results(void *ctx, size_t idx) {
 }
 
 void ContentView::update_scrollbar() {
+	// TODO the sizes are not quite right; they don't account for the overscroll region
 	scroll_h_.set(parent().scroll_.x, size().x, parent().longest_line_ * TextShader::font().size.x);
 	scroll_v_.set(parent().scroll_.y, size().y, parent().num_lines() * TextShader::font().size.y);
 }
@@ -115,6 +116,7 @@ ivec2 ContentView::abs_px_loc_to_view_px_loc(ivec2 px_loc)  {
 }
 
 void ContentView::reset_mod_styles() {
+	mod_styles_.resize_uninitialized(base_styles_.size());
 	std::memcpy(mod_styles_.data(), base_styles_.data(), base_styles_.size() * sizeof(TextShader::CharStyle));
 }
 
@@ -275,7 +277,7 @@ void ContentView::draw() {
 	GPShader::draw();
 
 	TextShader::use(buf_);
-	TextShader::draw(pos(), parent().scroll_, render_range_.x, render_range_.y - render_range_.x, Z_FILEVIEW_TEXT_FG);
+	TextShader::draw(pos(), parent().scroll_, 0, mod_styles_.size(), Z_FILEVIEW_TEXT_FG);
 
 	if (cursor_visible()) {
 		auto view_px_loc = abs_px_loc_to_view_px_loc(FileView::abs_char_loc_to_abs_px_loc(cursor_abs_char_loc_));

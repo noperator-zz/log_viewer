@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dynarray.h"
+#include "settings.h"
 #include "scrollbar.h"
 #include "text_shader.h"
 #include "widget.h"
@@ -22,10 +23,11 @@ class ContentView : public Widget {
 	layout::V vlay_ {};
 
 	TextShader::Buffer buf_ {};
-	glm::uvec2 render_range_ {};
+	size_t buf_num_chars_ {};
+	rect<int> buf_char_window_ {};
 
-	dynarray<TextShader::CharStyle> base_styles_ {};
-	dynarray<TextShader::CharStyle> mod_styles_ {};
+	dynarray<TextShader::CharStyle> base_styles_ {CONTENT_BUFFER_SIZE};
+	dynarray<TextShader::CharStyle> mod_styles_ {CONTENT_BUFFER_SIZE};
 
 	glm::ivec2 cursor_abs_char_loc_ {};
 	std::pair<glm::ivec2, glm::ivec2> selection_abs_char_loc {};

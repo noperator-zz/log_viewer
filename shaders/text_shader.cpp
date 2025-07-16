@@ -50,35 +50,34 @@ void TextShader::create_buffers(Buffer &buf, size_t total_size) {
 	glGenVertexArrays(1, &buf.vao);
 	glBindVertexArray(buf.vao);
 
-	glGenBuffers(1, &buf.vbo_text);
-	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_text);
-	glBufferData(GL_ARRAY_BUFFER, total_size / sizeof(CharStyle), nullptr, GL_DYNAMIC_DRAW);
-	glClearBufferData(GL_ARRAY_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
-
-	glVertexAttribIPointer(0, 1, GL_UNSIGNED_BYTE, 1, (void*)0);
-	glEnableVertexAttribArray(0);
-	glVertexAttribDivisor(0, 1);
-
 	glGenBuffers(1, &buf.vbo_style);
 	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
 	glBufferData(GL_ARRAY_BUFFER, total_size, nullptr, GL_DYNAMIC_DRAW);
-	glClearBufferData(GL_ARRAY_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
+	// glClearBufferData(GL_ARRAY_BUFFER, GL_R8UI, GL_RED_INTEGER, GL_UNSIGNED_BYTE, nullptr);
 
-	glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(CharStyle), (void*)offsetof(CharStyle, style));
+	glVertexAttribIPointer(0, 2, GL_UNSIGNED_INT, sizeof(CharStyle), (void*)offsetof(CharStyle, char_pos));
+	glEnableVertexAttribArray(0);
+	glVertexAttribDivisor(0, 1);
+
+	glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, fg));
 	glEnableVertexAttribArray(1);
 	glVertexAttribDivisor(1, 1);
 
-	glVertexAttribIPointer(2, 2, GL_UNSIGNED_INT, sizeof(CharStyle), (void*)offsetof(CharStyle, char_pos));
+	glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, bg));
 	glEnableVertexAttribArray(2);
 	glVertexAttribDivisor(2, 1);
 
-	glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, fg));
+	glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE, sizeof(CharStyle), (void*)offsetof(CharStyle, style));
 	glEnableVertexAttribArray(3);
 	glVertexAttribDivisor(3, 1);
 
-	glVertexAttribPointer(4, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, bg));
+	glVertexAttribIPointer(4, 1, GL_UNSIGNED_BYTE, sizeof(CharStyle), (void*)offsetof(CharStyle, glyph));
 	glEnableVertexAttribArray(4);
 	glVertexAttribDivisor(4, 1);
+
+	glVertexAttribIPointer(5, 2, GL_UNSIGNED_BYTE, sizeof(CharStyle), (void*)offsetof(CharStyle, _padding));
+	glEnableVertexAttribArray(5);
+	glVertexAttribDivisor(5, 1);
 
 	glGenBuffers(1, &buf.ubo_globals);
 	glBindBuffer(GL_UNIFORM_BUFFER, buf.ubo_globals);
@@ -87,7 +86,6 @@ void TextShader::create_buffers(Buffer &buf, size_t total_size) {
 }
 
 void TextShader::destroy_buffers(Buffer &buf) {
-	glDeleteBuffers(1, &buf.vbo_text);
 	glDeleteBuffers(1, &buf.vbo_style);
 	glDeleteBuffers(1, &buf.ubo_globals);
 	glDeleteVertexArrays(1, &buf.vao);
@@ -106,7 +104,6 @@ void TextShader::use(const Buffer &buf) {
 	glBindTexture(GL_TEXTURE_2D, inst_->font_.tex_atlas());
 
 	glBindVertexArray(buf.vao);
-	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_text);
 	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
 	glBindBuffer(GL_UNIFORM_BUFFER, buf.ubo_globals);
 
@@ -136,6 +133,7 @@ void TextShader::render(const Buffer &buf, const std::string_view text, const Ch
 
 		styles[i] = style;
 		styles[i].char_pos = pos;
+		styles[i].glyph = text[i];
 		++pos.x;
 
 		if (text[i] == '\n') {
@@ -145,9 +143,6 @@ void TextShader::render(const Buffer &buf, const std::string_view text, const Ch
 	}
 
 	assert(indices.size() == coords.size());
-
-	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_text);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, text.size(), text.data());
 
 	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, text.size() * sizeof(CharStyle), styles.get());
