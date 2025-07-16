@@ -22,6 +22,9 @@ public:
 	typedef const T* const_iterator;
 
 	dynarray() = default;
+	dynarray(size_t n) {
+		reserve(n);
+	}
 
 	dynarray(dynarray && o) noexcept
 		: data_(o.data_), size_(o.size_), capacity_(o.capacity_) {

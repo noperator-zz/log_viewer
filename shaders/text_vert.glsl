@@ -1,9 +1,10 @@
 #version 400 core
-layout(location = 0) in uint glyph_idx_;
-layout(location = 1) in uint style_mask;
-layout(location = 2) in uvec2 char_pos;
-layout(location = 3) in vec4 fg;
-layout(location = 4) in vec4 bg;
+layout(location = 0) in uvec2 char_pos;
+layout(location = 1) in vec4 fg;
+layout(location = 2) in vec4 bg;
+layout(location = 3) in uint style_mask;
+layout(location = 4) in uint glyph_idx_;
+layout(location = 5) in uint _padding;
 
 layout(std140) uniform Globals {
     mat4 u_proj;

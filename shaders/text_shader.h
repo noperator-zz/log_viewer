@@ -10,19 +10,27 @@
 
 class TextShader {
 public:
-	struct __attribute__((packed)) CharStyle {
-		union {
-			struct {
-				uint8_t bold : 1;
-				uint8_t italic : 1;
-				uint8_t underline : 1;
-				uint8_t strikethrough : 1;
-			};
-			uint8_t style {};
+	struct CharStyle {
+		struct StyleFlags {
+			uint8_t bold : 1;
+			uint8_t italic : 1;
+			uint8_t underline : 1;
+			uint8_t strikethrough : 1;
 		};
-		glm::uvec2 char_pos {};
-		color fg {};
-		color bg {};
+		glm::uvec2 char_pos;
+		color fg;
+		color bg;
+		union {
+			StyleFlags flags;
+			uint8_t style;
+		} style;
+		uint8_t glyph;
+		uint8_t _padding[2] {};
+
+		// CharStyle(glm::uvec2 pos, color fg, color bg, StyleFlags style, uint8_t glyph)
+		// 	: char_pos(pos), fg(fg), bg(bg), style(style), glyph(glyph) {}
+		// CharStyle(glm::uvec2 pos, color fg, color bg, uint8_t style, uint8_t glyph)
+		// 	: char_pos(pos), fg(fg), bg(bg), style(.flags{style}), glyph(glyph) {}
 	};
 
 	struct UniformGlobals {
@@ -38,7 +46,6 @@ public:
 
 	struct Buffer {
 		GLuint vao {};
-		GLuint vbo_text {};
 		GLuint vbo_style {};
 		GLuint ubo_globals {};
 	};

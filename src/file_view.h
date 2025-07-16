@@ -15,15 +15,6 @@
 class FileView : public Widget {
 	friend class LinenumView;
 	friend class ContentView;
-	// TODO make these limits dynamic
-	static constexpr size_t MAX_SCREEN_LINES = 200;
-	static constexpr ssize_t OVERSCAN_LINES = 1;
-	static constexpr size_t MAX_LINE_LENGTH = 16 * 1024;
-	static constexpr size_t CONTENT_BUFFER_SIZE = (MAX_SCREEN_LINES + OVERSCAN_LINES * 2) * MAX_LINE_LENGTH * (sizeof(TextShader::CharStyle) + sizeof(uint8_t));
-	static constexpr size_t LINENUM_BUFFER_SIZE = (MAX_SCREEN_LINES + OVERSCAN_LINES * 2) * 10 * (sizeof(TextShader::CharStyle) + sizeof(uint8_t));
-
-	static_assert(CONTENT_BUFFER_SIZE < 128 * 1024 * 1024, "Content buffer size too large");
-	static_assert(OVERSCAN_LINES >= 1, "Overscan lines must be at least 1");
 
 	Loader loader_;
 	Dataset dataset_ {nullptr, nullptr};
@@ -31,9 +22,6 @@ class FileView : public Widget {
 	LinenumView linenum_view_ {this};
 	ContentView content_view_ {this};
 	std::vector<std::unique_ptr<FindView>> find_views_ {};
-
-	size_t linenum_chars_ {1};
-	glm::ivec2 buf_lines_ {};
 
 	glm::ivec2 scroll_ {};
 	glm::dvec2 frac_scroll_ {};
@@ -50,8 +38,8 @@ class FileView : public Widget {
 	bool on_key(int key, int scancode, int action, Window::KeyMods mods) override;
 	void on_resize() override;
 
-	void really_update_buffers(int start, int end, const uint8_t *data);
-	void update_buffers(glm::uvec2 &content_render_range, glm::uvec2 &linenum_render_range, const Dataset::User &user);
+	void really_update_buffers(const uint8_t *data);
+	void update_buffers(const Dataset::User &user);
 	void scroll_to(glm::ivec2 pos, bool allow_autoscrol);
 	// size_t get_line_start(size_t line_idx) const;
 	static glm::ivec2 abs_char_loc_to_abs_px_loc(glm::ivec2 abs_loc) ;
