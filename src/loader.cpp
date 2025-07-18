@@ -60,7 +60,7 @@ void Loader::get(dynarray<size_t> &line_starts, size_t &longest_line) {
 	std::lock_guard lock(mtx_);
 
 	line_starts.extend(line_starts_);
-	line_starts_.clear();
+	line_starts_.resize_uninitialized(0);
 	longest_line = longest_line_;
 }
 
@@ -134,7 +134,7 @@ void Loader::load_tail() {
 	std::cout << "Loading " << total_size << " B\n";
 	Timeit load_timeit("Load");
 
-	chunk_results_.clear();
+	chunk_results_.resize_uninitialized(0);
 	if (prev_size == 0) {
 		// If this is the first time we are loading the file, we need to add a starting point
 		prev_start_ = 0;
@@ -155,7 +155,7 @@ void Loader::load_tail() {
 		if (on_data_) {
 			on_data_();
 		}
-		chunk_results_.clear();
+		chunk_results_.resize_uninitialized(0);
 	}
 	load_timeit.stop();
 }

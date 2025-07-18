@@ -7,6 +7,12 @@
 
 template<typename T>
 class dynarray {
+	struct DummyLock {
+		constexpr DummyLock() {}
+		constexpr void lock() {}
+		constexpr void unlock() {}
+	};
+
 	T* data_ = nullptr;
 	size_t size_ = 0;
 	size_t capacity_ = 0;
@@ -16,6 +22,21 @@ class dynarray {
 	dynarray(const dynarray &) = delete;
 	dynarray &operator=(const dynarray &) = delete;
 
+	void clear() {
+		if constexpr (!std::is_trivially_destructible_v<T>) {
+			for (size_t i = 0; i < size_; ++i) {
+				data_[i].~T();
+			}
+		}
+		size_ = 0;
+	}
+
+	void release() {
+		clear();
+		capacity_ = 0;
+		::operator delete(data_);
+		data_ = nullptr;
+	}
 
 public:
 	typedef T* iterator;
@@ -46,6 +67,18 @@ public:
 	}
 
 	void reserve(const size_t n) {
+		if (n <= capacity_) {
+			return;
+		}
+		DummyLock dummy;
+		reserve(dummy, n);
+	}
+
+	template<typename Lock>
+	void reserve(Lock &lock, const size_t n) {
+		if (n <= capacity_) {
+			return;
+		}
 		size_t new_capacity = capacity_;
 		while (new_capacity < n) {
 			if (new_capacity == 0) {
@@ -56,17 +89,32 @@ public:
 		}
 
 		if (new_capacity > capacity_) {
+			lock.unlock();
 			Timeit t("dynarray::reserve");
 			T* new_data = static_cast<T*>(::operator new(sizeof(T) * new_capacity));
 			std::memcpy(new_data, data_, sizeof(T) * size_);
-			::operator delete(data_);
+			T* old_data = data_;
+
+			lock.lock();
 			data_ = new_data;
 			capacity_ = new_capacity;
+
+			lock.unlock();
+			::operator delete(old_data);
+
+			t.stop();
+			lock.lock();
 		}
 	}
 
 	void resize_uninitialized(const size_t n) {
-		reserve(n);
+		DummyLock dummy;
+		resize_uninitialized(dummy, n);
+	}
+
+	template<typename Lock>
+	void resize_uninitialized(Lock &lock, const size_t n) {
+		reserve(lock, n);
 		size_ = n;
 	}
 
@@ -91,39 +139,37 @@ public:
 	T& back() { return data_[size_ - 1]; }
 	const T& back() const { return data_[size_ - 1]; }
 
-	void clear() {
-		if constexpr (!std::is_trivially_destructible_v<T>) {
-			for (size_t i = 0; i < size_; ++i) {
-				data_[i].~T();
-			}
-		}
-		size_ = 0;
+	void push_back(const T &value) {
+		DummyLock dummy;
+		push_back(dummy, value);
 	}
 
-	void release() {
-		clear();
-		capacity_ = 0;
-		::operator delete(data_);
-		data_ = nullptr;
-	}
-
-	void push_back(const T value) {
-		if (size_ >= capacity_) {
-			reserve(size_ + 1);
-		}
+	template<typename Lock>
+	void push_back(Lock &lock, const T value) {
+		reserve(lock, size_ + 1);
 		data_[size_++] = value;
 	}
 
 	template<typename... _Args>
 	void emplace_back(_Args&&... __args) {
-		if (size_ >= capacity_) {
-			reserve(size_ + 1);
-		}
+		DummyLock dummy;
+		emplace_back_locked(dummy, std::forward<_Args>(__args)...);
+	}
+
+	template<typename Lock, typename... _Args>
+	void emplace_back_locked(Lock &lock, _Args&&... __args) {
+		reserve(lock, size_ + 1);
 		new (&data_[size_++]) T(std::forward<_Args>(__args)...);
 	}
 
 	void extend(const dynarray& other) {
-		reserve(size_ + other.size_);
+		DummyLock dummy;
+		extend(dummy, other);
+	}
+
+	template<typename Lock>
+	void extend(Lock &lock, const dynarray& other) {
+		reserve(lock, size_ + other.size_);
 		std::memcpy(data_ + size_, other.data_, sizeof(T) * other.size_);
 		size_ += other.size_;
 	}

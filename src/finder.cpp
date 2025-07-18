@@ -134,7 +134,7 @@ void Finder::Job::worker() {
 			hs_error_t err = HS_SUCCESS;
 		    for (size_t offset = 0; offset < length; offset += CHUNK_SIZE) {
 		        size_t chunk_size = std::min(length - offset, CHUNK_SIZE);
-	    		chunk_results_.clear();
+	    		chunk_results_.resize_uninitialized(0);
 		    	// std::cout << "Job scan... " << offset << " - " << (offset + chunk_size) << " / " << length << std::endl;
     			err = hs_scan_stream(stream_, (const char*)data + offset, chunk_size, 0, scratch_, event_handler, this);
 		    	// std::this_thread::sleep_for(milliseconds(100));
@@ -159,7 +159,7 @@ void Finder::Job::worker() {
 		    		on_result_(ctx_, last_report_);
 		    	}
 		    	last_report_ = results_.size();
-	    		chunk_results_.clear();
+	    		chunk_results_.resize_uninitialized(0);
 
 		    	// if (dataset_.update_pending_.test()) {
 		    	// 	// Finder wants to update the dataset. Break out of the loop to release the lock earlier.
