@@ -151,8 +151,8 @@ void Finder::Job::worker() {
 	    		stream_pos_ += chunk_size;
 
 			    {
-	        		std::lock_guard lock(result_mtx_);
-				    results_.extend(chunk_results_);
+	        		std::unique_lock lock(result_mtx_);
+				    results_.extend(lock, chunk_results_);
 		        	// std::swap(results_, chunk_results_);
 			    }
 		    	if (on_result_) {
