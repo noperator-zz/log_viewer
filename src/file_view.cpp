@@ -49,22 +49,88 @@ void FileView::on_new_lines() {
 	// Window::send_event();
 }
 
+
+void FileView::on_findview_event(FindView &view, FindView::Event event) {
+	switch (event) {
+		case FindView::Event::kCriteria: {
+			FindView::State state {};
+
+			finder_.remove(&view);
+
+			find_ctxs_.at(&view)->reset();
+			content_view_.stripe_view_.remove_dataset(&view);
+			content_view_.stripe_view_.add_dataset(&view, view.color(), [](const void *ele) {
+				return static_cast<const Finder::Job::Result*>(ele)->start;
+			});
+
+			int ret = finder_.submit(&view, [this](auto ctx, auto idx){on_finder_results(ctx, idx);}, view.text(), 0);//find_view.flags());
+			if (ret != 0) {
+				state.bad_pattern = true;
+				std::cerr << "Error submitting find request: " << ret << std::endl;
+			}
+			view.set_state(state);
+
+			content_view_.soil();
+			break;
+		}
+		case FindView::Event::kPrev:
+		case FindView::Event::kNext: {
+			auto state = view.state();
+
+			assert(state.total_matches > 0);
+
+			auto user = finder_.user();
+			auto &job = user.jobs().at(&view);
+			const auto &results = job->results();
+
+			auto cursor_abs_char_idx = abs_char_loc_to_abs_char_idx(content_view_.cursor_abs_char_loc_);
+
+			if (event == FindView::Event::kNext) {
+				state.current_match = Finder::find_next_match(results, cursor_abs_char_idx);
+			} else {
+				state.current_match = Finder::find_prev_match(results, cursor_abs_char_idx);
+			}
+
+			view.set_state(state);
+
+			const auto &match = results[state.current_match];
+			size_t line_idx = Finder::find_line_containing_SOM(line_starts_, results, state.current_match);
+
+			content_view_.cursor_abs_char_loc_ = ivec2(match.start - line_starts_[line_idx], line_idx);
+			// TODO also highlight the active match
+			content_view_.scroll_to_cursor(true);
+
+			break;
+		}
+	}
+}
+
+void FileView::on_finder_results(void *ctx, size_t idx) {
+	soil();
+	content_view_.soil();
+}
+
+
 bool FileView::on_key(int key, int scancode, int action, Window::KeyMods mods) {
 	if (mods.control && key == GLFW_KEY_F && action == GLFW_PRESS) {
 
 		color color = UNIQUE_COLORS[0];
 		for (::color c : UNIQUE_COLORS) {
-			if (std::none_of(find_views_.begin(), find_views_.end(),
-				[&c](const auto &view) { return view->color() == c; })) {
+			if (std::none_of(find_ctxs_.begin(), find_ctxs_.end(),
+				[&](const auto &ele) { return ele.first->color() == c; })
+			) {
 				color = c;
 				break;
 			}
 		}
 
-		find_views_.emplace_back(std::make_unique<FindView>(this, color,
-			[this](auto &find_view, auto event) { content_view_.on_findview_event(find_view, event); }
-		));
-		add_child(*find_views_.back().get());
+		auto ctx = std::make_unique<FindContext>(this, color,
+			[this](auto &view, auto event) { on_findview_event(view, event); }
+		);
+
+		add_child(ctx->view);
+		find_ctxs_.emplace(&ctx->view, std::move(ctx));
+
 		on_resize();
 		return true;
 	}
@@ -156,7 +222,7 @@ ivec2 FileView::abs_char_loc_to_abs_px_loc(ivec2 abs_loc) {
 }
 
 size_t FileView::abs_char_loc_to_abs_char_idx(ivec2 abs_loc) const {
-	if (abs_loc.y < 0) {
+	if (abs_loc.y < 0 || line_starts_.empty()) {
 		return 0;
 	}
 	abs_loc.y = std::min(abs_loc.y, (int)line_starts_.size() - 1);
@@ -202,7 +268,9 @@ void FileView::really_update_buffers(const uint8_t *data) {
 	char linenum_text[linenum_view_.linenum_chars_ + 1]; // +1 for the null terminator added by sprintf
 	const std::string fmt = "%" + std::to_string(linenum_view_.linenum_chars_) + "zu";
 
+	int line = 0;//-content_view_.buf_char_window_.tl.y;
 	for (int line_idx = std::max(0, content_view_.buf_char_window_.tl.y); line_idx < std::clamp(content_view_.buf_char_window_.br.y, 0, (int)num_lines()); line_idx++) {
+		// if (line_idx % 2) continue;
 		int line_len = get_line_len(line_idx);
 		size_t linenum_len = sprintf(linenum_text, fmt.c_str(), line_idx + 1);
 
@@ -211,7 +279,7 @@ void FileView::really_update_buffers(const uint8_t *data) {
 			uint8_t g = 200;
 			uint8_t b = 200;
 			content_view_.base_styles_[content_num_chars] = {
-				uvec2{char_idx, line_idx},
+				uvec2{char_idx, line},
 				vec4{r, g, b, 255},
 				// vec4{0, 0, 0, 255}
 				// vec4{100, 0, 0, 255}
@@ -234,6 +302,7 @@ void FileView::really_update_buffers(const uint8_t *data) {
 			};
 			linenum_num_chars++;
 		}
+		line++;
 	}
 	content_view_.base_styles_.resize_uninitialized(content_num_chars);
 	linenum_view_.styles_.resize_uninitialized(linenum_num_chars);
@@ -291,8 +360,8 @@ void FileView::on_resize() {
 	layout::H hlay {};
 	layout::V vlay {};
 
-	for (auto &view : find_views_) {
-		vlay.add(view.get(), 36);
+	for (auto &[view, ctx] : find_ctxs_) {
+		vlay.add(view, 36);
 	}
 
 	hlay.add(linenum_view_, linenum_view_.linenum_chars_ * TextShader::font().size.x + 20);
@@ -304,9 +373,11 @@ void FileView::on_resize() {
 
 void FileView::update() {
 	static microseconds duration {};
+	auto now = steady_clock::now();
 	// Timeit timeit("FileView::update");
 
-	auto now = steady_clock::now();
+	auto dataset_user = dataset_.user();
+	auto finder_user = finder_.user();
 	loader_.get(line_starts_, longest_line_);
 
 	if (line_starts_.empty()) {
@@ -322,10 +393,14 @@ void FileView::update() {
 
 	linenum_view_.linenum_chars_ = linenum_len(num_lines());
 
-	{
-		auto user = dataset_.user();
-		update_buffers(user);
+	for (const auto &[ctx_, job] : finder_user.jobs()) {
+		auto view = static_cast<FindView *>(ctx_);
+		const auto &results = job->results();
+		view->set_state({results.size(), view->state().current_match, false});
+		find_ctxs_.at(view)->feed(line_starts_, results);
 	}
+
+	update_buffers(dataset_user);
 
 	if (linenum_view_.linenum_chars_ != prev_linenum_chars) {
 		on_resize();
@@ -339,6 +414,7 @@ void FileView::update() {
 	duration += duration_cast<microseconds>(steady_clock::now() - now);
 	// std::cout << "FileView::update total duration: " << duration.count() << "us\n";
 
+	content_view_.update_from_parent(finder_user);
 	// TODO temporary
 	content_view_.soil();
 	linenum_view_.soil();
@@ -351,7 +427,7 @@ void FileView::draw() {
 
 	// Timeit draw("Draw");
 	//
-	for (auto &view : find_views_) {
+	for (auto &[view, ctx] : find_ctxs_) {
 		view->draw();
 	}
 

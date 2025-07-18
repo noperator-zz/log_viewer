@@ -37,9 +37,6 @@ class ContentView : public Widget {
 
 	void scroll_to_cursor(bool center);
 
-	void on_finder_results(void *ctx, size_t idx);
-	void on_findview_event(FindView &view, FindView::Event event);
-
 	void scroll_h_cb(double percent);
 	void scroll_v_cb(double percent);
 	void update_scrollbar();
@@ -55,6 +52,7 @@ class ContentView : public Widget {
 	bool on_cursor_pos(glm::ivec2 mouse) override;
 	void on_resize() override;
 
+	void update_from_parent(Finder::User &user);
 	void update() override;
 
 public:

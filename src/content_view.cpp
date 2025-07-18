@@ -45,62 +45,6 @@ void ContentView::scroll_v_cb(double percent) {
 	parent().scroll_to({parent().scroll_.x, percent * parent().max_scroll().y}, true);
 }
 
-void ContentView::on_findview_event(FindView &view, FindView::Event event) {
-	switch (event) {
-		case FindView::Event::kCriteria: {
-			FindView::State state {};
-
-			int ret = parent().finder_.submit(&view, [this](auto ctx, auto idx){on_finder_results(ctx, idx);}, view.text(), 0);//find_view.flags());
-			if (ret != 0) {
-				state.bad_pattern = true;
-				std::cerr << "Error submitting find request: " << ret << std::endl;
-			}
-
-			view.set_state(state);
-
-			stripe_view_.remove_dataset(&view);
-			stripe_view_.add_dataset(&view, view.color(), [](const void *ele) {
-				return static_cast<const Finder::Job::Result*>(ele)->start;
-			});
-			soil();
-			break;
-		}
-		case FindView::Event::kPrev:
-		case FindView::Event::kNext: {
-			auto state = view.state();
-
-			assert(state.total_matches > 0);
-
-			auto user = parent().finder_.user();
-			auto &job = user.jobs().at(&view);
-			const auto &results = job->results();
-
-			auto cursor_abs_char_idx = parent().abs_char_loc_to_abs_char_idx(cursor_abs_char_loc_);
-
-			if (event == FindView::Event::kNext) {
-				state.current_match = Finder::find_next_match(results, cursor_abs_char_idx);
-			} else {
-				state.current_match = Finder::find_prev_match(results, cursor_abs_char_idx);
-			}
-
-			view.set_state(state);
-
-			const auto &match = results[state.current_match];
-			size_t line_idx = Finder::find_line_containing_SOM(parent().line_starts_, results, state.current_match);
-
-			cursor_abs_char_loc_ = ivec2(match.start - parent().line_starts_[line_idx], line_idx);
-			// TODO also highlight the active match
-			scroll_to_cursor(true);
-
-			break;
-		}
-	}
-}
-
-void ContentView::on_finder_results(void *ctx, size_t idx) {
-	soil();
-}
-
 void ContentView::update_scrollbar() {
 	// TODO the sizes are not quite right; they don't account for the overscroll region
 	scroll_h_.set(parent().scroll_.x, size().x, parent().longest_line_ * TextShader::font().size.x);
@@ -242,29 +186,21 @@ void ContentView::on_resize() {
 	update_scrollbar();
 }
 
-void ContentView::update() {
+void ContentView::update_from_parent(Finder::User &finder_user) {
 	reset_mod_styles();
 
 	if (selection_active_) {
 		highlight_selection();
 	}
-	auto user = parent().finder_.user();
-	highlight_findings(user);
+	highlight_findings(finder_user);
 
 	TextShader::use(buf_);
 
 	glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
-
-	// TODO memory re-alloc in Finder could cause this to block for a long time.
-	//  Add a timeout parameter to finder_.user()
-	for (const auto &[ctx_, job] : user.jobs()) {
-		auto view = static_cast<FindView *>(ctx_);
-		const auto &results = job->results();
-		view->set_state({results.size(), view->state().current_match, false});
-		stripe_view_.feed(ctx_, parent().line_starts_, results);
-	}
 }
+
+void ContentView::update() {}
 
 static bool cursor_visible() {
 	// 500ms blink
@@ -277,7 +213,8 @@ void ContentView::draw() {
 	GPShader::draw();
 
 	TextShader::use(buf_);
-	TextShader::draw(pos(), parent().scroll_, 0, mod_styles_.size(), Z_FILEVIEW_TEXT_FG);
+	auto line_offset = ivec2{0, std::max(0, buf_char_window_.tl.y) * TextShader::font().size.y};
+	TextShader::draw(pos(), parent().scroll_ - line_offset, 0, mod_styles_.size(), Z_FILEVIEW_TEXT_FG);
 
 	if (cursor_visible()) {
 		auto view_px_loc = abs_px_loc_to_view_px_loc(FileView::abs_char_loc_to_abs_px_loc(cursor_abs_char_loc_));

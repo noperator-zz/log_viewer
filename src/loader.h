@@ -10,7 +10,7 @@
 #include "file.h"
 #include "worker.h"
 
-class Loader {
+class InputProcessor {
 	File file_;
 	Dataset &dataset_;
 	std::function<void()> on_data_;
@@ -22,6 +22,7 @@ class Loader {
 	dynarray<size_t> chunk_results_ {};
 	dynarray<size_t> line_starts_ {};
 	// NOTE: This length includes the newline character. It's only used for scroll bar size calculations, so fine for now.
+	size_t unsafe_longest_line_ {};
 	size_t longest_line_ {};
 	std::thread thread_ {};
 	Event quit_ {};
@@ -33,17 +34,17 @@ class Loader {
 	static int event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void *context);
 	int event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags);
 
-	Loader() = delete;
+	InputProcessor() = delete;
 	// diable copy and move
-	Loader(const Loader &) = delete;
-	Loader &operator=(const Loader &) = delete;
+	InputProcessor(const InputProcessor &) = delete;
+	InputProcessor &operator=(const InputProcessor &) = delete;
 
-	Loader(Loader &&) = delete;
-	Loader &operator=(Loader &&) = delete;
+	InputProcessor(InputProcessor &&) = delete;
+	InputProcessor &operator=(InputProcessor &&) = delete;
 
 public:
-	Loader(File &&file, Dataset &dataset, std::function<void()> &&on_data);
-	~Loader();
+	InputProcessor(File &&file, Dataset &dataset, std::function<void()> &&on_data);
+	~InputProcessor();
 
 	int start();
 	void stop();

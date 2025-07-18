@@ -59,17 +59,17 @@ private:
 	bool on_key(int key, int scancode, int action, Window::KeyMods mods) override;
 	void on_resize() override;
 
+	void update() override;
+
+public:
+	FindView(Widget *parent, color color, std::function<void(FindView &, Event)> &&event_cb);
+
 	// diable copy and move
 	FindView(const FindView &) = delete;
 	FindView &operator=(const FindView &) = delete;
 
 	FindView(FindView &&) = delete;
 	FindView &operator=(FindView &&) = delete;
-
-	void update() override;
-
-public:
-	FindView(Widget *parent, color color, std::function<void(FindView &, Event)> &&event_cb);
 
 	void set_state(State state);
 

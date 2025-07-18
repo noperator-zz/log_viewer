@@ -13,9 +13,10 @@ class dynarray {
 		constexpr void unlock() {}
 	};
 
-	T* data_ = nullptr;
-	size_t size_ = 0;
-	size_t capacity_ = 0;
+	T* data_ {};
+	size_t size_ {};
+	size_t capacity_ {};
+	size_t preferred_capacity_ {};
 	// TODO minimum capacity setting
 
 	// diable copy
@@ -43,8 +44,8 @@ public:
 	typedef const T* const_iterator;
 
 	dynarray() = default;
-	dynarray(size_t n) {
-		reserve(n);
+	dynarray(size_t preferred_capacity): preferred_capacity_(preferred_capacity) {
+		reserve(preferred_capacity_);
 	}
 
 	dynarray(dynarray && o) noexcept
@@ -173,4 +174,12 @@ public:
 		std::memcpy(data_ + size_, other.data_, sizeof(T) * other.size_);
 		size_ += other.size_;
 	}
+
+	// TODO
+	// void shrink() {
+	// 	if (capacity_ > preferred_capacity_ && size_ < capacity_ / 2) {
+	// 		DummyLock dummy;
+	// 		shrink(dummy);
+	// 	}
+	// }
 };

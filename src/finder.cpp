@@ -222,7 +222,6 @@ int Finder::submit(void* ctx, std::function<void(void*, size_t)> &&on_result, st
 
 void Finder::remove(void* ctx) {
 	std::lock_guard lock(jobs_mtx_);
-	assert(jobs_.contains(ctx));
 	// TODO This will block until the next match is found. Probably milliseconds, but it's indeterminate.
 	jobs_.erase(ctx);
 }

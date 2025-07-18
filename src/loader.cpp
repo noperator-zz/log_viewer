@@ -7,11 +7,11 @@
 
 using namespace std::chrono;
 
-Loader::Loader(File &&file, Dataset &dataset, std::function<void()> &&on_data)
+InputProcessor::InputProcessor(File &&file, Dataset &dataset, std::function<void()> &&on_data)
 	: file_(std::move(file)), dataset_(dataset), on_data_(std::move(on_data)) {
 }
 
-Loader::~Loader() {
+InputProcessor::~InputProcessor() {
 	{
 		Timeit t("Loader::~Loader()");
 		quit();
@@ -22,7 +22,7 @@ Loader::~Loader() {
 	if (db_) hs_free_database(db_);
 }
 
-int Loader::start() {
+int InputProcessor::start() {
 	hs_compile_error_t *compile_err;
 	hs_error_t err;
 
@@ -45,18 +45,20 @@ int Loader::start() {
 		return -3;
 	}
 
-	thread_ = std::thread(&Loader::worker, this);
+	thread_ = std::thread(&InputProcessor::worker, this);
 	return 0;
 }
 
-void Loader::stop() {
+void InputProcessor::stop() {
 	quit_.set();
 	if (thread_.joinable()) {
 		thread_.join();
 	}
 }
 
-void Loader::get(dynarray<size_t> &line_starts, size_t &longest_line) {
+void InputProcessor::get(dynarray<size_t> &line_starts, size_t &longest_line) {
+	// NOTE This is called by the main thread, and will block it during reallocation of line_starts.
+	//  Since this is rare (each time the number of lines doubles), this is acceptable.
 	std::lock_guard lock(mtx_);
 
 	line_starts.extend(line_starts_);
@@ -64,14 +66,14 @@ void Loader::get(dynarray<size_t> &line_starts, size_t &longest_line) {
 	longest_line = longest_line_;
 }
 
-void Loader::quit() {
+void InputProcessor::quit() {
 	quit_.set();
 	if (thread_.joinable()) {
 		thread_.join();
 	}
 }
 
-void Loader::worker() {
+void InputProcessor::worker() {
 	{
 		Timeit timeit("File Open");
 		if (file_.open() != 0) {
@@ -89,22 +91,22 @@ void Loader::worker() {
 	}
 }
 
-int Loader::event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void *context) {
-	return static_cast<Loader *>(context)->event_handler(id, from, to, flags);
+int InputProcessor::event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags, void *context) {
+	return static_cast<InputProcessor *>(context)->event_handler(id, from, to, flags);
 }
 
-int Loader::event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags) {
+int InputProcessor::event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags) {
 	// This is faster and uses less memory than enabling the HS_FLAG_SOM_LEFTMOST flag
 	from = to - 1;
 
 	chunk_results_.push_back(from);
 	size_t line_len = from - prev_start_;
 	prev_start_ = from;
-	longest_line_ = std::max(longest_line_, line_len);
+	unsafe_longest_line_ = std::max(unsafe_longest_line_, line_len);
 	return 0; // Continue matching
 }
 
-void Loader::load_tail() {
+void InputProcessor::load_tail() {
 	static constexpr size_t CHUNK_SIZE = 1ULL * 1024 * 1024;
 
 	auto prev_size = file_.mapped_size();
@@ -127,7 +129,9 @@ void Loader::load_tail() {
 		// timeit.stop();
 		// std::cout << "File remapped: " << prev_size << " B -> " << file_.mapped_size() << " B\n";
 
-		updater.set(file_.mapped_data(), file_.mapped_size());
+		// NOTE Purposely keep the previous size, so that other users of the dataset (e.g. Finder) do not emit results
+		//  greater than the last line in line_starts_, as this would be confusing to deal with
+		updater.set(file_.mapped_data(), prev_size);
 	}
 
 	size_t total_size = new_size - prev_size;
@@ -149,8 +153,9 @@ void Loader::load_tail() {
 		assert(err == HS_SUCCESS);
 
 		{
-			std::lock_guard lock(mtx_);
-			line_starts_.extend(chunk_results_);
+			std::unique_lock lock(mtx_);
+			line_starts_.extend(lock, chunk_results_);
+			longest_line_ = unsafe_longest_line_;
 		}
 		if (on_data_) {
 			on_data_();
@@ -158,4 +163,10 @@ void Loader::load_tail() {
 		chunk_results_.resize_uninitialized(0);
 	}
 	load_timeit.stop();
+
+	{
+		auto updater = dataset_.updater();
+		// NOTE: Now that line_starts_ has been updated, we can allow other users to access the new data.
+		updater.set(file_.mapped_data(), file_.mapped_size());
+	}
 }
