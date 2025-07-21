@@ -24,36 +24,9 @@ class FileView : public Widget {
 		size_t next_line_idx_ {};
 
 		// TODO this is basically a copy of the FindView constructor, but the generic alternative is even uglier.
-		FindContext(Widget *parent, color color, std::function<void(FindView &, FindView::Event)> &&event_cb) :
-			view(parent, color, std::move(event_cb)) {
-		}
-
-		void reset() {
-			line_indices.resize_uninitialized(0);
-			next_match_idx_ = 0;
-			next_line_idx_ = 0;
-		}
-
-		void feed(const dynarray<size_t> &line_starts, const dynarray<Finder::Job::Result> &results) {
-			const size_t num_lines = line_starts.size();
-
-			// O(N + M) linear scan.
-			for (; next_match_idx_ < results.size(); next_match_idx_++) {
-				const auto &result = results[next_match_idx_];
-				if (result.start < line_starts[next_line_idx_]) {
-					continue; // skip multiple matches on the same line
-				}
-				while (1) {
-					assert(next_line_idx_ < num_lines);
-					if (result.start < line_starts[next_line_idx_]) {
-						// TODO this can block during realloc
-						line_indices.push_back(next_line_idx_ - 1);
-						break;
-					}
-					next_line_idx_++;
-				}
-			}
-		}
+		FindContext(Widget *parent, color color, std::function<void(FindView &, FindView::Event)> &&event_cb);
+		void reset();
+		void feed(const dynarray<size_t> &line_starts, const dynarray<Finder::Job::Result> &results);
 	};
 
 	InputProcessor loader_;
