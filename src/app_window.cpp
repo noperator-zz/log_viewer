@@ -67,7 +67,7 @@ std::unique_ptr<AppWindow> AppWindow::create(int argc, char *argv[], int &err) {
     int fb_width, fb_height;
     glfwGetFramebufferSize(window, &fb_width, &fb_height);
 
-    // glfwSwapInterval(0);
+    glfwSwapInterval(1);
 
     if (glewInit() != GLEW_OK) {
         std::cerr << "Failed to initialize GLEW\n";
