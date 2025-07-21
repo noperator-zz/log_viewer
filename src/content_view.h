@@ -18,7 +18,7 @@ class ContentView : public Widget {
 
 	Scrollbar scroll_h_ {this, false, [this](double p){scroll_h_cb(p);}};
 	Scrollbar scroll_v_ {this, true, [this](double p){scroll_v_cb(p);}};
-	StripeView stripe_view_ {this, 1000, 1};
+	StripeView stripe_view_ {this, 3000, 1};
 	layout::H hlay_ {};
 	layout::V vlay_ {};
 

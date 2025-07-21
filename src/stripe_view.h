@@ -13,17 +13,12 @@ public:
 		friend class StripeView;
 		StripeView &parent_;
 		color color_;
-		// template <typename T>
-		// std::function<bool(const T&, const T&)> compare_;
 		std::function<size_t(const void*)> get_location_;
 		std::unique_ptr<StripeShader::LineStyle[]> ticks_;
 		StripeShader::Buffer buf_ {};
 
 		size_t prev_num_lines_ {};
-		size_t prev_num_pois_ {};
-		size_t prev_poi_idx_ {};
-		// size_t prev_poi_line_ {};
-		size_t prev_free_tick_ {};
+		size_t next_poi_idx_ {};
 
 		Dataset(const Dataset &) = delete;
 		Dataset &operator=(const Dataset &) = delete;
@@ -48,10 +43,7 @@ public:
 
 		void reset() {
 			prev_num_lines_ = 0;
-			prev_num_pois_ = 0;
-			prev_poi_idx_ = 0;
-			// prev_poi_line_ = 0;
-			prev_free_tick_ = 0;
+			next_poi_idx_ = 0;
 			std::memset(ticks_.get(), 0, parent_.num_ticks_ * sizeof(ticks_[0]));
 		}
 
@@ -64,19 +56,13 @@ public:
 		}
 
 	public:
-		// template <typename T>
-		Dataset(StripeView &parent,	color color, std::function<size_t(const void*)> &&get_location)
-		: parent_(parent), color_(color), get_location_(std::move(get_location))
-		, ticks_(new StripeShader::LineStyle[parent_.num_ticks_]) {
+		Dataset(StripeView &parent,	color color)
+		: parent_(parent), color_(color), ticks_(new StripeShader::LineStyle[parent_.num_ticks_]) {
 			StripeShader::create_buffers(buf_, parent_.num_ticks_);
 			reset();
 		}
 
-		// const dynarray<size_t> &line_starts_;
-		// const dynarray<T> POIs_;
-		// line_starts_(line_starts), POIs_(POIs),
-		template <typename T>
-		void feed(const dynarray<size_t> &line_starts, const dynarray<T> &POIs) {
+		void feed(const dynarray<size_t> &line_starts, const dynarray<size_t> &poi_lines) {
 			const size_t num_lines = line_starts.size();
 			assert(num_lines >= prev_num_lines_);
 
@@ -91,54 +77,15 @@ public:
 				prev_num_lines_ = num_lines;
 			}
 
-			size_t free_tick = prev_free_tick_;
-			size_t tick_line = 0;
-			bool first = true;
-			while (free_tick < parent_.num_ticks_) {
-				const auto line = first_line_for_tick(free_tick, num_lines);
-				if (first) {
-					tick_line = line;
-					first = false;
-				} else {
-					tick_line = std::max(tick_line + 1, line);
-				}
+			for (size_t poi_idx = next_poi_idx_; poi_idx < poi_lines.size(); ++poi_idx) {
+				size_t poi_line = poi_lines[poi_idx];
 
-				size_t char_pos = line_starts[tick_line];
-				const auto poi_it = std::lower_bound(POIs.begin() + prev_poi_idx_, POIs.end(), char_pos);
-
-				if (poi_it == POIs.end()) {
-					prev_poi_idx_ = POIs.size();
-					break;
-				}
-				prev_poi_idx_ = std::distance(POIs.begin(), poi_it);
-
-				char_pos = get_location_(poi_it);
-				const auto line_it = std::lower_bound(line_starts.begin() + tick_line, line_starts.end(), char_pos);
-				if (line_it == line_starts.end()) {
-					// This could happen due to line_starts being out of date compared to POIs.
-					// TODO what best to do here?
-					break;
-				}
-				// assert(line_it != line_starts.end());
-
-				const size_t tick_line2 = std::distance(line_starts.begin(), line_it);
-				// prev_poi_line_ = tick_line2;
-
-				const float position = tick_line2 / (double)num_lines;
-				size_t tick = middle_tick_for_line(tick_line2, num_lines);
+				const float position = poi_line / (double)num_lines;
+				size_t tick = middle_tick_for_line(poi_line, num_lines);
 				ticks_[tick] = {position, color_};
-
-				// // If there are more ticks than lines, tick could be < free_tick here, so std::max() them to ensure
-				// //  we don't loop forever.
-				// // TODO This solution is hacky and inefficient since it will cause every single tick to be processed
-				// //  even if there are fewer lines than ticks.
-				// //  Better would be to update get_line_tick() to return the _last_ tick associated with a line.
-				// free_tick = std::max(tick, free_tick) + 1;
-				free_tick = tick + 1;
 			}
-
-			if (free_tick != prev_free_tick_) {
-				prev_free_tick_ = free_tick;
+			if (next_poi_idx_ != poi_lines.size()) {
+				next_poi_idx_ = poi_lines.size();
 				parent_.soil();
 			}
 		}
@@ -163,15 +110,14 @@ public:
 	// void reset();
 	// void add_tick(float location, color color);
 
-	void add_dataset(void *key, color color, std::function<size_t(const void*)> &&get_location);
+	void add_dataset(void *key, color color);
 	void remove_dataset(void *key);
-	template <typename T>
-	void feed(void *ctx, const dynarray<size_t> &line_starts, const dynarray<T> &POIs) {
+	void feed(void *ctx, const dynarray<size_t> &line_starts, const dynarray<size_t> &poi_lines) {
 		if (datasets_.find(ctx) == datasets_.end()) {
 			assert(false);
 			return; // no dataset for this context
 		}
-		datasets_.at(ctx).feed(line_starts, POIs);
+		datasets_.at(ctx).feed(line_starts, poi_lines);
 	}
 
 	void draw() override;

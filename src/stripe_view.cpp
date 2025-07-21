@@ -30,9 +30,10 @@ StripeView::StripeView(Widget *parent, size_t resolution, size_t tick_size)
 // 	soil();
 // }
 
-void StripeView::add_dataset(void *key, color color, std::function<size_t(const void*)> &&get_location) {
-	// FIXME
-	datasets_.try_emplace(key, *this, color, std::move(get_location));
+void StripeView::add_dataset(void *key, color color) {
+	datasets_.emplace(std::piecewise_construct,
+		std::forward_as_tuple(key),
+		std::forward_as_tuple(*this, color));
 }
 
 void StripeView::remove_dataset(void *key) {

@@ -60,9 +60,7 @@ void FileView::on_findview_event(FindView &view, FindView::Event event) {
 
 			find_ctxs_.at(&view)->reset();
 			content_view_.stripe_view_.remove_dataset(&view);
-			content_view_.stripe_view_.add_dataset(&view, view.color(), [](const void *ele) {
-				return static_cast<const Finder::Job::Result*>(ele)->start;
-			});
+			content_view_.stripe_view_.add_dataset(&view, view.color());
 
 			int ret = finder_.submit(&view, [this](auto ctx, auto idx){on_finder_results(ctx, idx);}, view.text(), 0);//find_view.flags());
 			if (ret != 0) {
@@ -380,6 +378,7 @@ void FileView::on_resize() {
 
 
 void FileView::update() {
+	ZoneScopedN("FV update");
 	static microseconds duration {};
 	auto now = steady_clock::now();
 
@@ -400,14 +399,17 @@ void FileView::update() {
 
 	linenum_view_.linenum_chars_ = linenum_len(num_lines());
 
-	for (const auto &[ctx_, job] : finder_user.jobs()) {
+	{
 		ZoneScopedN("Finder results");
-		auto view = static_cast<FindView *>(ctx_);
-		const auto &results = job->results();
-		view->set_state({results.size(), view->state().current_match, false});
-		find_ctxs_.at(view)->feed(line_starts_, results);
-	}
+		for (const auto &[ctx_, job] : finder_user.jobs()) {
+			auto view = static_cast<FindView *>(ctx_);
+			const auto &results = job->results();
+			view->set_state({results.size(), view->state().current_match, false});
+			find_ctxs_.at(view)->feed(line_starts_, results);
 
+			content_view_.stripe_view_.feed(view, line_starts_, find_ctxs_.at(view)->line_indices);
+		}
+	}
 	bool did_update = update_buffers(dataset_user);
 
 	if (linenum_view_.linenum_chars_ != prev_linenum_chars) {
