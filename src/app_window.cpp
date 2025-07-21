@@ -135,7 +135,6 @@ void AppWindow::draw_cb() {
     // TODO instead of glfwWaitEvents() and Window::send_event() to trigger an update,
     // hva e cv
     // glfwWaitEvents();
-    // TODO limit to 60 FPS
 }
 
 int AppWindow::run() {
@@ -148,9 +147,12 @@ int AppWindow::run() {
 
     // TODO limit framerate
     // TODO separate processing from rendering
+    auto sleep_until = high_resolution_clock::now();
     while (!should_close()) {
         glfwPollEvents();
         draw_cb();
+        std::this_thread::sleep_until(sleep_until);
+        sleep_until += 16ms; // ~60 updates per second
     }
 
     glfwTerminate();
