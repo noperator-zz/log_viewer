@@ -2,6 +2,9 @@
 #include <iostream>
 #include "widget.h"
 #include <GLFW/glfw3.h>
+
+#include "Tracy.hpp"
+#include "util.h"
 #include "window.h"
 
 using namespace glm;
@@ -123,6 +126,8 @@ void Widget::soil() {
 }
 
 bool Widget::do_update() {
+	ZoneScopedN("do_update");
+	ZoneTextF("do_update: %s", name_.c_str());
 	bool tree_dirty = dirty_;
 	if (tree_dirty) {
 		dirty_ = false;

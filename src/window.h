@@ -2,6 +2,7 @@
 #include <condition_variable>
 #include <GLFW/glfw3.h>
 #include <glm/vec2.hpp>
+#include "Tracy.hpp"
 
 class Widget;
 
@@ -55,8 +56,8 @@ private:
 	bool fullscreen_ {};
 	State state_ {};
 
-	static inline std::mutex event_mtx_ {};
-	static inline std::condition_variable event_cv_ {};
+	static inline TracyLockable(std::mutex, event_mtx_);
+	static inline std::condition_variable_any event_cv_ {};
 	static inline bool event_pending_ {};
 	// static inline std::atomic_flag event_pending_ {};
 

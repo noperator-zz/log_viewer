@@ -3,17 +3,18 @@
 #include <functional>
 #include <mutex>
 #include <queue>
+#include "Tracy.hpp"
 
 class Event {
-	std::mutex _own_mtx_ {};
-	std::condition_variable _own_cv_ {};
+	TracyLockable(std::mutex, _own_mtx_);
+	std::condition_variable_any _own_cv_ {};
 
-	std::mutex &mtx_;
-	std::condition_variable &cv_;
+	LockableBase(std::mutex) &mtx_;
+	std::condition_variable_any &cv_;
 	bool triggered_ {};
 
 public:
-	Event(std::mutex &mtx, std::condition_variable &cv) : mtx_(mtx), cv_(cv) {}
+	Event(LockableBase(std::mutex) &mtx, std::condition_variable_any &cv) : mtx_(mtx), cv_(cv) {}
 	Event() : mtx_(_own_mtx_), cv_(_own_cv_) {}
 	void set();
 	bool wait(std::chrono::milliseconds timeout = std::chrono::milliseconds::max()) const;
@@ -34,9 +35,9 @@ class WorkerPool {
 	// };
 
 public:
-	using job_t = std::function<void(const std::mutex &pool_mtx, const std::condition_variable &pool_cv, const bool &pool_quit)>;
-	std::mutex mtx_ {};
-	std::condition_variable cv_ {};
+	using job_t = std::function<void(const LockableBase(std::mutex) &pool_mtx, const std::condition_variable_any &pool_cv, const bool &pool_quit)>;
+	TracyLockable(std::mutex, mtx_);
+	std::condition_variable_any cv_ {};
 
 private:
 	// std::vector<Worker> workers_;

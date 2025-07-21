@@ -4,6 +4,7 @@
 
 #include "stripe_vert.glsl.h"
 #include "stripe_frag.glsl.h"
+#include "TracyOpenGL.hpp"
 
 using namespace glm;
 
@@ -87,6 +88,7 @@ void StripeShader::use(const Buffer &buf) {
 }
 
 void StripeShader::update(const Buffer &buf, const LineStyle *data) {
+	// TracyGpuZone("Stripe buffer");
 	use(buf);
 	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
 	glBufferSubData(GL_ARRAY_BUFFER, 0, buf.size * sizeof(LineStyle), data);
@@ -99,7 +101,10 @@ void StripeShader::draw(const Buffer &buf, ivec2 pos, ivec2 size, uint8_t width,
 	globals.width_px = width;
 	globals.z_order = z;
 	update_uniforms();
-	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, buf.size, 0);
+	{
+		// TracyGpuZone("Stripe draw");
+		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, buf.size, 0);
+	}
 }
 
 void StripeShader::UniformGlobals::set_viewport(ivec2 size) {

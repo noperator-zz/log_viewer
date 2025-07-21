@@ -4,6 +4,7 @@
 #include <utility>
 
 #include "util.h"
+#include "Tracy.hpp"
 
 template<typename T>
 class dynarray {
@@ -90,20 +91,25 @@ public:
 		}
 
 		if (new_capacity > capacity_) {
+			ZoneScopedN("dynarray::reserve");
 			lock.unlock();
-			Timeit t("dynarray::reserve");
-			T* new_data = static_cast<T*>(::operator new(sizeof(T) * new_capacity));
-			std::memcpy(new_data, data_, sizeof(T) * size_);
-			T* old_data = data_;
+			T *new_data, *old_data = data_;
+			{
+				ZoneScopedN("dynarray alloc");
+				new_data = static_cast<T*>(::operator new(sizeof(T) * new_capacity));
+				std::memcpy(new_data, data_, sizeof(T) * size_);
+			}
 
 			lock.lock();
 			data_ = new_data;
 			capacity_ = new_capacity;
-
 			lock.unlock();
-			::operator delete(old_data);
 
-			t.stop();
+			{
+				ZoneScopedN("dynarray free");
+				::operator delete(old_data);
+			}
+
 			lock.lock();
 		}
 	}

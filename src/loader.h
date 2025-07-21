@@ -17,7 +17,7 @@ class InputProcessor {
 	hs_database_t * db_ {};
 	hs_scratch_t * scratch_ {};
 	hs_stream_t * stream_ {};
-	std::mutex mtx_ {};
+	TracyLockable(std::mutex, mtx_);
 	size_t prev_start_ {};
 	dynarray<size_t> chunk_results_ {};
 	dynarray<size_t> line_starts_ {};

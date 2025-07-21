@@ -32,6 +32,10 @@ find_package(GLEW REQUIRED)
 find_package(glm REQUIRED)
 #find_package(hyperscan REQUIRED)
 
+option( TRACY_ENABLE "" ON)
+option( TRACY_ON_DEMAND "" ON)
+add_subdirectory (tracy)
+
 # Path to your shaders
 set(SHADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/shaders")
 file(GLOB SHADER_FILES "${SHADER_DIR}/*.glsl")
@@ -58,6 +62,7 @@ add_custom_target(compile_shaders DEPENDS ${GENERATED_SHADER_HEADERS})
 
 add_executable(${PROJECT_NAME}
     ${GENERATED_SHADER_HEADERS}
+    tracy/public/TracyClient.cpp
     shaders/text_shader.cpp
     shaders/gp_shader.cpp
     shaders/stripe_shader.cpp
@@ -96,6 +101,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     src
     .
     "C:/Program Files (x86)/hyperscan/include"
+    tracy/public/tracy
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -128,4 +134,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     glm::glm
 #    hyperscan::hs
     hs
+    Tracy::TracyClient
 )

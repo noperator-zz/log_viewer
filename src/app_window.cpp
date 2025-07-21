@@ -6,6 +6,7 @@
 #include "app_window.h"
 #include "util.h"
 #include "log.h"
+#include "TracyOpenGL.hpp"
 
 using namespace std::chrono;
 
@@ -142,6 +143,7 @@ int AppWindow::run() {
     // glDrawArrays(GL_TRIANGLES, 0, glyph_count * 6);
     // glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
 
+    TracyGpuContext;
     app_.resize({0, 0}, fb_size_);
 
     // TODO limit framerate

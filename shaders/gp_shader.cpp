@@ -4,6 +4,7 @@
 
 #include "gp_vert.glsl.h"
 #include "gp_frag.glsl.h"
+#include "TracyOpenGL.hpp"
 #include "types.h"
 #include "widget.h"
 #include "res/tex_data.h"
@@ -113,13 +114,18 @@ void GPShader::draw() {
 		return;
 	}
 
-	inst_->shader_.use();
-	glActiveTexture(GL_TEXTURE1);
-	glBindVertexArray(inst_->vao_);
-	glBindBuffer(GL_ARRAY_BUFFER, inst_->vbo_);
-	glBufferData(GL_ARRAY_BUFFER, inst_->vertices_.size() * sizeof(GPVertex), inst_->vertices_.data(), GL_DYNAMIC_DRAW);
-	glDrawArrays(GL_TRIANGLES, 0, inst_->vertices_.size());
-
+	{
+		// TracyGpuZone("GP buffer");
+		inst_->shader_.use();
+		glActiveTexture(GL_TEXTURE1);
+		glBindVertexArray(inst_->vao_);
+		glBindBuffer(GL_ARRAY_BUFFER, inst_->vbo_);
+		glBufferData(GL_ARRAY_BUFFER, inst_->vertices_.size() * sizeof(GPVertex), inst_->vertices_.data(), GL_DYNAMIC_DRAW);
+	}
+	{
+		// TracyGpuZone("GP draw");
+		glDrawArrays(GL_TRIANGLES, 0, inst_->vertices_.size());
+	}
 	inst_->vertices_.clear();
 }
 

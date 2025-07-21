@@ -1,8 +1,11 @@
 #include <cassert>
 
 #include "finder.h"
+
+#include <TracyC.h>
 #include <hs/hs.h>
 #include "util.h"
+#include "Tracy.hpp"
 
 using namespace std::chrono;
 
@@ -17,7 +20,7 @@ void Finder::stop() {
 	jobs_.clear();
 }
 
-std::unique_ptr<Finder::Job> Finder::Job::create(std::mutex &results_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result,
+std::unique_ptr<Finder::Job> Finder::Job::create(LockableBase(std::mutex) &results_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result,
 	void* ctx, std::string_view pattern, int flags, int &error) {
 	Timeit t("Finder::Job::create()");
 	hs_compile_error_t *compile_err;
@@ -61,7 +64,7 @@ std::unique_ptr<Finder::Job> Finder::Job::create(std::mutex &results_mtx, Datase
 	return std::unique_ptr<Job>(new Job(results_mtx, dataset, std::move(on_result), ctx, pattern, flags, db, scratch, stream));
 }
 
-Finder::Job::Job(std::mutex &result_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result,
+Finder::Job::Job(LockableBase(std::mutex) &result_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result,
 	void* ctx, std::string_view pattern, int flags, hs_database_t *db, hs_scratch_t *scratch, hs_stream_t *stream)
 	: thread_(&worker, this), result_mtx_(result_mtx), dataset_(dataset), on_result_(std::move(on_result)), ctx_(ctx)
 	, pattern_(pattern), flags_(flags), db_(db) , scratch_(scratch), stream_(stream) {
@@ -107,6 +110,8 @@ int Finder::Job::event_handler(unsigned int id, unsigned long long from, unsigne
 }
 
 void Finder::Job::worker() {
+	// TracyCSetThreadName(("Finder::Job " + std::to_string((uintptr_t)ctx_)).c_str());
+	tracy::SetThreadNameWithHint(("Finder::Job " + std::to_string((uintptr_t)ctx_)).c_str(), 1);
 	// NOTE Chunk size needs to be relatively small because it sets the latency of the quit event being handled
 	static constexpr size_t CHUNK_SIZE = 1ULL * 1024 * 1024;
 
@@ -123,6 +128,7 @@ void Finder::Job::worker() {
 				break;
 			}
 
+			ZoneScopedN("Finder::Job::worker()");
 			Timeit t("Scan");
 			std::cout << "Job acquired." << std::endl;
 			assert(user.data());
@@ -152,8 +158,11 @@ void Finder::Job::worker() {
 
 			    {
 	        		std::unique_lock lock(result_mtx_);
-				    results_.extend(lock, chunk_results_);
-		        	// std::swap(results_, chunk_results_);
+			        {
+				        ZoneScopedN("Extend results");
+		        		results_.extend(lock, chunk_results_);
+		        		// std::swap(results_, chunk_results_);
+			        }
 			    }
 		    	if (on_result_) {
 		    		on_result_(ctx_, last_report_);

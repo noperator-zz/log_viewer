@@ -32,7 +32,7 @@ public:
 
 	private:
 		std::thread thread_;
-		std::mutex &result_mtx_;
+		LockableBase(std::mutex) &result_mtx_;
 		Dataset &dataset_;
 		std::function<void(void*, size_t)> on_result_;
 		void *ctx_;
@@ -56,7 +56,7 @@ public:
 		void quit();
 
 		Job() = delete;
-		Job(std::mutex &result_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result, void* ctx,
+		Job(LockableBase(std::mutex) &result_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result, void* ctx,
 			std::string_view pattern, int flags, hs_database_t *db, hs_scratch_t *scratch, hs_stream_t *stream);
 		// diable copy and move
 		Job(const Job &) = delete;
@@ -67,7 +67,7 @@ public:
 
 	public:
 		~Job();
-		static std::unique_ptr<Job> create(std::mutex &results_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result,
+		static std::unique_ptr<Job> create(LockableBase(std::mutex) &results_mtx, Dataset &dataset, std::function<void(void*, size_t)> &&on_result,
 			void* ctx, std::string_view pattern, int flags, int &err);
 
 		const dynarray<Result> &results() const { return results_; }
@@ -78,7 +78,7 @@ public:
 		friend class Finder;
 
 		const Finder &finder_;
-		std::scoped_lock<std::mutex, std::mutex> lock_;
+		std::scoped_lock<LockableBase(std::mutex), LockableBase(std::mutex)> lock_;
 
 		User(const Finder &finder) : finder_(finder), lock_(finder.jobs_mtx_, finder.results_mtx_) {}
 
@@ -95,8 +95,8 @@ public:
 
 	Dataset &dataset_;
 
-	mutable std::mutex jobs_mtx_ {};
-	mutable std::mutex results_mtx_ {};
+	mutable TracyLockable(std::mutex, jobs_mtx_);
+	mutable TracyLockable(std::mutex, results_mtx_);
 	std::unordered_map<void*, std::unique_ptr<Job>> jobs_ {};
 
 public:

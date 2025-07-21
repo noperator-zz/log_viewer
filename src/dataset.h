@@ -6,6 +6,7 @@
 #include <functional>
 
 #include "util.h"
+#include "Tracy.hpp"
 
 class Dataset {
 	class Updater {
@@ -40,12 +41,13 @@ public:
 		friend class Dataset;
 
 		const Dataset &dataset_;
-		std::shared_lock<std::shared_mutex> lock_;
+		std::shared_lock<SharedLockableBase(std::shared_mutex)> lock_;
+
 		// Timeit ctor_ {"Dataset::User"};
 		// Timeit dtor_ {"Dataset::~User"};
 
 		User(const Dataset &dataset) : User(dataset, std::shared_lock(dataset.mtx_)) {}
-		User(const Dataset &dataset, std::shared_lock<std::shared_mutex> &&lock_) : dataset_(dataset), lock_(std::move(lock_)) {
+		User(const Dataset &dataset, std::shared_lock<SharedLockableBase(std::shared_mutex)> &&lock_) : dataset_(dataset), lock_(std::move(lock_)) {
 			// ctor_.stop();
 		}
 
@@ -67,7 +69,7 @@ private:
 
 	std::function<void()> on_data_ {};
 	std::function<void()> on_unmap_ {};
-	mutable std::shared_mutex mtx_ {};
+	mutable TracySharedLockable(std::shared_mutex, mtx_);
 	std::condition_variable_any update_cv_ {};
 	const uint8_t *data_ {};
 	size_t length_ {};

@@ -2,6 +2,8 @@
 #include "window.h"
 
 #include "util.h"
+#include "Tracy.hpp"
+#include "TracyOpenGL.hpp"
 
 using namespace std::chrono;
 using namespace glm;
@@ -195,14 +197,20 @@ void Window::toggle_fullscreen() {
 bool Window::draw(bool force) const {
 	bool tree_dirty = false;
 	{
-		// Timeit t("Update tree");
+		ZoneScopedN("Window update");
 		tree_dirty = root_.do_update();
 	}
 	tree_dirty |= force;
 	if (tree_dirty) {
 		// Timeit t("Draw tree");
-		root_.draw();
+		{
+			ZoneScopedN("Window CPU draw");
+			// TracyGpuZone("Window GPU draw");
+			root_.draw();
+		}
 		swap_buffers();
+		TracyGpuCollect;
+		FrameMark;
 	} else {
 		// std::cout << "No changes in the tree, skipping draw." << std::endl;
 	}

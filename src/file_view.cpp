@@ -7,6 +7,7 @@
 #include "color.h"
 #include "log.h"
 #include "settings.h"
+#include "TracyOpenGL.hpp"
 #include "../shaders/text_shader.h"
 #include "util.h"
 
@@ -255,7 +256,9 @@ size_t FileView::abs_char_loc_to_buf_char_idx(ivec2 abs_loc) const {
 }
 
 void FileView::really_update_buffers(const uint8_t *data) {
-	Timeit update_timeit("Update buffer");
+	ZoneScopedN("Update buffer");
+	// TracyGpuZone("Update buffer");
+	// Timeit update_timeit("Update buffer");
 
 	// first (inclusive) and last (exclusive) lines to buffer
 	assert(num_lines() > 0);
@@ -307,24 +310,27 @@ void FileView::really_update_buffers(const uint8_t *data) {
 	content_view_.base_styles_.resize_uninitialized(content_num_chars);
 	linenum_view_.styles_.resize_uninitialized(linenum_num_chars);
 
-	glBindBuffer(GL_ARRAY_BUFFER, linenum_view_.buf_.vbo_style);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, linenum_view_.styles_.size() * sizeof(TextShader::CharStyle), linenum_view_.styles_.data());
-
+	{
+		ZoneScopedN("Linenum buffer");
+		// TracyGpuZone("Linenum buffer");
+		glBindBuffer(GL_ARRAY_BUFFER, linenum_view_.buf_.vbo_style);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, linenum_view_.styles_.size() * sizeof(TextShader::CharStyle), linenum_view_.styles_.data());
+	}
 	// update_timeit.stop();
 	// printf("Content buffer size: %zu\n", num_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
 	// printf("Linenum buffer size: %zu\n", total_linenum_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
-	logger << content_view_.buf_char_window_.tl.x << " " << content_view_.buf_char_window_.tl.y
-	       << " " << content_view_.buf_char_window_.br.x << " " << content_view_.buf_char_window_.br.y
-	       << " Content chars: " << content_num_chars
-	       << " Linenum chars: " << linenum_num_chars
-	       << std::endl;
+	// logger << content_view_.buf_char_window_.tl.x << " " << content_view_.buf_char_window_.tl.y
+	//        << " " << content_view_.buf_char_window_.br.x << " " << content_view_.buf_char_window_.br.y
+	//        << " Content chars: " << content_num_chars
+	//        << " Linenum chars: " << linenum_num_chars
+	//        << std::endl;
  	content_view_.soil();
 	linenum_view_.soil();
 }
 
-void FileView::update_buffers(const Dataset::User &user) {
+bool FileView::update_buffers(const Dataset::User &user) {
 	if (num_lines() == 0) {
-		return;
+		return false;
 	}
 
 	// first and last (inclusive) rows and cols which would be visible on the screen
@@ -339,14 +345,16 @@ void FileView::update_buffers(const Dataset::User &user) {
 
 	// TODO also run this when new lines are added and they're visible
 	// Check if the visible lines are already in the buffer
-	// if (!content_view_.buf_char_window_.contains(visible_char_window)) {
-	if (1) {
+	if (!content_view_.buf_char_window_.contains(visible_char_window)) {
+	// if (1) {
 		content_view_.buf_char_window_ = content_view_.buf_char_window_.from_center_size(
 			visible_char_window.center(),
 			MAX_VISIBLE_CHARS
 		);
 		really_update_buffers(user.data());
+		return true;
 	}
+	return false;
 
 	// size_t abs_buf_start_char = line_starts_[content_view_.buf_char_window_.tl.y] + content_view_.buf_char_window_.tl.x;
 	// size_t abs_visible_start_char = line_starts_[visible_char_window.tl.y] + visible_char_window.tl.x;
@@ -374,7 +382,6 @@ void FileView::on_resize() {
 void FileView::update() {
 	static microseconds duration {};
 	auto now = steady_clock::now();
-	// Timeit timeit("FileView::update");
 
 	auto dataset_user = dataset_.user();
 	auto finder_user = finder_.user();
@@ -394,13 +401,14 @@ void FileView::update() {
 	linenum_view_.linenum_chars_ = linenum_len(num_lines());
 
 	for (const auto &[ctx_, job] : finder_user.jobs()) {
+		ZoneScopedN("Finder results");
 		auto view = static_cast<FindView *>(ctx_);
 		const auto &results = job->results();
 		view->set_state({results.size(), view->state().current_match, false});
 		find_ctxs_.at(view)->feed(line_starts_, results);
 	}
 
-	update_buffers(dataset_user);
+	bool did_update = update_buffers(dataset_user);
 
 	if (linenum_view_.linenum_chars_ != prev_linenum_chars) {
 		on_resize();
@@ -414,7 +422,9 @@ void FileView::update() {
 	duration += duration_cast<microseconds>(steady_clock::now() - now);
 	// std::cout << "FileView::update total duration: " << duration.count() << "us\n";
 
-	content_view_.update_from_parent(finder_user);
+	// if (did_update) {
+		content_view_.update_from_parent(finder_user);
+	// }
 	// TODO temporary
 	content_view_.soil();
 	linenum_view_.soil();

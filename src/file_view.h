@@ -46,6 +46,7 @@ class FileView : public Widget {
 				while (1) {
 					assert(next_line_idx_ < num_lines);
 					if (result.start < line_starts[next_line_idx_]) {
+						// TODO this can block during realloc
 						line_indices.push_back(next_line_idx_ - 1);
 						break;
 					}
@@ -82,7 +83,7 @@ class FileView : public Widget {
 	void on_resize() override;
 
 	void really_update_buffers(const uint8_t *data);
-	void update_buffers(const Dataset::User &user);
+	bool update_buffers(const Dataset::User &user);
 	void scroll_to(glm::ivec2 pos, bool allow_autoscroll);
 	// size_t get_line_start(size_t line_idx) const;
 	static glm::ivec2 abs_char_loc_to_abs_px_loc(glm::ivec2 abs_loc) ;

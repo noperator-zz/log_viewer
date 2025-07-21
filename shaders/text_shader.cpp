@@ -4,6 +4,7 @@
 
 #include "text_vert.glsl.h"
 #include "text_frag.glsl.h"
+#include "TracyOpenGL.hpp"
 
 using namespace glm;
 
@@ -144,8 +145,11 @@ void TextShader::render(const Buffer &buf, const std::string_view text, const Ch
 
 	assert(indices.size() == coords.size());
 
-	glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, text.size() * sizeof(CharStyle), styles.get());
+	{
+		// TracyGpuZone("Text render");
+		glBindBuffer(GL_ARRAY_BUFFER, buf.vbo_style);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, text.size() * sizeof(CharStyle), styles.get());
+	}
 }
 
 void TextShader::draw(ivec2 frame_offset, ivec2 scroll_offset, size_t start, size_t count, uint8_t z) {
@@ -154,7 +158,10 @@ void TextShader::draw(ivec2 frame_offset, ivec2 scroll_offset, size_t start, siz
 
 	globals.z_order = z;
 	update_uniforms();
-	glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, count, start);
+	{
+		// TracyGpuZone("Text draw");
+		glDrawArraysInstancedBaseInstance(GL_TRIANGLE_STRIP, 0, 4, count, start);
+	}
 }
 
 void TextShader::UniformGlobals::set_viewport(ivec2 size) {

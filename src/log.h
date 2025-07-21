@@ -52,8 +52,8 @@ private:
 	}
 
 	void (&log_)(const char *data, size_t length);
-	std::mutex mutex_;
-	std::unordered_map<std::thread::id, std::string> buffer_map_;
+	TracyLockable(std::mutex, mutex_);
+	std::unordered_map<std::thread::id, std::string> buffer_map_ {};
 };
 
 class LogStream : public std::ostream {

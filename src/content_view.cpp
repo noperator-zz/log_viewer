@@ -1,6 +1,7 @@
 #include "content_view.h"
 #include "file_view.h"
 #include "layout.h"
+#include "TracyOpenGL.hpp"
 #include "util.h"
 
 using namespace glm;
@@ -187,6 +188,7 @@ void ContentView::on_resize() {
 }
 
 void ContentView::update_from_parent(Finder::User &finder_user) {
+	ZoneScopedN("ContentView update");
 	reset_mod_styles();
 
 	if (selection_active_) {
@@ -194,10 +196,13 @@ void ContentView::update_from_parent(Finder::User &finder_user) {
 	}
 	highlight_findings(finder_user);
 
-	TextShader::use(buf_);
-
-	glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
+	{
+		ZoneScopedN("ContentView buffer");
+		// TracyGpuZone("ContentView buffer");
+		TextShader::use(buf_);
+		glBindBuffer(GL_ARRAY_BUFFER, buf_.vbo_style);
+		glBufferSubData(GL_ARRAY_BUFFER, 0, mod_styles_.size() * sizeof(TextShader::CharStyle), mod_styles_.data());
+	}
 }
 
 void ContentView::update() {}
@@ -209,6 +214,7 @@ static bool cursor_visible() {
 }
 
 void ContentView::draw() {
+	// TracyGpuZone("ContentView draw");
 	GPShader::rect(pos(), size(), {0x2B, 0x2B, 0x2B, 0xFF}, Z_FILEVIEW_BG);
 	GPShader::draw();
 

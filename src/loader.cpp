@@ -4,6 +4,8 @@
 
 #include "util.h"
 #include <hs/hs.h>
+#include "Tracy.hpp"
+#include "TracyC.h"
 
 using namespace std::chrono;
 
@@ -74,6 +76,7 @@ void InputProcessor::quit() {
 }
 
 void InputProcessor::worker() {
+	TracyCSetThreadName("Loader");
 	{
 		Timeit timeit("File Open");
 		if (file_.open() != 0) {
@@ -117,7 +120,9 @@ void InputProcessor::load_tail() {
 		return;
 	}
 
+	ZoneScopedN("load tail");
 	{
+		ZoneScopedN("remap");
 		auto updater = dataset_.updater();
 
 		// Timeit timeit("File remap");
@@ -134,37 +139,42 @@ void InputProcessor::load_tail() {
 		updater.set(file_.mapped_data(), prev_size);
 	}
 
-	size_t total_size = new_size - prev_size;
-	std::cout << "Loading " << total_size << " B\n";
-	Timeit load_timeit("Load");
+	{
+		ZoneScopedN("find new lines");
+		size_t total_size = new_size - prev_size;
+		std::cout << "Loading " << total_size << " B\n";
+		Timeit load_timeit("Load");
 
-	chunk_results_.resize_uninitialized(0);
-	if (prev_size == 0) {
-		// If this is the first time we are loading the file, we need to add a starting point
-		prev_start_ = 0;
-		chunk_results_.push_back(0);
-	}
-
-	for (size_t offset = 0; offset < total_size; offset += CHUNK_SIZE) {
-		size_t chunk_size = std::min(total_size - offset, CHUNK_SIZE);
-		hs_error_t err = hs_scan_stream(stream_, (const char*)file_.mapped_data() + prev_size + offset, chunk_size, 0,
-			scratch_, event_handler, this);
-
-		assert(err == HS_SUCCESS);
-
-		{
-			std::unique_lock lock(mtx_);
-			line_starts_.extend(lock, chunk_results_);
-			longest_line_ = unsafe_longest_line_;
-		}
-		if (on_data_) {
-			on_data_();
-		}
 		chunk_results_.resize_uninitialized(0);
+		if (prev_size == 0) {
+			// If this is the first time we are loading the file, we need to add a starting point
+			prev_start_ = 0;
+			chunk_results_.push_back(0);
+		}
+
+		for (size_t offset = 0; offset < total_size; offset += CHUNK_SIZE) {
+			size_t chunk_size = std::min(total_size - offset, CHUNK_SIZE);
+			hs_error_t err = hs_scan_stream(stream_, (const char*)file_.mapped_data() + prev_size + offset, chunk_size, 0,
+				scratch_, event_handler, this);
+
+			assert(err == HS_SUCCESS);
+
+			{
+				ZoneScopedN("extend line starts");
+				std::unique_lock lock(mtx_);
+				line_starts_.extend(lock, chunk_results_);
+				longest_line_ = unsafe_longest_line_;
+			}
+			if (on_data_) {
+				on_data_();
+			}
+			chunk_results_.resize_uninitialized(0);
+		}
+		load_timeit.stop();
 	}
-	load_timeit.stop();
 
 	{
+		ZoneScopedN("update dataset");
 		auto updater = dataset_.updater();
 		// NOTE: Now that line_starts_ has been updated, we can allow other users to access the new data.
 		updater.set(file_.mapped_data(), file_.mapped_size());
