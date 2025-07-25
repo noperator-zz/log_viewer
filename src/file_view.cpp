@@ -301,9 +301,12 @@ void FileView::really_update_buffers(const uint8_t *data) {
 	char linenum_text[linenum_view_.linenum_chars_ + 1]; // +1 for the null terminator added by sprintf
 	const std::string fmt = "%" + std::to_string(linenum_view_.linenum_chars_) + "zu";
 
-	int line = 0;//-content_view_.buf_char_window_.tl.y;
-	for (int line_idx = std::max(0, content_view_.buf_char_window_.tl.y); line_idx < std::clamp(content_view_.buf_char_window_.br.y, 0, (int)num_lines()); line_idx++) {
-		// if (line_idx % 2) continue;
+	for (int buf_line_idx = std::max(0, content_view_.buf_char_window_.tl.y); buf_line_idx < std::clamp(content_view_.buf_char_window_.br.y, 0, (int)num_lines()); ++buf_line_idx) {
+		// if (buf_line_idx >= filtered_line_indices_.size()) {
+		// 	break; // No more lines to process
+		// }
+		// size_t line_idx = filtered_line_indices_[buf_line_idx];
+		size_t line_idx = buf_line_idx;
 		int line_len = get_line_len(line_idx);
 		size_t linenum_len = sprintf(linenum_text, fmt.c_str(), line_idx + 1);
 
@@ -312,7 +315,7 @@ void FileView::really_update_buffers(const uint8_t *data) {
 			uint8_t g = 200;
 			uint8_t b = 200;
 			content_view_.base_styles_[content_num_chars] = {
-				uvec2{char_idx, line},
+				uvec2{char_idx, buf_line_idx},
 				vec4{r, g, b, 255},
 				// vec4{0, 0, 0, 255}
 				// vec4{100, 0, 0, 255}
@@ -327,7 +330,7 @@ void FileView::really_update_buffers(const uint8_t *data) {
 
 		for (uint i = 0; i < linenum_len; i++) {
 			linenum_view_.styles_[linenum_num_chars] = {
-				uvec2{i, line_idx},
+				uvec2{i, buf_line_idx},
 				vec4{0xA0, 0xA0, 0xA0, 255},
 				vec4{},
 				{},
@@ -335,7 +338,6 @@ void FileView::really_update_buffers(const uint8_t *data) {
 			};
 			linenum_num_chars++;
 		}
-		line++;
 	}
 	content_view_.base_styles_.resize_uninitialized(content_num_chars);
 	linenum_view_.styles_.resize_uninitialized(linenum_num_chars);
@@ -349,11 +351,14 @@ void FileView::really_update_buffers(const uint8_t *data) {
 	// update_timeit.stop();
 	// printf("Content buffer size: %zu\n", num_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
 	// printf("Linenum buffer size: %zu\n", total_linenum_chars * (sizeof(TextShader::CharStyle) + sizeof(uint8_t)));
-	// logger << content_view_.buf_char_window_.tl.x << " " << content_view_.buf_char_window_.tl.y
-	//        << " " << content_view_.buf_char_window_.br.x << " " << content_view_.buf_char_window_.br.y
-	//        << " Content chars: " << content_num_chars
-	//        << " Linenum chars: " << linenum_num_chars
-	//        << std::endl;
+	logger << content_view_.buf_char_window_.tl.x << " " << content_view_.buf_char_window_.tl.y
+	       << " " << content_view_.buf_char_window_.br.x << " " << content_view_.buf_char_window_.br.y
+	       << " Content chars: " << content_num_chars
+	       << " Linenum chars: " << linenum_num_chars
+	       << " start idx: " << content_view_.buf_start_line_
+	       // << " end line: " << (line_idx_it == filtered_line_indices_.end() ? "end" : std::to_string(*line_idx_it))
+	       // << " # of lines: " << buf_num_lines
+	       << std::endl;
  	content_view_.soil();
 	linenum_view_.soil();
 }
@@ -440,6 +445,8 @@ void FileView::update() {
 			find_ctxs_.at(view)->feed(line_starts_, results);
 
 			content_view_.stripe_view_.feed(view, line_starts_, find_ctxs_.at(view)->line_indices);
+			// FIXME do filtering for real
+			find_ctxs_.at(view)->line_indices.copy_into(filtered_line_indices_);
 		}
 	}
 	bool did_update = update_buffers(dataset_user);

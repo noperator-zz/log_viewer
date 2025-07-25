@@ -219,8 +219,7 @@ void ContentView::draw() {
 	GPShader::draw();
 
 	TextShader::use(buf_);
-	auto line_offset = ivec2{0, std::max(0, buf_char_window_.tl.y) * TextShader::font().size.y};
-	TextShader::draw(pos(), parent().scroll_ - line_offset, 0, mod_styles_.size(), Z_FILEVIEW_TEXT_FG);
+	TextShader::draw(pos(), parent().scroll_, 0, mod_styles_.size(), Z_FILEVIEW_TEXT_FG);
 
 	if (cursor_visible()) {
 		auto view_px_loc = abs_px_loc_to_view_px_loc(FileView::abs_char_loc_to_abs_px_loc(cursor_abs_char_loc_));
