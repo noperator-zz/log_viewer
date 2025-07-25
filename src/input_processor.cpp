@@ -1,4 +1,4 @@
-#include "loader.h"
+#include "input_processor.h"
 
 #include <cassert>
 

@@ -8,7 +8,7 @@
 #include "scrollbar.h"
 #include "text_shader.h"
 #include "widget.h"
-#include "loader.h"
+#include "input_processor.h"
 #include "linenum_view.h"
 #include "content_view.h"
 
