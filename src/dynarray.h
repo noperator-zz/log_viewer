@@ -50,7 +50,7 @@ public:
 	}
 
 	dynarray(dynarray && o) noexcept
-		: data_(o.data_), size_(o.size_), capacity_(o.capacity_) {
+		: data_(o.data_), size_(o.size_), capacity_(o.capacity_), preferred_capacity_(o.preferred_capacity_) {
 		o.data_ = nullptr;
 		o.size_ = 0;
 		o.capacity_ = 0;
@@ -61,11 +61,20 @@ public:
 			data_ = o.data_;
 			size_ = o.size_;
 			capacity_ = o.capacity_;
+			preferred_capacity_ = o.preferred_capacity_;
 			o.data_ = nullptr;
 			o.size_ = 0;
 			o.capacity_ = 0;
 		}
 		return *this;
+	}
+
+	void copy_into(dynarray &other) const {
+		if (this == &other) {
+			return; // No need to copy into itself
+		}
+		other.resize_uninitialized(0);
+		other.extend(*this);
 	}
 
 	void reserve(const size_t n) {
