@@ -83,7 +83,7 @@ add_executable(${PROJECT_NAME}
     src/window.cpp
     src/scrollbar.cpp
     src/worker.cpp
-    src/loader.cpp
+    src/input_processor.cpp
     src/finder.cpp
     src/log.h
     src/dataset.h
