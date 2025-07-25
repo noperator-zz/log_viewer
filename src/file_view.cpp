@@ -53,6 +53,10 @@ std::unique_ptr<FileView> FileView::create(Widget *parent, const char *path) {
 FileView::FileView(Widget *parent, const char *path)
 	: Widget(parent, "FV"), loader_(File{path}, dataset_, [this]{on_new_lines();}) {
 
+	line_starts_.resize_uninitialized(2);
+	line_starts_[0] = 0; // Start of the file
+	line_starts_[1] = 0; // End of the file (will be updated later)
+
 	add_child(linenum_view_);
 	add_child(content_view_);
 }

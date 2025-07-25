@@ -62,8 +62,18 @@ void InputProcessor::get(dynarray<size_t> &line_starts, size_t &longest_line) {
 	// NOTE This is called by the main thread, and will block it during reallocation of line_starts.
 	//  Since this is rare (each time the number of lines doubles), this is acceptable.
 	std::lock_guard lock(mtx_);
+	// Remove previous file end
+	assert(line_starts.size() >= 2);
+	line_starts.resize_uninitialized(line_starts.size() - 1);
 
 	line_starts.extend(line_starts_);
+
+	// Add the new file end
+	size_t last = file_.mapped_size();
+	// if (last) --last;
+
+	line_starts.push_back(last);
+
 	line_starts_.resize_uninitialized(0);
 	longest_line = longest_line_;
 }
@@ -100,9 +110,11 @@ int InputProcessor::event_handler(unsigned int id, unsigned long long from, unsi
 
 int InputProcessor::event_handler(unsigned int id, unsigned long long from, unsigned long long to, unsigned int flags) {
 	// This is faster and uses less memory than enabling the HS_FLAG_SOM_LEFTMOST flag
-	from = to - 1;
+	// from = to - 1;
+	// chunk_results_.push_back(from);
 
-	chunk_results_.push_back(from);
+	// We actually want to record with position _after_ the newline character.
+	chunk_results_.push_back(to);
 	size_t line_len = from - prev_start_;
 	prev_start_ = from;
 	unsafe_longest_line_ = std::max(unsafe_longest_line_, line_len);
@@ -146,11 +158,6 @@ void InputProcessor::load_tail() {
 		Timeit load_timeit("Load");
 
 		chunk_results_.resize_uninitialized(0);
-		if (prev_size == 0) {
-			// If this is the first time we are loading the file, we need to add a starting point
-			prev_start_ = 0;
-			chunk_results_.push_back(0);
-		}
 
 		for (size_t offset = 0; offset < total_size; offset += CHUNK_SIZE) {
 			size_t chunk_size = std::min(total_size - offset, CHUNK_SIZE);
