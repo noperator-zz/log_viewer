@@ -112,10 +112,9 @@ int InputProcessor::event_handler(unsigned int id, unsigned long long from, unsi
 void InputProcessor::load_tail() {
 	static constexpr size_t CHUNK_SIZE = 1ULL * 1024 * 1024;
 
-	auto prev_size = file_.mapped_size();
-	auto new_size = file_.size();
+	const auto prev_size = file_.mapped_size();
 
-	if (new_size <= prev_size) {
+	if (file_.size() <= prev_size) {
 		// No new data to load
 		return;
 	}
@@ -139,6 +138,7 @@ void InputProcessor::load_tail() {
 		updater.set(file_.mapped_data(), prev_size);
 	}
 
+	const auto new_size = file_.mapped_size();
 	{
 		ZoneScopedN("find new lines");
 		size_t total_size = new_size - prev_size;
