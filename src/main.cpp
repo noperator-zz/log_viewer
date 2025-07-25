@@ -7,18 +7,27 @@ void write_file(FILE *h) {
     const char s[] = "Hello, world! This is a long line that wil be emitted slowly over the course of several seconds. Wow, look. Here are some more characters to make this line even longer. Can you believe how long this line is?\n";
     while (1) {
         for (int i = 0; i < 100; i++) {
+            // for (int ci = 0; ci < 15; ci++) {
             for (auto c : s) {
+                // char c = '0' + (ci % 10);
                 fputc(c, h);
+                fflush(h);
                 std::this_thread::sleep_for(std::chrono::milliseconds(CDELAY));
             }
+            // fputc('\n', h);
+            // fflush(h);
         }
         fputs("single line match\n", h);
+        fflush(h);
         std::this_thread::sleep_for(std::chrono::milliseconds(SDELAY));
         fputs("pad\n", h);
+        fflush(h);
         std::this_thread::sleep_for(std::chrono::milliseconds(SDELAY));
         fputs("multi\nline match\n", h);
+        fflush(h);
         std::this_thread::sleep_for(std::chrono::milliseconds(SDELAY));
         fputs("pad\n", h);
+        fflush(h);
         std::this_thread::sleep_for(std::chrono::milliseconds(SDELAY));
     }
 }
@@ -27,7 +36,7 @@ int main(int argc, char *argv[]) {
     int err {};
     setvbuf(stdout, nullptr, _IOFBF, 1024 * 1024);
 
-    auto h = fopen("C:/development/log_viewer_win/test_set/tailer.log", "w");
+    auto h = fopen("C:/development/log_viewer_win/test_set/tailer.log", "wb");
     std::thread t1(write_file, h);
 
     auto win = AppWindow::create(argc, argv, err);
