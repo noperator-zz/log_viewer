@@ -111,7 +111,7 @@ void InputView::draw() {
 
 	std::vector<ivec2> coords {};
 	TextShader::use(buf_);
-	TextShader::render(buf_, text_, {{}, {}, {0xFF, 0xFF, 0xFF, 0xFF}, {}}, {cursor_}, coords);
+	TextShader::render(buf_, text_, {{}, {0xFF, 0xFF, 0xFF, 0xFF}, {}}, {cursor_}, coords);
 	TextShader::draw({x, y}, {}, 0, text_.size(), Z_UI_FG);
 
 	GPShader::rect(ivec2{x, y} + coords[0] * TextShader::font().size, ivec2{2, TextShader::font().size.y}, {0xFF, 0xFF, 0xFF, 0xFF}, Z_UI_FG); // cursor

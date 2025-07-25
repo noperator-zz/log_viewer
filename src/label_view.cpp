@@ -19,7 +19,7 @@ void LabelView::on_resize() {
 void LabelView::update() {
 	std::vector<ivec2> coords {};
 	TextShader::use(buf_);
-	TextShader::render(buf_, text_, {{}, {}, {0xFF, 0xFF, 0xFF, 0xFF}, {}}, {}, coords);
+	TextShader::render(buf_, text_, {{}, {0xFF, 0xFF, 0xFF, 0xFF}, {}}, {}, coords);
 }
 
 void LabelView::draw() {
