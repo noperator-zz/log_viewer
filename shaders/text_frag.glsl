@@ -32,7 +32,7 @@ void main() {
     }
 
     float a = texture(atlas, v_uv).r;
-    vec4 fg = mix(v_bg, v_fg, a);
+    vec4 fg = vec4(v_fg.rgb, v_fg.a * a);
 //    color = vec4((v_style_mask & 0xFFU), 0, 0, 1);
 //    color = vec4(0, v_uv.r, 0, 1);
 //    color = vec4(float(char_idx) / 3., 0.5, 0, 1);
