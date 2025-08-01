@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 project(log_viewer)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 20)
 
 include(CheckCXXCompilerFlag)
 
@@ -32,8 +32,6 @@ find_package(GLEW REQUIRED)
 find_package(glm REQUIRED)
 #find_package(hyperscan REQUIRED)
 
-option( TRACY_ENABLE "" ON)
-option( TRACY_ON_DEMAND "" ON)
 add_subdirectory (tracy)
 
 # Path to your shaders

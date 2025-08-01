@@ -35,9 +35,6 @@ std::unique_ptr<AppWindow> AppWindow::create(int argc, char *argv[], int &err) {
     err = 0;
     int ret;
 
-    // FIXME so tracy doesnt miss events
-    std::this_thread::sleep_for(1000ms);
-
     Timeit init_timeit("Init");
 
     if (glfwInit() == 0) {

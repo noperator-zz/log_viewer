@@ -98,7 +98,7 @@ void InputProcessor::worker() {
 
 	while (1) {
 		load_tail();
-		if (quit_.wait(1000ms)) {
+		if (quit_.wait(100ms)) {
 			break;
 		}
 	}
@@ -115,8 +115,8 @@ int InputProcessor::event_handler(unsigned int id, unsigned long long from, unsi
 
 	// We actually want to record with position _after_ the newline character.
 	chunk_results_.push_back(to);
-	size_t line_len = from - prev_start_;
-	prev_start_ = from;
+	size_t line_len = to - prev_start_;
+	prev_start_ = to;
 	unsafe_longest_line_ = std::max(unsafe_longest_line_, line_len);
 	return 0; // Continue matching
 }

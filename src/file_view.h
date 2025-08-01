@@ -29,6 +29,22 @@ class FileView : public Widget {
 		void feed(const dynarray<size_t> &line_starts, const dynarray<Finder::Job::Result> &results);
 	};
 
+	// class FilterContext {
+	// 	struct Ctx {
+	// 		const FindContext *find;
+	// 		// next index of line_indices to look at
+	// 		size_t next_array_idx;
+	// 	};
+	// 	std::vector<Ctx> find_ctxs {};
+	//
+	// public:
+	// 	// Array of indices into line_starts_, computed based on which lines are visible after filtering
+	// 	dynarray<size_t> filtered_line_indices_ {};
+	// 	void update();
+	// 	void remove(const FindContext *ctx);
+	// 	void add(const FindContext *ctx);
+	// };
+
 	InputProcessor loader_;
 	Dataset dataset_ {nullptr, nullptr};
 	Finder finder_ {dataset_};
@@ -40,11 +56,15 @@ class FileView : public Widget {
 	glm::dvec2 frac_scroll_ {};
 
 	dynarray<size_t> line_starts_ {};
+	// TODO need longest_filtered_line_ for the horizontal scrollbar
 	size_t longest_line_ {};
-	// Array of indices into line_starts_, computed based on which lines are visible after filtering
-	dynarray<size_t> filtered_line_indices_ {};
+
+	// FilterContext line_filter_ {};
+	// FilterContext *active_filter_ {};
+	FindContext *active_filter_ {};
 
 	bool autoscroll_ {true};
+	bool need_buffer_update_ {};
 
 	FileView(Widget *parent, const char *path);
 
@@ -55,6 +75,7 @@ class FileView : public Widget {
 	bool on_key(int key, int scancode, int action, Window::KeyMods mods) override;
 	void on_resize() override;
 
+	// void update_filtered_lines();
 	void really_update_buffers(const uint8_t *data);
 	bool update_buffers(const Dataset::User &user);
 	void scroll_to(glm::ivec2 pos, bool allow_autoscroll);
@@ -65,6 +86,7 @@ class FileView : public Widget {
 	size_t abs_char_loc_to_buf_char_idx(glm::ivec2 abs_loc) const;
 	size_t get_line_len(size_t line_idx) const;
 	size_t num_lines() const;
+	size_t num_filtered_lines() const;
 	glm::ivec2 max_scroll() const;
 	glm::ivec2 max_visible_scroll() const;
 

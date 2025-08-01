@@ -33,8 +33,17 @@ std::unique_ptr<Finder::Job> Finder::Job::create(LockableBase(std::mutex) &resul
 	// err = hs_compile_multi(expressions.data(), flags.data(), ids.data(),
 	//                        expressions.size(), mode, nullptr, &db, &compileErr);
 
-	auto flag = HS_FLAG_DOTALL | HS_FLAG_CASELESS | HS_FLAG_MULTILINE | HS_FLAG_SOM_LEFTMOST;
-	err = hs_compile(pattern.data(), flag, HS_MODE_STREAM | HS_MODE_SOM_HORIZON_LARGE, NULL, &db, &compile_err);
+	int mode = HS_MODE_STREAM | HS_MODE_SOM_HORIZON_LARGE;
+	bool regex = flags & FLAG_REGEX;
+	flags &= ~FLAG_REGEX;
+	flags |= HS_FLAG_SOM_LEFTMOST;
+
+	if (regex) {
+		err = hs_compile(pattern.data(), flags, mode, NULL, &db, &compile_err);
+	} else {
+		err = hs_compile_lit(pattern.data(), flags, pattern.size(), mode, NULL, &db, &compile_err);
+	}
+
 	if (err != HS_SUCCESS) {
 		fprintf(stderr, "ERROR: Unable to compile pattern \"%s\": %s\n",
 				pattern.data(), compile_err->message);
@@ -42,6 +51,8 @@ std::unique_ptr<Finder::Job> Finder::Job::create(LockableBase(std::mutex) &resul
 		error = -1;
 		return nullptr;
 	}
+
+	// TODO verify constraints with hs_expression_info()
 
 	err = hs_alloc_scratch(db, &scratch);
 	if (err != HS_SUCCESS) {

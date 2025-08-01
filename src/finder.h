@@ -9,6 +9,8 @@
 
 class Finder {
 public:
+	static constexpr int FLAG_REGEX = 1 << 31;
+
 	class Job {
 	public:
 		enum class Status {

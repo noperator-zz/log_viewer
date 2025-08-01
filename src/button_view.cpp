@@ -5,8 +5,13 @@
 
 using namespace glm;
 
-ButtonView::ButtonView(Widget *parent, TexID tex_id, bool toggle, const std::function<void(bool)> &&on_click)
-	: Widget(parent), tex_id_(tex_id), toggle_(toggle), on_click_(std::move(on_click)) {}
+ButtonView::ButtonView(Widget *parent, TexSet tex_set, const std::function<void()> &&on_click)
+	: Widget(parent), tex_set_(tex_set), on_click_(std::move(on_click)) {}
+
+void ButtonView::set_state(bool state) {
+	state_ = state;
+	soil();
+}
 
 void ButtonView::set_enabled(bool enabled) {
 	enabled_ = enabled;
@@ -29,7 +34,6 @@ bool ButtonView::on_mouse_button(ivec2 mouse, int button, int action, Window::Ke
 	}
 
 	if (action == GLFW_PRESS) {
-		state_ = !state_;
 		return true;
 	}
 
@@ -38,18 +42,12 @@ bool ButtonView::on_mouse_button(ivec2 mouse, int button, int action, Window::Ke
 	}
 
 	if (!hovered()) {
-		// undo the state change if the button was released outside the button
-		state_ = !state_;
+		// ignore the click if the mouse was released outside the button
 		return true;
 	}
 
-	if (!toggle_) {
-		// if not toggle, reset state to false on release
-		state_ = false;
-	}
-
 	if (on_click_) {
-		on_click_(state_);
+		on_click_();
 	}
 	return true;
 }
@@ -58,17 +56,21 @@ void ButtonView::update() {
 }
 
 void ButtonView::draw() {
-	GPShader::rect(*this, pos(), {}, {0xFF, 0xFF, 0x00, 0xFF}, Z_UI_FG); // border
-	auto [x, y, w, h] = GPShader::rect(*this, pos() + ivec2{2}, ivec2{-4}, {0x00, 0x00, 0x80, 0xFF}, Z_UI_FG, tex_id_); // content
-	if (state_) {
-		GPShader::rect(*this, {x, y}, {w, h}, {0xFF, 0xFF, 0xFF, 0x40}, Z_UI_FG); // highlight
+	color bg = {0xFF, 0xFF, 0xFF, 0x00};
+	TexID tex_id_ = tex_set_.idle;
+	if (state_ || (hovered() && pressed())) {
+		tex_id_ = tex_set_.active;
+		bg.a = 0x80;
 	}
 	if (enabled_) {
-		if (hovered()) {
-			GPShader::rect(*this, {x, y}, {w, h}, {0xFF, 0xFF, 0xFF, 0x40}, Z_UI_FG); // highlight
+		if (hovered() && !state_) {
+			tex_id_ = tex_set_.hover;
+			bg.a = 0x40;
 		}
 	} else {
-		GPShader::rect(*this, {x, y}, {w, h}, {0x00, 0x00, 0x00, 0x40}, Z_UI_FG); // disabled
+		tex_id_ = tex_set_.disabled;
+		bg = {0, 0, 0, 0x80}; // dimmed
 	}
+	GPShader::rect(*this, pos(), {}, bg, Z_UI_FG, tex_id_); // content
 }
 

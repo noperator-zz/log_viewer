@@ -18,6 +18,7 @@ public:
 			uint8_t strikethrough : 1;
 		};
 		glm::uvec2 char_pos;
+		glm::uint real_line_idx; // The absolute line index in the file, not the buffer
 		color fg;
 		color bg;
 		union {

@@ -24,13 +24,15 @@ FindView::FindView(Widget *parent, ::color color, std::function<void(FindView &,
 	add_child(but_case_);
 	add_child(but_word_);
 	add_child(but_regex_);
+	add_child(but_filter_);
 
 	but_case_.set_enabled(true);
 	but_word_.set_enabled(true);
 	but_regex_.set_enabled(true);
+	but_filter_.set_enabled(true);
 
 	static constexpr int HANDLE_W = 20;
-	static constexpr int BUTTON_W = 36;
+	static constexpr int BUTTON_W = 32;
 
 	layout_.add(handle_, HANDLE_W);
 	layout_.add(input_, layout::Remain{100});
@@ -39,6 +41,7 @@ FindView::FindView(Widget *parent, ::color color, std::function<void(FindView &,
 	layout_.add(but_case_, BUTTON_W);
 	layout_.add(but_word_, BUTTON_W);
 	layout_.add(but_regex_, BUTTON_W);
+	layout_.add(but_filter_, BUTTON_W);
 	layout_.add(match_label_, 300);
 
 	input_.take_key_focus();
@@ -55,12 +58,57 @@ bool FindView::on_key(int key, int scancode, int action, Window::KeyMods mods) {
 		}
 		return true;
 	}
+	if (mods.alt && action == GLFW_PRESS) {
+		if (key == 'C') {
+			on_case();
+			return true;
+		} else if (key == 'W') {
+			on_word();
+			return true;
+		} else if (key == 'X') {
+			on_regex();
+			return true;
+		} else if (key == 'F') {
+			on_filter();
+			return true;
+		}
+	}
 
 	return false;
 }
 
 void FindView::handle_text() {
 	event_cb_(*this, Event::kCriteria);
+}
+
+void FindView::on_prev() {
+	event_cb_(*this, Event::kPrev);
+}
+
+void FindView::on_next() {
+	event_cb_(*this, Event::kNext);
+}
+
+void FindView::on_case() {
+	flags_.case_sensitive = !flags_.case_sensitive;
+	but_case_.set_state(flags_.case_sensitive);
+	event_cb_(*this, Event::kCriteria);
+}
+
+void FindView::on_word() {
+	flags_.whole_word = !flags_.whole_word;
+	but_word_.set_state(flags_.whole_word);
+	event_cb_(*this, Event::kCriteria);
+}
+
+void FindView::on_regex() {
+	flags_.regex = !flags_.regex;
+	but_regex_.set_state(flags_.regex);
+	event_cb_(*this, Event::kCriteria);
+}
+
+void FindView::on_filter() {
+	event_cb_(*this, Event::kFilter);
 }
 
 void FindView::set_state(State state) {
@@ -78,6 +126,11 @@ void FindView::set_state(State state) {
 
 const FindView::State &FindView::state() const {
 	return state_;
+}
+
+void FindView::set_filtered(bool filtered) {
+	flags_.filtered = filtered;
+	but_filter_.set_state(flags_.filtered);
 }
 
 FindView::Flags FindView::flags() const {
@@ -109,4 +162,5 @@ void FindView::draw() {
 	but_case_.draw();
 	but_word_.draw();
 	but_regex_.draw();
+	but_filter_.draw();
 }

@@ -49,7 +49,7 @@ void ContentView::scroll_v_cb(double percent) {
 void ContentView::update_scrollbar() {
 	// TODO the sizes are not quite right; they don't account for the overscroll region
 	scroll_h_.set(parent().scroll_.x, size().x, parent().longest_line_ * TextShader::font().size.x);
-	scroll_v_.set(parent().scroll_.y, size().y, parent().num_lines() * TextShader::font().size.y);
+	scroll_v_.set(parent().scroll_.y, size().y, parent().num_filtered_lines() * TextShader::font().size.y);
 }
 
 ivec2 ContentView::view_px_loc_to_abs_char_loc(ivec2 view_px_loc) {

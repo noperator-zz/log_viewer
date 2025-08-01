@@ -60,25 +60,29 @@ void TextShader::create_buffers(Buffer &buf, size_t total_size) {
 	glEnableVertexAttribArray(0);
 	glVertexAttribDivisor(0, 1);
 
-	glVertexAttribPointer(1, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, fg));
+	glVertexAttribIPointer(1, 1, GL_UNSIGNED_INT, sizeof(CharStyle), (void*)offsetof(CharStyle, real_line_idx));
 	glEnableVertexAttribArray(1);
 	glVertexAttribDivisor(1, 1);
 
-	glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, bg));
+	glVertexAttribPointer(2, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, fg));
 	glEnableVertexAttribArray(2);
 	glVertexAttribDivisor(2, 1);
 
-	glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE, sizeof(CharStyle), (void*)offsetof(CharStyle, style));
+	glVertexAttribPointer(3, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(CharStyle), (void*)offsetof(CharStyle, bg));
 	glEnableVertexAttribArray(3);
 	glVertexAttribDivisor(3, 1);
 
-	glVertexAttribIPointer(4, 1, GL_UNSIGNED_BYTE, sizeof(CharStyle), (void*)offsetof(CharStyle, glyph));
+	glVertexAttribIPointer(4, 1, GL_UNSIGNED_BYTE, sizeof(CharStyle), (void*)offsetof(CharStyle, style));
 	glEnableVertexAttribArray(4);
 	glVertexAttribDivisor(4, 1);
 
-	glVertexAttribIPointer(5, 2, GL_UNSIGNED_BYTE, sizeof(CharStyle), (void*)offsetof(CharStyle, _padding));
+	glVertexAttribIPointer(5, 1, GL_UNSIGNED_BYTE, sizeof(CharStyle), (void*)offsetof(CharStyle, glyph));
 	glEnableVertexAttribArray(5);
 	glVertexAttribDivisor(5, 1);
+
+	glVertexAttribIPointer(6, 2, GL_UNSIGNED_BYTE, sizeof(CharStyle), (void*)offsetof(CharStyle, _padding));
+	glEnableVertexAttribArray(6);
+	glVertexAttribDivisor(6, 1);
 
 	glGenBuffers(1, &buf.ubo_globals);
 	glBindBuffer(GL_UNIFORM_BUFFER, buf.ubo_globals);
@@ -134,6 +138,7 @@ void TextShader::render(const Buffer &buf, const std::string_view text, const Ch
 
 		styles[i] = style;
 		styles[i].char_pos = pos;
+		styles[i].real_line_idx = pos.y;
 		styles[i].glyph = text[i];
 		++pos.x;
 
